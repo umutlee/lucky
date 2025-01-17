@@ -1,285 +1,178 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
+import '../config/api_error_codes.dart';
+import '../exceptions/api_exception.dart';
+import '../interceptors/api_interceptor.dart';
 import '../models/api_response.dart';
-import '../models/lunar_date.dart';
-import '../models/daily_fortune.dart';
-import '../models/study_fortune.dart';
-import '../models/career_fortune.dart';
-import '../models/love_fortune.dart';
 import 'storage_service.dart';
 
 /// API 客戶端
 class ApiClient {
   late final Dio _dio;
   final StorageService _storage;
+  final ApiInterceptor _apiInterceptor;
   
-  ApiClient(this._storage) {
-    _dio = Dio(BaseOptions(
+  ApiClient(this._storage, {Dio? dio}) : _apiInterceptor = ApiInterceptor() {
+    _dio = dio ?? Dio(BaseOptions(
+      baseUrl: ApiConfig.baseUrl,
       connectTimeout: ApiConfig.connectTimeout,
       receiveTimeout: ApiConfig.receiveTimeout,
       sendTimeout: ApiConfig.sendTimeout,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
     ));
 
-    // 添加攔截器用於日誌記錄
+    // 添加攔截器
+    _dio.interceptors.add(_apiInterceptor);
+
+    // 添加日誌攔截器（僅在調試模式下）
     if (kDebugMode) {
       _dio.interceptors.add(LogInterceptor(
         requestBody: true,
         responseBody: true,
       ));
     }
-
-    // 添加錯誤處理攔截器
-    _dio.interceptors.add(InterceptorsWrapper(
-      onError: (error, handler) async {
-        if (error.type == DioExceptionType.connectionTimeout ||
-            error.type == DioExceptionType.receiveTimeout) {
-          // 超時重試邏輯
-          if (error.requestOptions.extra['retryCount'] == null) {
-            error.requestOptions.extra['retryCount'] = 0;
-          }
-          
-          if (error.requestOptions.extra['retryCount'] < ApiConfig.maxRetries) {
-            error.requestOptions.extra['retryCount'] += 1;
-            await Future.delayed(ApiConfig.retryInterval);
-            return handler.resolve(await _retry(error.requestOptions));
-          }
-        }
-        return handler.next(error);
-      },
-    ));
   }
 
-  // 重試請求
-  Future<Response<dynamic>> _retry(RequestOptions requestOptions) async {
-    final options = Options(
-      method: requestOptions.method,
-      headers: requestOptions.headers,
-    );
-    return _dio.request<dynamic>(
-      requestOptions.path,
-      data: requestOptions.data,
-      queryParameters: requestOptions.queryParameters,
-      options: options,
-    );
-  }
-
-  // 處理 API 響應
-  ApiResponse<T> _handleResponse<T>(
-    Response response,
-    T Function(Map<String, dynamic>) fromJson,
-  ) {
+  /// 發送 GET 請求
+  Future<ApiResponse<T>> get<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    bool forceRefresh = false,
+    T Function(Map<String, dynamic>)? fromJson,
+  }) async {
     try {
-      if (response.statusCode == 200) {
-        return ApiResponse.fromJson(
-          response.data as Map<String, dynamic>,
-          fromJson,
-        );
-      } else {
-        return ApiResponse.error(
-          '請求失敗: ${response.statusCode}',
-          code: response.statusCode,
-        );
+      // 檢查網絡連接
+      if (!await _apiInterceptor.checkConnection()) {
+        throw ApiException.fromCode(ApiErrorCodes.networkError);
       }
+
+      // 嘗試從緩存獲取（如果未強制刷新）
+      if (!forceRefresh && fromJson != null) {
+        final cacheKey = _getCacheKey(path, queryParameters);
+        final cached = await _storage.getCachedFortune<T>(cacheKey);
+        if (cached != null) {
+          return ApiResponse.success(cached);
+        }
+      }
+
+      final response = await _dio.get(
+        path,
+        queryParameters: queryParameters,
+        options: options ?? Options(headers: ApiConfig.headers),
+      );
+
+      final result = _handleResponse(response, fromJson);
+
+      // 緩存成功響應
+      if (result.isSuccess && fromJson != null) {
+        final cacheKey = _getCacheKey(path, queryParameters);
+        await _storage.cacheFortune(cacheKey, result.data);
+      }
+
+      return result;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
     } catch (e) {
-      return ApiResponse.invalidResponse();
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        message: e.toString(),
+        code: ApiErrorCodes.serverError,
+      );
     }
   }
 
-  // 生成緩存 key
-  String _getCacheKey(String endpoint, Map<String, dynamic> params) {
+  /// 發送 POST 請求
+  Future<ApiResponse<T>> post<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    T Function(Map<String, dynamic>)? fromJson,
+  }) async {
+    try {
+      // 檢查網絡連接
+      if (!await _apiInterceptor.checkConnection()) {
+        throw ApiException.fromCode(ApiErrorCodes.networkError);
+      }
+
+      final response = await _dio.post(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: options ?? Options(headers: ApiConfig.headers),
+      );
+
+      return _handleResponse(response, fromJson);
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        message: e.toString(),
+        code: ApiErrorCodes.serverError,
+      );
+    }
+  }
+
+  /// 處理響應數據
+  ApiResponse<T> _handleResponse<T>(
+    Response response,
+    T Function(Map<String, dynamic>)? fromJson,
+  ) {
+    try {
+      if (response.data is! Map<String, dynamic>) {
+        throw ApiException.fromCode(ApiErrorCodes.invalidResponse);
+      }
+
+      final data = response.data as Map<String, dynamic>;
+      final success = data['success'] as bool? ?? false;
+      final code = data['code'] as int?;
+      final message = data['message'] as String?;
+      final responseData = data['data'];
+
+      if (!success || code != null) {
+        throw ApiException(
+          message: message ?? ApiErrorCodes.getErrorMessage(code ?? ApiErrorCodes.serverError),
+          code: code ?? ApiErrorCodes.serverError,
+          data: responseData,
+        );
+      }
+
+      if (fromJson != null && responseData != null) {
+        if (responseData is! Map<String, dynamic>) {
+          throw ApiException.fromCode(ApiErrorCodes.invalidResponse);
+        }
+        return ApiResponse.success(fromJson(responseData));
+      }
+
+      return ApiResponse.success(responseData as T?);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.fromCode(ApiErrorCodes.parseError);
+    }
+  }
+
+  /// 生成緩存鍵
+  String _getCacheKey(String path, Map<String, dynamic>? params) {
+    if (params == null || params.isEmpty) return path;
+    
     final sortedParams = Map.fromEntries(
       params.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
     );
-    return '$endpoint${jsonEncode(sortedParams)}';
-  }
-
-  // 農曆 API
-  Future<ApiResponse<LunarDate>> getLunarDate(DateTime date) async {
-    final params = {
-      'date': date.toIso8601String(),
-      'key': ApiConfig.lunarApiKey,
-    };
-    final cacheKey = _getCacheKey('lunar', params);
     
-    // 嘗試從緩存獲取
-    final cached = _storage.getCachedApiResponse(cacheKey, LunarDate.fromJson);
-    if (cached != null) return cached;
-
-    try {
-      final response = await _dio.get(
-        ApiConfig.getLunarUrl(),
-        queryParameters: params,
-      );
-      final apiResponse = _handleResponse(response, LunarDate.fromJson);
-      
-      // 緩存成功響應
-      if (apiResponse.isSuccess) {
-        await _storage.cacheApiResponse(cacheKey, apiResponse);
-      }
-      
-      return apiResponse;
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return ApiResponse.timeoutError();
-      }
-      return ApiResponse.networkError();
-    } catch (e) {
-      return ApiResponse.error('獲取農曆數據失敗: $e');
-    }
+    return '$path?${_encodeParams(sortedParams)}';
   }
 
-  // 運勢 API
-  Future<ApiResponse<DailyFortune>> getDailyFortune(DateTime date, String type) async {
-    final params = {
-      'date': date.toIso8601String(),
-      'type': type,
-      'key': ApiConfig.fortuneApiKey,
-    };
-    final cacheKey = _getCacheKey('fortune', params);
-    
-    // 嘗試從緩存獲取
-    final cached = _storage.getCachedApiResponse(cacheKey, DailyFortune.fromJson);
-    if (cached != null) return cached;
-
-    try {
-      final response = await _dio.get(
-        ApiConfig.getFortuneUrl(),
-        queryParameters: params,
-      );
-      final apiResponse = _handleResponse(response, DailyFortune.fromJson);
-      
-      // 緩存成功響應
-      if (apiResponse.isSuccess) {
-        await _storage.cacheApiResponse(cacheKey, apiResponse);
-      }
-      
-      return apiResponse;
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return ApiResponse.timeoutError();
-      }
-      return ApiResponse.networkError();
-    } catch (e) {
-      return ApiResponse.error('獲取運勢數據失敗: $e');
-    }
+  /// 編碼請求參數
+  String _encodeParams(Map<String, dynamic> params) {
+    return params.entries
+        .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}')
+        .join('&');
   }
 
-  // 學業運勢 API
-  Future<ApiResponse<StudyFortune>> getStudyFortune(DateTime date) async {
-    final cacheKey = _getCacheKey('study_fortune', {'date': date.toIso8601String()});
-    final cachedResponse = await _storage.getCachedApiResponse<StudyFortune>(
-      cacheKey,
-      (json) => StudyFortune.fromJson(json as Map<String, dynamic>),
-    );
-
-    if (cachedResponse != null) {
-      return cachedResponse;
-    }
-
-    try {
-      final response = await _dio.get(
-        ApiConfig.getStudyFortuneUrl(),
-        queryParameters: {'date': date.toIso8601String()},
-      );
-      
-      final apiResponse = ApiResponse<StudyFortune>.fromJson(
-        response.data,
-        (json) => StudyFortune.fromJson(json as Map<String, dynamic>),
-      );
-
-      if (apiResponse.isSuccess) {
-        await _storage.cacheApiResponse(cacheKey, apiResponse);
-      }
-
-      return apiResponse;
-    } catch (e) {
-      return ApiResponse.error<StudyFortune>(
-        message: '獲取學業運勢失敗',
-        error: e.toString(),
-      );
-    }
-  }
-
-  // 事業運勢 API
-  Future<ApiResponse<CareerFortune>> getCareerFortune(DateTime date) async {
-    final cacheKey = _getCacheKey('career_fortune', {'date': date.toIso8601String()});
-    final cachedResponse = await _storage.getCachedApiResponse<CareerFortune>(
-      cacheKey,
-      (json) => CareerFortune.fromJson(json as Map<String, dynamic>),
-    );
-
-    if (cachedResponse != null) {
-      return cachedResponse;
-    }
-
-    try {
-      final response = await _dio.get(
-        ApiConfig.getCareerFortuneUrl(),
-        queryParameters: {'date': date.toIso8601String()},
-      );
-      
-      final apiResponse = ApiResponse<CareerFortune>.fromJson(
-        response.data,
-        (json) => CareerFortune.fromJson(json as Map<String, dynamic>),
-      );
-
-      if (apiResponse.isSuccess) {
-        await _storage.cacheApiResponse(cacheKey, apiResponse);
-      }
-
-      return apiResponse;
-    } catch (e) {
-      return ApiResponse.error<CareerFortune>(
-        message: '獲取事業運勢失敗',
-        error: e.toString(),
-      );
-    }
-  }
-
-  // 愛情運勢 API
-  Future<ApiResponse<LoveFortune>> getLoveFortune(
-    DateTime date,
-    String zodiacSign,
-  ) async {
-    final params = {
-      'date': date.toIso8601String(),
-      'zodiac': zodiacSign,
-      'key': ApiConfig.loveFortuneApiKey,
-    };
-    final cacheKey = _getCacheKey('love-fortune', params);
-    
-    // 嘗試從緩存獲取
-    final cached = _storage.getCachedApiResponse(cacheKey, LoveFortune.fromJson);
-    if (cached != null) return cached;
-
-    try {
-      final response = await _dio.get(
-        ApiConfig.getLoveFortuneUrl(),
-        queryParameters: params,
-      );
-      final apiResponse = _handleResponse(response, LoveFortune.fromJson);
-      
-      // 緩存成功響應
-      if (apiResponse.isSuccess) {
-        await _storage.cacheApiResponse(cacheKey, apiResponse);
-      }
-      
-      return apiResponse;
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return ApiResponse.timeoutError();
-      }
-      return ApiResponse.networkError();
-    } catch (e) {
-      return ApiResponse.error('獲取愛情運勢失敗: $e');
-    }
+  /// 清除緩存
+  Future<void> clearCache() async {
+    await _storage.clearAllCache();
   }
 } 

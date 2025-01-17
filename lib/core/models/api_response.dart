@@ -1,78 +1,79 @@
 /// API 響應模型
 class ApiResponse<T> {
-  final bool success;
-  final String message;
+  final bool isSuccess;
   final T? data;
+  final String? message;
   final int? code;
-  final String? error;
 
   ApiResponse({
-    required this.success,
-    this.message = '',
+    required this.isSuccess,
     this.data,
+    this.message,
     this.code,
-    this.error,
   });
 
-  factory ApiResponse.fromJson(Map<String, dynamic> json, T Function(Map<String, dynamic>) fromJson) {
-    return ApiResponse<T>(
-      success: json['success'] as bool? ?? false,
-      message: json['message'] as String? ?? '',
-      data: json['data'] != null ? fromJson(json['data'] as Map<String, dynamic>) : null,
-      code: json['code'] as int?,
-      error: json['error'] as String?,
-    );
-  }
-
-  factory ApiResponse.success(T data) {
-    return ApiResponse<T>(
-      success: true,
+  /// 創建成功響應
+  factory ApiResponse.success(T? data) {
+    return ApiResponse(
+      isSuccess: true,
       data: data,
-      message: '請求成功',
     );
   }
 
-  factory ApiResponse.error(String message, {int? code, String? error}) {
-    return ApiResponse<T>(
-      success: false,
+  /// 創建錯誤響應
+  factory ApiResponse.error({
+    String? message,
+    int? code,
+    T? data,
+  }) {
+    return ApiResponse(
+      isSuccess: false,
       message: message,
       code: code,
-      error: error,
+      data: data,
     );
   }
 
-  factory ApiResponse.networkError() {
-    return ApiResponse<T>(
-      success: false,
-      message: '網絡連接失敗，請檢查網絡設置',
-      code: -1,
+  /// 從 JSON 創建實例
+  factory ApiResponse.fromJson(
+    Map<String, dynamic> json,
+    T Function(Map<String, dynamic>)? fromJson,
+  ) {
+    final success = json['success'] as bool? ?? false;
+    final code = json['code'] as int?;
+    final message = json['message'] as String?;
+    final data = json['data'];
+
+    if (success && data != null && fromJson != null) {
+      if (data is! Map<String, dynamic>) {
+        return ApiResponse.error(
+          message: 'Invalid response data format',
+          code: 1002,
+        );
+      }
+      return ApiResponse.success(fromJson(data));
+    }
+
+    return ApiResponse(
+      isSuccess: success,
+      code: code,
+      message: message,
+      data: data as T?,
     );
   }
 
-  factory ApiResponse.serverError() {
-    return ApiResponse<T>(
-      success: false,
-      message: '服務器錯誤，請稍後重試',
-      code: 500,
-    );
+  /// 轉換為 JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'success': isSuccess,
+      'code': code,
+      'message': message,
+      'data': data,
+    };
   }
 
-  factory ApiResponse.timeoutError() {
-    return ApiResponse<T>(
-      success: false,
-      message: '請求超時，請稍後重試',
-      code: -2,
-    );
+  @override
+  String toString() {
+    return 'ApiResponse{isSuccess: $isSuccess, code: $code, message: $message, data: $data}';
   }
-
-  factory ApiResponse.invalidResponse() {
-    return ApiResponse<T>(
-      success: false,
-      message: '無效的響應數據',
-      code: -3,
-    );
-  }
-
-  bool get isSuccess => success && data != null;
-  bool get isError => !success || data == null;
 } 

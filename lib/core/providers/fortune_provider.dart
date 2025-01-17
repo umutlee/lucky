@@ -9,48 +9,44 @@ import 'api_provider.dart';
 /// 運勢數據 Provider
 class FortuneNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
   final ApiClient _apiClient;
-  final String? _zodiacSign;
 
-  FortuneNotifier(this._apiClient, [this._zodiacSign])
-      : super(const AsyncValue.loading());
+  FortuneNotifier(this._apiClient) : super(const AsyncValue.loading()) {
+    _fetchAllFortunes(DateTime.now());
+  }
 
-  // 獲取所有運勢數據
-  Future<void> fetchAllFortunes(DateTime date) async {
+  Future<void> _fetchAllFortunes(DateTime date) async {
     state = const AsyncValue.loading();
-
     try {
-      final results = await Future.wait([
-        _apiClient.getDailyFortune(date, 'general'),
-        _apiClient.getStudyFortune(date),
-        _apiClient.getCareerFortune(date),
-        if (_zodiacSign != null) _apiClient.getLoveFortune(date, _zodiacSign!),
-      ]);
+      final basicResponse = await _apiClient.getBasicFortune(date);
+      final studyResponse = await _apiClient.getStudyFortune(date);
+      final careerResponse = await _apiClient.getCareerFortune(date);
 
-      final Map<String, dynamic> fortunes = {
-        'daily': results[0].data,
-        'study': results[1].data,
-        'career': results[2].data,
-        if (_zodiacSign != null) 'love': results[3].data,
+      if (!basicResponse.success || !studyResponse.success || !careerResponse.success) {
+        state = AsyncValue.error('獲取運勢數據失敗', StackTrace.current);
+        return;
+      }
+
+      final Map<String, dynamic> allFortunes = {
+        'basic': basicResponse.data,
+        'study': studyResponse.data,
+        'career': careerResponse.data,
       };
 
-      state = AsyncValue.data(fortunes);
+      state = AsyncValue.data(allFortunes);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
   }
 
-  // 刷新運勢數據
   Future<void> refresh() async {
-    await fetchAllFortunes(DateTime.now());
+    await _fetchAllFortunes(DateTime.now());
   }
 }
 
 /// 運勢數據 Provider
 final fortuneProvider = StateNotifierProvider<FortuneNotifier, AsyncValue<Map<String, dynamic>>>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  // TODO: 從用戶設置中獲取星座
-  const zodiacSign = null;
-  return FortuneNotifier(apiClient, zodiacSign);
+  return FortuneNotifier(apiClient);
 });
 
 /// 每日運勢 Provider
@@ -60,27 +56,13 @@ final dailyFortuneProvider = Provider<AsyncValue<DailyFortune?>>((ref) {
 });
 
 /// 學業運勢 Provider
-final studyFortuneProvider = FutureProvider.family<StudyFortune?, DateTime>((ref, date) async {
-  final apiClient = ref.watch(apiClientProvider);
-  final response = await apiClient.getStudyFortune(date);
-  
-  if (response.isSuccess && response.data != null) {
-    return response.data;
-  }
-  
-  return null;
+final studyFortuneProvider = Provider.family<AsyncValue<Map<String, dynamic>>, DateTime>((ref, date) {
+  return ref.watch(fortuneProvider).whenData((data) => data['study'] as Map<String, dynamic>);
 });
 
 /// 事業運勢 Provider
-final careerFortuneProvider = FutureProvider.family<CareerFortune?, DateTime>((ref, date) async {
-  final apiClient = ref.watch(apiClientProvider);
-  final response = await apiClient.getCareerFortune(date);
-  
-  if (response.isSuccess && response.data != null) {
-    return response.data;
-  }
-  
-  return null;
+final careerFortuneProvider = Provider.family<AsyncValue<Map<String, dynamic>>, DateTime>((ref, date) {
+  return ref.watch(fortuneProvider).whenData((data) => data['career'] as Map<String, dynamic>);
 });
 
 /// 愛情運勢 Provider
@@ -118,4 +100,9 @@ class NotificationNotifier extends StateNotifier<bool> {
     state = !state;
     await _storage.saveSettings(_key, state);
   }
-} 
+}
+
+/// 基礎運勢 Provider
+final basicFortuneProvider = Provider.family<AsyncValue<Map<String, dynamic>>, DateTime>((ref, date) {
+  return ref.watch(fortuneProvider).whenData((data) => data['basic'] as Map<String, dynamic>);
+}); 

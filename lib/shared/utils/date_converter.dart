@@ -22,6 +22,34 @@ class DateConverter {
     '寒露', '霜降', '立冬', '小雪', '大雪', '冬至'
   ];
 
+  /// 2024年節氣時間（未來可改為從API獲取）
+  static const Map<String, String> _solarTerms2024 = {
+    '小寒': '2024-01-06 04:49',
+    '大寒': '2024-01-20 22:07',
+    '立春': '2024-02-04 16:27',
+    '雨水': '2024-02-19 11:13',
+    '驚蟄': '2024-03-05 06:22',
+    '春分': '2024-03-20 00:06',
+    '清明': '2024-04-04 16:02',
+    '穀雨': '2024-04-20 05:19',
+    '立夏': '2024-05-05 15:50',
+    '小滿': '2024-05-21 00:00',
+    '芒種': '2024-06-05 06:09',
+    '夏至': '2024-06-21 10:51',
+    '小暑': '2024-07-06 15:20',
+    '大暑': '2024-07-22 20:44',
+    '立秋': '2024-08-07 03:29',
+    '處暑': '2024-08-23 11:55',
+    '白露': '2024-09-07 22:11',
+    '秋分': '2024-09-22 10:44',
+    '寒露': '2024-10-08 01:59',
+    '霜降': '2024-10-23 19:44',
+    '立冬': '2024-11-07 15:34',
+    '小雪': '2024-11-22 13:56',
+    '大雪': '2024-12-07 14:17',
+    '冬至': '2024-12-21 16:21',
+  };
+
   /// 格式化公曆日期
   static String formatSolarDate(DateTime date) {
     return DateFormat('yyyy年MM月dd日', 'zh_TW').format(date);
@@ -51,7 +79,29 @@ class DateConverter {
 
   /// 判斷是否為節氣日
   static String? getSolarTerm(DateTime date) {
-    // TODO: 實現節氣判斷邏輯
+    // 獲取當年節氣數據
+    final solarTermsData = _getSolarTermsForYear(date.year);
+    if (solarTermsData == null) return null;
+
+    // 格式化日期為 yyyy-MM-dd 格式
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+
+    // 檢查是否是節氣日
+    for (final entry in solarTermsData.entries) {
+      if (entry.value.startsWith(dateStr)) {
+        return entry.key;
+      }
+    }
+
+    return null;
+  }
+
+  /// 獲取指定年份的節氣數據
+  static Map<String, String>? _getSolarTermsForYear(int year) {
+    // 目前僅支援2024年，未來可擴展或從API獲取
+    if (year == 2024) {
+      return _solarTerms2024;
+    }
     return null;
   }
 

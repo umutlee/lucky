@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/user_identity_provider.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/providers/fortune_config_provider.dart';
+import '../widgets/fortune_settings_section.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -11,6 +13,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIdentity = ref.watch(userIdentityProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final fortuneConfig = ref.watch(fortuneConfigProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -37,6 +40,21 @@ class SettingsScreen extends ConsumerWidget {
               onChanged: (value) {
                 ref.read(themeModeProvider.notifier).toggleTheme();
               },
+            ),
+          ),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '運勢設置',
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 16),
+                const FortuneSettingsSection(),
+              ],
             ),
           ),
           const Divider(),
