@@ -1,37 +1,39 @@
 /// API 配置
 class ApiConfig {
   // API 版本
-  static const String _apiVersion = 'v1';
-  
-  // API 基礎 URL
-  static const String _devBaseUrl = 'https://dev-api.alllucky.tw';
-  static const String _prodBaseUrl = 'https://api.alllucky.tw';
-  static const String _testBaseUrl = 'https://test-api.alllucky.tw';
-  
-  // API 端點
-  static const String _lunarEndpoint = '/lunar';
-  static const String _almanacEndpoint = '/almanac';
-  static const String _fortuneEndpoint = '/fortune';
-  
-  // 運勢 API 端點
-  static const String _basicFortuneEndpoint = '$_fortuneEndpoint/basic';
-  static const String _studyFortuneEndpoint = '$_fortuneEndpoint/study';
-  static const String _careerFortuneEndpoint = '$_fortuneEndpoint/career';
-  static const String _loveFortuneEndpoint = '$_fortuneEndpoint/love';
+  static const _apiVersion = 'v1';
 
-  // API Keys（從環境變量獲取）
-  static String get apiKey => const String.fromEnvironment(
-    'API_KEY',
-    defaultValue: 'development_key',
-  );
+  // 環境配置
+  static const _devBaseUrl = 'https://dev-api.alllucky.tw';
+  static const _prodBaseUrl = 'https://api.alllucky.tw';
+  static const _testBaseUrl = 'https://test-api.alllucky.tw';
 
-  // 獲取基礎 URL
+  // 運勢相關端點
+  static const _fortuneEndpoint = '/fortune';
+  static const dailyFortuneEndpoint = '$_fortuneEndpoint/daily';
+  static const studyFortuneEndpoint = '$_fortuneEndpoint/study';
+  static const careerFortuneEndpoint = '$_fortuneEndpoint/career';
+  static const loveFortuneEndpoint = '$_fortuneEndpoint/love';
+
+  // 黃曆相關端點
+  static const _almanacEndpoint = '/almanac';
+  static const dailyAlmanacEndpoint = '$_almanacEndpoint/daily';
+  static const monthAlmanacEndpoint = '$_almanacEndpoint/month';
+  static const lunarDateEndpoint = '$_almanacEndpoint/lunar';
+
+  // 超時設置
+  static const connectTimeout = Duration(seconds: 10);
+  static const receiveTimeout = Duration(seconds: 10);
+  static const sendTimeout = Duration(seconds: 10);
+
+  // 重試設置
+  static const maxRetries = 3;
+  static const retryInterval = Duration(seconds: 1);
+
+  /// 獲取基礎 URL
   static String get baseUrl {
-    const environment = String.fromEnvironment(
-      'ENVIRONMENT',
-      defaultValue: 'dev',
-    );
-    switch (environment) {
+    const env = String.fromEnvironment('FLUTTER_ENV', defaultValue: 'dev');
+    switch (env) {
       case 'prod':
         return '$_prodBaseUrl/$_apiVersion';
       case 'test':
@@ -41,36 +43,51 @@ class ApiConfig {
     }
   }
 
-  // API URL 生成方法
-  static String getLunarUrl() => '$baseUrl$_lunarEndpoint';
-  static String getAlmanacUrl() => '$baseUrl$_almanacEndpoint';
-  static String getBasicFortuneUrl() => '$baseUrl$_basicFortuneEndpoint';
-  static String getStudyFortuneUrl() => '$baseUrl$_studyFortuneEndpoint';
-  static String getCareerFortuneUrl() => '$baseUrl$_careerFortuneEndpoint';
-  static String getLoveFortuneUrl() => '$baseUrl$_loveFortuneEndpoint';
+  /// 獲取請求頭
+  static Map<String, String> get headers {
+    const apiKey = String.fromEnvironment('API_KEY');
+    return {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      if (apiKey.isNotEmpty) 'X-API-Key': apiKey,
+      'X-API-Version': _apiVersion,
+      'X-Platform': 'mobile',
+      'X-Client-Version': const String.fromEnvironment('VERSION', defaultValue: '0.1.0'),
+    };
+  }
 
-  // API 超時設置
-  static const Duration connectTimeout = Duration(seconds: 10);
-  static const Duration receiveTimeout = Duration(seconds: 10);
-  static const Duration sendTimeout = Duration(seconds: 10);
+  /// 獲取緩存控制
+  static Map<String, String> get cacheControl {
+    return {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    };
+  }
 
-  // 重試設置
-  static const int maxRetries = 3;
-  static const Duration retryInterval = Duration(seconds: 1);
-  
-  // 請求頭
-  static Map<String, String> get headers => {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json',
-    'X-API-Key': apiKey,
-    'X-API-Version': _apiVersion,
-  };
-  
-  // 緩存控制
-  static const Duration defaultCacheMaxAge = Duration(minutes: 5);
-  static const int maxCacheSize = 100; // 條目數
-  
-  // 請求限制
-  static const int rateLimit = 100; // 每分鐘請求數
-  static const Duration rateLimitWindow = Duration(minutes: 1);
+  /// 獲取請求限制
+  static Map<String, String> get rateLimits {
+    return {
+      'X-RateLimit-Limit': '100',
+      'X-RateLimit-Window': '60',
+    };
+  }
+
+  /// 檢查是否為生產環境
+  static bool get isProduction {
+    const env = String.fromEnvironment('FLUTTER_ENV', defaultValue: 'dev');
+    return env == 'prod';
+  }
+
+  /// 檢查是否為測試環境
+  static bool get isTest {
+    const env = String.fromEnvironment('FLUTTER_ENV', defaultValue: 'dev');
+    return env == 'test';
+  }
+
+  /// 檢查是否為開發環境
+  static bool get isDevelopment {
+    const env = String.fromEnvironment('FLUTTER_ENV', defaultValue: 'dev');
+    return env == 'dev';
+  }
 } 
