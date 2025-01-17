@@ -173,73 +173,73 @@ class ApiClient {
 
   // 學業運勢 API
   Future<ApiResponse<StudyFortune>> getStudyFortune(DateTime date) async {
-    final params = {
-      'date': date.toIso8601String(),
-      'key': ApiConfig.studyFortuneApiKey,
-    };
-    final cacheKey = _getCacheKey('study-fortune', params);
-    
-    // 嘗試從緩存獲取
-    final cached = _storage.getCachedApiResponse(cacheKey, StudyFortune.fromJson);
-    if (cached != null) return cached;
+    final cacheKey = _getCacheKey('study_fortune', {'date': date.toIso8601String()});
+    final cachedResponse = await _storage.getCachedApiResponse<StudyFortune>(
+      cacheKey,
+      (json) => StudyFortune.fromJson(json as Map<String, dynamic>),
+    );
+
+    if (cachedResponse != null) {
+      return cachedResponse;
+    }
 
     try {
       final response = await _dio.get(
         ApiConfig.getStudyFortuneUrl(),
-        queryParameters: params,
+        queryParameters: {'date': date.toIso8601String()},
       );
-      final apiResponse = _handleResponse(response, StudyFortune.fromJson);
       
-      // 緩存成功響應
+      final apiResponse = ApiResponse<StudyFortune>.fromJson(
+        response.data,
+        (json) => StudyFortune.fromJson(json as Map<String, dynamic>),
+      );
+
       if (apiResponse.isSuccess) {
         await _storage.cacheApiResponse(cacheKey, apiResponse);
       }
-      
+
       return apiResponse;
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return ApiResponse.timeoutError();
-      }
-      return ApiResponse.networkError();
     } catch (e) {
-      return ApiResponse.error('獲取學業運勢失敗: $e');
+      return ApiResponse.error<StudyFortune>(
+        message: '獲取學業運勢失敗',
+        error: e.toString(),
+      );
     }
   }
 
   // 事業運勢 API
   Future<ApiResponse<CareerFortune>> getCareerFortune(DateTime date) async {
-    final params = {
-      'date': date.toIso8601String(),
-      'key': ApiConfig.careerFortuneApiKey,
-    };
-    final cacheKey = _getCacheKey('career-fortune', params);
-    
-    // 嘗試從緩存獲取
-    final cached = _storage.getCachedApiResponse(cacheKey, CareerFortune.fromJson);
-    if (cached != null) return cached;
+    final cacheKey = _getCacheKey('career_fortune', {'date': date.toIso8601String()});
+    final cachedResponse = await _storage.getCachedApiResponse<CareerFortune>(
+      cacheKey,
+      (json) => CareerFortune.fromJson(json as Map<String, dynamic>),
+    );
+
+    if (cachedResponse != null) {
+      return cachedResponse;
+    }
 
     try {
       final response = await _dio.get(
         ApiConfig.getCareerFortuneUrl(),
-        queryParameters: params,
+        queryParameters: {'date': date.toIso8601String()},
       );
-      final apiResponse = _handleResponse(response, CareerFortune.fromJson);
       
-      // 緩存成功響應
+      final apiResponse = ApiResponse<CareerFortune>.fromJson(
+        response.data,
+        (json) => CareerFortune.fromJson(json as Map<String, dynamic>),
+      );
+
       if (apiResponse.isSuccess) {
         await _storage.cacheApiResponse(cacheKey, apiResponse);
       }
-      
+
       return apiResponse;
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return ApiResponse.timeoutError();
-      }
-      return ApiResponse.networkError();
     } catch (e) {
-      return ApiResponse.error('獲取事業運勢失敗: $e');
+      return ApiResponse.error<CareerFortune>(
+        message: '獲取事業運勢失敗',
+        error: e.toString(),
+      );
     }
   }
 

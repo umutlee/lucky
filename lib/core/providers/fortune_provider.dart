@@ -60,19 +60,62 @@ final dailyFortuneProvider = Provider<AsyncValue<DailyFortune?>>((ref) {
 });
 
 /// 學業運勢 Provider
-final studyFortuneProvider = Provider<AsyncValue<StudyFortune?>>((ref) {
-  final fortunes = ref.watch(fortuneProvider);
-  return fortunes.whenData((data) => data['study'] as StudyFortune?);
+final studyFortuneProvider = FutureProvider.family<StudyFortune?, DateTime>((ref, date) async {
+  final apiClient = ref.watch(apiClientProvider);
+  final response = await apiClient.getStudyFortune(date);
+  
+  if (response.isSuccess && response.data != null) {
+    return response.data;
+  }
+  
+  return null;
 });
 
 /// 事業運勢 Provider
-final careerFortuneProvider = Provider<AsyncValue<CareerFortune?>>((ref) {
-  final fortunes = ref.watch(fortuneProvider);
-  return fortunes.whenData((data) => data['career'] as CareerFortune?);
+final careerFortuneProvider = FutureProvider.family<CareerFortune?, DateTime>((ref, date) async {
+  final apiClient = ref.watch(apiClientProvider);
+  final response = await apiClient.getCareerFortune(date);
+  
+  if (response.isSuccess && response.data != null) {
+    return response.data;
+  }
+  
+  return null;
 });
 
 /// 愛情運勢 Provider
 final loveFortuneProvider = Provider<AsyncValue<LoveFortune?>>((ref) {
   final fortunes = ref.watch(fortuneProvider);
   return fortunes.whenData((data) => data['love'] as LoveFortune?);
-}); 
+});
+
+/// 學業運勢通知設置提供者
+final studyFortuneNotificationProvider = StateNotifierProvider<NotificationNotifier, bool>((ref) {
+  final storage = ref.watch(storageServiceProvider);
+  return NotificationNotifier(storage, 'study_fortune_notification');
+});
+
+/// 事業運勢通知設置提供者
+final careerFortuneNotificationProvider = StateNotifierProvider<NotificationNotifier, bool>((ref) {
+  final storage = ref.watch(storageServiceProvider);
+  return NotificationNotifier(storage, 'career_fortune_notification');
+});
+
+/// 通知設置管理器
+class NotificationNotifier extends StateNotifier<bool> {
+  final StorageService _storage;
+  final String _key;
+
+  NotificationNotifier(this._storage, this._key) : super(false) {
+    _loadInitialState();
+  }
+
+  Future<void> _loadInitialState() async {
+    state = await _storage.getSettings<bool>(_key) ?? false;
+  }
+
+  Future<void> toggle() async {
+    state = !state;
+    await _storage.saveSettings(_key, state);
+  }
+} 
