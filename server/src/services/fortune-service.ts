@@ -1,56 +1,90 @@
-import { DailyFortune, StudyFortune, CareerFortune, LoveFortune } from '../models/fortune';
+import { DateUtils } from '../utils/date-utils';
+import { FortuneCalculator, FortuneFactors } from './fortune-calculator';
+import { StorageService } from './storage-service';
 
 export class FortuneService {
-  private static instance: FortuneService;
+  private calculator: FortuneCalculator;
+  private dateUtils: DateUtils;
 
-  private constructor() {}
+  constructor(
+    private readonly storageService: StorageService
+  ) {
+    this.calculator = new FortuneCalculator();
+    this.dateUtils = new DateUtils();
+  }
 
-  static getInstance(): FortuneService {
-    if (!FortuneService.instance) {
-      FortuneService.instance = new FortuneService();
+  async getDailyFortune(date: string, zodiac: string, constellation: string) {
+    const cacheKey = `fortune:daily:${date}:${zodiac}:${constellation}`;
+    const cached = await this.storageService.getCachedFortune(cacheKey);
+    if (cached) {
+      return cached;
     }
-    return FortuneService.instance;
+
+    const factors = await this.getFortuneFactors(date, zodiac, constellation);
+    const fortune = this.calculator.calculateOverallFortune(factors);
+    
+    await this.storageService.cacheFortune(cacheKey, fortune);
+    return fortune;
   }
 
-  async getDailyFortune(date: string): Promise<DailyFortune> {
-    // TODO: 實現運勢計算邏輯
-    return {
-      date,
-      timestamp: Date.now(),
-      overall: '大吉',
-      description: '今日運勢不錯，適合...',
-      lucky_color: '紅色',
-      lucky_numbers: [3, 7, 9],
-    };
+  async getStudyFortune(date: string, zodiac: string, constellation: string) {
+    const cacheKey = `fortune:study:${date}:${zodiac}:${constellation}`;
+    const cached = await this.storageService.getCachedFortune(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const factors = await this.getFortuneFactors(date, zodiac, constellation);
+    const fortune = this.calculator.calculateOverallFortune(factors);
+    
+    await this.storageService.cacheFortune(cacheKey, { study: fortune.study });
+    return { study: fortune.study };
   }
 
-  async getStudyFortune(date: string): Promise<StudyFortune> {
-    return {
-      date,
-      timestamp: Date.now(),
-      study: '適合學習新知識',
-      focus_level: 85,
-      suitable_subjects: ['數學', '物理'],
-    };
+  async getCareerFortune(date: string, zodiac: string, constellation: string) {
+    const cacheKey = `fortune:career:${date}:${zodiac}:${constellation}`;
+    const cached = await this.storageService.getCachedFortune(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const factors = await this.getFortuneFactors(date, zodiac, constellation);
+    const fortune = this.calculator.calculateOverallFortune(factors);
+    
+    await this.storageService.cacheFortune(cacheKey, { career: fortune.career });
+    return { career: fortune.career };
   }
 
-  async getCareerFortune(date: string): Promise<CareerFortune> {
-    return {
-      date,
-      timestamp: Date.now(),
-      career: '工作順利',
-      cooperation: '良好',
-      investment: '謹慎',
-    };
+  async getLoveFortune(date: string, zodiac: string, constellation: string) {
+    const cacheKey = `fortune:love:${date}:${zodiac}:${constellation}`;
+    const cached = await this.storageService.getCachedFortune(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const factors = await this.getFortuneFactors(date, zodiac, constellation);
+    const fortune = this.calculator.calculateOverallFortune(factors);
+    
+    await this.storageService.cacheFortune(cacheKey, { love: fortune.love });
+    return { love: fortune.love };
   }
 
-  async getLoveFortune(date: string): Promise<LoveFortune> {
+  private async getFortuneFactors(
+    date: string,
+    zodiac: string,
+    constellation: string
+  ): Promise<FortuneFactors> {
+    const dateObj = new Date(date);
+    const solarTerm = await this.dateUtils.getSolarTerm(date);
+    const weekday = dateObj.getDay();
+    const lunarDate = await this.dateUtils.getLunarDate(date);
+
     return {
-      date,
-      timestamp: Date.now(),
-      love: '桃花運旺',
-      relationship: '和諧',
-      suitable_activities: ['約會', '表白'],
+      solarTerm,
+      weekday,
+      lunarDay: lunarDate.day,
+      zodiac,
+      constellation
     };
   }
 } 
