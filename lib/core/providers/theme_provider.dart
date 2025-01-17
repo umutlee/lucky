@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences.dart';
 import '../theme/identity_theme.dart';
 import 'fortune_config_provider.dart';
+import 'storage_provider.dart';
 
 /// 主題模式提供者
 final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
@@ -33,24 +34,22 @@ final themeProvider = Provider<ThemeData>((ref) {
 /// 主題模式管理器
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   final SharedPreferences _prefs;
-  static const String _key = 'theme_mode';
 
-  ThemeModeNotifier(this._prefs) : super(_loadInitialMode(_prefs));
+  ThemeModeNotifier(this._prefs) : super(_loadInitialThemeMode(_prefs));
 
-  static ThemeMode _loadInitialMode(SharedPreferences prefs) {
-    final value = prefs.getString(_key);
-    if (value != null) {
-      return ThemeMode.values.firstWhere(
-        (mode) => mode.toString() == value,
-        orElse: () => ThemeMode.system,
-      );
-    }
-    return ThemeMode.system;
+  static ThemeMode _loadInitialThemeMode(SharedPreferences prefs) {
+    final savedMode = prefs.getString(_themeModePrefKey);
+    return savedMode == 'dark' ? ThemeMode.dark : ThemeMode.light;
   }
 
-  /// 更新主題模式
-  Future<void> updateThemeMode(ThemeMode mode) async {
+  void toggleTheme() {
+    final newMode = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    _prefs.setString(_themeModePrefKey, newMode == ThemeMode.dark ? 'dark' : 'light');
+    state = newMode;
+  }
+
+  void setThemeMode(ThemeMode mode) {
+    _prefs.setString(_themeModePrefKey, mode == ThemeMode.dark ? 'dark' : 'light');
     state = mode;
-    await _prefs.setString(_key, mode.toString());
   }
 } 
