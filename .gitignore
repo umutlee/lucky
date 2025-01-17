@@ -94,4 +94,19 @@ coverage_badge.svg
 # Windows
 **/windows/flutter/generated_plugin_registrant.cc
 **/windows/flutter/generated_plugin_registrant.h
-**/windows/flutter/generated_plugins.cmake 
+**/windows/flutter/generated_plugins.cmake
+
+# Node.js
+node_modules/
+dist/
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.*
+*.env
+
+# TypeScript
+*.tsbuildinfo

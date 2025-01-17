@@ -1,55 +1,97 @@
+import 'package:intl/intl.dart';
+import '../../core/models/lunar_date.dart';
+
 /// 日期轉換工具類
 class DateConverter {
-  /// 2024年節氣日期（格式：MM-dd）
+  DateConverter._();
+
+  /// 天干
+  static const List<String> heavenlyStems = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+  
+  /// 地支
+  static const List<String> earthlyBranches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  
+  /// 生肖
+  static const List<String> zodiacSigns = ['鼠', '牛', '虎', '兔', '龍', '蛇', '馬', '羊', '猴', '雞', '狗', '豬'];
+  
+  /// 節氣
+  static const List<String> solarTerms = [
+    '小寒', '大寒', '立春', '雨水', '驚蟄', '春分',
+    '清明', '穀雨', '立夏', '小滿', '芒種', '夏至',
+    '小暑', '大暑', '立秋', '處暑', '白露', '秋分',
+    '寒露', '霜降', '立冬', '小雪', '大雪', '冬至'
+  ];
+
+  /// 2024年節氣時間（未來可改為從API獲取）
   static const Map<String, String> _solarTerms2024 = {
-    '小寒': '01-06',
-    '大寒': '01-20',
-    '立春': '02-04',
-    '雨水': '02-19',
-    '驚蟄': '03-05',
-    '春分': '03-20',
-    '清明': '04-04',
-    '穀雨': '04-19',
-    '立夏': '05-05',
-    '小滿': '05-20',
-    '芒種': '06-05',
-    '夏至': '06-21',
-    '小暑': '07-06',
-    '大暑': '07-22',
-    '立秋': '08-07',
-    '處暑': '08-23',
-    '白露': '09-07',
-    '秋分': '09-22',
-    '寒露': '10-08',
-    '霜降': '10-23',
-    '立冬': '11-07',
-    '小雪': '11-22',
-    '大雪': '12-07',
-    '冬至': '12-21',
+    '小寒': '2024-01-06 04:49',
+    '大寒': '2024-01-20 22:07',
+    '立春': '2024-02-04 16:27',
+    '雨水': '2024-02-19 11:13',
+    '驚蟄': '2024-03-05 06:22',
+    '春分': '2024-03-20 00:06',
+    '清明': '2024-04-04 16:02',
+    '穀雨': '2024-04-20 05:19',
+    '立夏': '2024-05-05 15:50',
+    '小滿': '2024-05-21 00:00',
+    '芒種': '2024-06-05 06:09',
+    '夏至': '2024-06-21 10:51',
+    '小暑': '2024-07-06 15:20',
+    '大暑': '2024-07-22 20:44',
+    '立秋': '2024-08-07 03:29',
+    '處暑': '2024-08-23 11:55',
+    '白露': '2024-09-07 22:11',
+    '秋分': '2024-09-22 10:44',
+    '寒露': '2024-10-08 01:59',
+    '霜降': '2024-10-23 19:44',
+    '立冬': '2024-11-07 15:34',
+    '小雪': '2024-11-22 13:56',
+    '大雪': '2024-12-07 14:17',
+    '冬至': '2024-12-21 16:21',
   };
 
-  /// 獲取指定日期的節氣
-  /// 
-  /// [date] 日期字符串，格式：yyyy-MM-dd
-  /// 返回節氣名稱，如果不是節氣日則返回 null
-  static String? getSolarTerm(String date) {
-    // 解析年份和日期
-    final parts = date.split('-');
-    if (parts.length != 3) return null;
+  /// 格式化公曆日期
+  static String formatSolarDate(DateTime date) {
+    return DateFormat('yyyy年MM月dd日', 'zh_TW').format(date);
+  }
+
+  /// 獲取星期幾
+  static String getWeekday(DateTime date) {
+    const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+    return '星期${weekdays[date.weekday - 1]}';
+  }
+
+  /// 計算年份的天干地支
+  static (String, String) getStemBranch(int year) {
+    final stemIndex = (year - 4) % 10;
+    final branchIndex = (year - 4) % 12;
     
-    final year = int.tryParse(parts[0]);
-    if (year == null) return null;
+    return (
+      heavenlyStems[stemIndex],
+      earthlyBranches[branchIndex],
+    );
+  }
 
+  /// 獲取生肖
+  static String getZodiac(int year) {
+    return zodiacSigns[(year - 4) % 12];
+  }
+
+  /// 判斷是否為節氣日
+  /// 
+  /// [date] 要判斷的日期
+  /// 返回節氣名稱，如果不是節氣日則返回 null
+  static String? getSolarTerm(DateTime date) {
     // 獲取當年節氣數據
-    final solarTerms = _getSolarTermsForYear(year);
-    if (solarTerms == null) return null;
+    final solarTermsData = _getSolarTermsForYear(date.year);
+    if (solarTermsData == null) return null;
 
-    // 格式化日期為 MM-dd 格式
-    final monthDay = '${parts[1]}-${parts[2]}';
+    // 格式化日期為 yyyy-MM-dd 格式
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
 
-    // 查找對應節氣
-    for (final entry in solarTerms.entries) {
-      if (entry.value == monthDay) {
+    // 檢查是否是節氣日
+    for (final entry in solarTermsData.entries) {
+      if (entry.value.startsWith(dateStr)) {
         return entry.key;
       }
     }
@@ -58,74 +100,61 @@ class DateConverter {
   }
 
   /// 獲取指定年份的節氣數據
+  /// 
+  /// [year] 年份
+  /// 返回該年份的節氣數據，如果沒有該年份的數據則返回 null
   static Map<String, String>? _getSolarTermsForYear(int year) {
-    // 目前僅支持 2024 年
-    // TODO: 添加其他年份的節氣數據
+    // 目前僅支援2024年，未來可擴展或從API獲取
     if (year == 2024) {
       return _solarTerms2024;
     }
     return null;
   }
 
-  /// 格式化日期為字符串
-  /// 
-  /// [date] DateTime 對象
-  /// 返回格式：yyyy-MM-dd
-  static String formatDate(DateTime date) {
-    final year = date.year.toString().padLeft(4, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '$year-$month-$day';
+  /// 判斷是否為農曆節日
+  static String? getLunarFestival(LunarDate lunarDate) {
+    final festivals = {
+      // 春節
+      '1-1': '春節',
+      // 元宵
+      '1-15': '元宵節',
+      // 端午
+      '5-5': '端午節',
+      // 七夕
+      '7-7': '七夕節',
+      // 中元
+      '7-15': '中元節',
+      // 中秋
+      '8-15': '中秋節',
+      // 重陽
+      '9-9': '重陽節',
+      // 臘八
+      '12-8': '臘八節',
+      // 除夕（需要特殊處理）
+      '12-30': '除夕',
+    };
+    
+    final key = '${lunarDate.month}-${lunarDate.day}';
+    return festivals[key];
   }
 
-  /// 解析日期字符串
-  /// 
-  /// [dateStr] 日期字符串，格式：yyyy-MM-dd
-  /// 返回 DateTime 對象，如果解析失敗則返回 null
-  static DateTime? parseDate(String dateStr) {
-    try {
-      final parts = dateStr.split('-');
-      if (parts.length != 3) return null;
-
-      final year = int.tryParse(parts[0]);
-      final month = int.tryParse(parts[1]);
-      final day = int.tryParse(parts[2]);
-
-      if (year == null || month == null || day == null) return null;
-      if (month < 1 || month > 12) return null;
-      if (day < 1 || day > 31) return null;
-
-      return DateTime(year, month, day);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /// 獲取當前日期
-  static String getCurrentDate() {
-    return formatDate(DateTime.now());
-  }
-
-  /// 獲取指定日期的年份
-  static int? getYear(String date) {
-    final dateTime = parseDate(date);
-    return dateTime?.year;
-  }
-
-  /// 獲取指定日期的月份
-  static int? getMonth(String date) {
-    final dateTime = parseDate(date);
-    return dateTime?.month;
-  }
-
-  /// 獲取指定日期的日
-  static int? getDay(String date) {
-    final dateTime = parseDate(date);
-    return dateTime?.day;
-  }
-
-  /// 檢查日期是否有效
-  static bool isValidDate(String date) {
-    return parseDate(date) != null;
+  /// 獲取今日時辰
+  static List<String> getTodayHours() {
+    const hours = [
+      '子時（23:00-1:00）',
+      '丑時（1:00-3:00）',
+      '寅時（3:00-5:00）',
+      '卯時（5:00-7:00）',
+      '辰時（7:00-9:00）',
+      '巳時（9:00-11:00）',
+      '午時（11:00-13:00）',
+      '未時（13:00-15:00）',
+      '申時（15:00-17:00）',
+      '酉時（17:00-19:00）',
+      '戌時（19:00-21:00）',
+      '亥時（21:00-23:00）',
+    ];
+    
+    return hours;
   }
 } 
