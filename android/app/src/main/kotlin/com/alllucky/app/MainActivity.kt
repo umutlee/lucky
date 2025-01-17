@@ -1,4 +1,4 @@
-package com.kooapps.all_lucky
+package com.alllucky.app
 
 import io.flutter.embedding.android.FlutterActivity
 
