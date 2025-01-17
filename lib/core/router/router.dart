@@ -8,6 +8,7 @@ import '../../features/onboarding/screens/birth_info_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/calendar/screens/calendar_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/settings/screens/identity_selection_screen.dart';
 
 /// 路由提供者
 final routerProvider = Provider<GoRouter>((ref) {
@@ -45,6 +46,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const SettingsScreen(),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/settings/identity',
+        builder: (context, state) => const IdentitySelectionScreen(),
       ),
     ],
   );
