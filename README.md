@@ -1,121 +1,156 @@
-# All Lucky 運勢應用
+# All Lucky 運勢預測應用
 
-一個基於 Flutter 和 Node.js 的運勢預測應用。
+一款基於多重因素分析的運勢預測應用，結合傳統黃曆、節氣、生肖、星座等元素，為用戶提供個性化的運勢分析。
 
-## 項目結構
+## 功能特點
 
-```
-.
-├── lib/                # Flutter 前端代碼
-└── server/            # Node.js 後端服務
-    ├── src/
-    │   ├── models/    # 數據模型
-    │   ├── routes/    # API 路由
-    │   ├── services/  # 業務邏輯
-    │   ├── middleware/# 中間件
-    │   └── utils/     # 工具類
-    └── tests/         # 測試文件
-```
+### 運勢預測
+- 📅 支持日運、月運、年運預測
+- 📚 學業運勢分析
+- 💼 事業運勢評估
+- 💕 愛情運勢預測
+- 🎯 綜合運勢評分
 
-## 後端 API 服務
+### 黃曆查詢
+- 🌙 農曆日期轉換
+- 🌞 24節氣提示
+- ⭐ 吉日查詢
+- 📋 每日宜忌
+
+### 個性化配置
+- 👤 生肖、星座設置
+- 🎨 主題切換
+- 🌍 多語言支持
+- 🔔 運勢提醒
+
+## 技術架構
+
+### 前端技術
+- Flutter 框架
+- Provider 狀態管理
+- Material Design 3
+- 本地存儲
+- 多語言支持
+
+### 後端技術
+- Node.js + Express
+- TypeScript
+- Jest 測試框架
+- API 密鑰認證
+- 緩存管理
+
+## 開發進度
 
 ### 已完成功能
+- ✅ 核心服務開發
+  - StorageService（緩存服務）
+  - FortuneService（運勢服務）
+  - AlmanacService（黃曆服務）
+  - ConfigService（配置服務）
+- ✅ 工具類開發
+  - DateConverter（日期轉換）
+  - FortuneCalculator（運勢計算）
+- ✅ API 配置
+  - API Key 生成
+  - 環境變量配置
+  - 安全性設置
 
-1. **基礎架構**
-   - Express.js 服務器設置
-   - TypeScript 配置
-   - 環境變量管理
-   - API 密鑰驗證
-   - 錯誤處理中間件
-   - 日誌系統
+### 進行中功能
+- 🚧 後端 API 服務
+- 🚧 緩存策略優化
+- 🚧 錯誤處理完善
 
-2. **API 端點**
-   - 運勢相關
-     - 每日運勢 `/api/v1/fortune/daily/:date`
-     - 學業運勢 `/api/v1/fortune/study/:date`
-     - 事業運勢 `/api/v1/fortune/career/:date`
-     - 愛情運勢 `/api/v1/fortune/love/:date`
-   - 黃曆相關
-     - 每日黃曆 `/api/v1/almanac/daily/:date`
-     - 月曆查詢 `/api/v1/almanac/monthly/:year/:month`
-     - 節氣信息 `/api/v1/almanac/solar-terms/:year`
-     - 農曆轉換 `/api/v1/almanac/lunar-date/:date`
+### 計劃中功能
+- 📝 API 文檔完善
+- 💾 數據庫集成
+- 📊 性能監控
+- 🎨 UI 優化
 
-3. **開發工具配置**
-   - ESLint
-   - Prettier
-   - Jest
-   - TypeScript
-   - 熱重載
+## 快速開始
 
-### 待開發功能
+### 環境要求
+- Flutter 3.0+
+- Node.js 18+
+- TypeScript 5.0+
 
-1. **運勢計算邏輯**
-   - 實現具體的運勢計算算法
-   - 添加更多運勢影響因素
-   - 優化預測準確度
-
-2. **數據存儲**
-   - 添加數據庫連接
-   - 實現數據緩存機制
-   - 優化查詢性能
-
-3. **測試覆蓋**
-   - 單元測試
-   - 集成測試
-   - 性能測試
-
-4. **API 文檔**
-   - Swagger/OpenAPI 文檔
-   - 使用示例
-   - 錯誤碼說明
-
-## 開發環境設置
-
-1. 安裝依賴：
+### 安裝步驟
+1. 克隆項目
 ```bash
+git clone https://github.com/yourusername/all-lucky.git
+cd all-lucky
+```
+
+2. 安裝依賴
+```bash
+# 前端依賴
+flutter pub get
+
+# 後端依賴
 cd server
 npm install
 ```
 
-2. 設置環境變量：
+3. 配置環境變量
 ```bash
 cp .env.example .env
-# 編輯 .env 文件設置必要的環境變量
+# 編輯 .env 文件，填入必要的配置信息
 ```
 
-3. 啟動開發服務器：
+4. 運行應用
 ```bash
+# 運行前端
+flutter run
+
+# 運行後端
 npm run dev
 ```
 
-## API 密鑰
+## 開發指南
 
-API 密鑰格式：`{ENV}_{KEY}`
-- ENV: 環境標識符（DEV/TEST/PROD）
-- KEY: 32位隨機字符串
+### 目錄結構
+```
+all-lucky/
+├── lib/                # Flutter 前端代碼
+│   ├── core/          # 核心功能
+│   ├── features/      # 功能模塊
+│   ├── shared/        # 共享組件
+│   └── main.dart      # 入口文件
+├── server/            # Node.js 後端代碼
+│   ├── src/           # 源代碼
+│   ├── tests/         # 測試文件
+│   └── package.json   # 依賴配置
+└── README.md          # 項目說明
+```
 
-示例：`DEV_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6`
+### 開發規範
+- 遵循 Flutter 官方代碼規範
+- 使用 TypeScript 嚴格模式
+- 保持良好的測試覆蓋率
+- 及時更新文檔
 
-## 錯誤處理
+## 測試
 
-所有 API 響應遵循統一的錯誤處理格式：
+### 運行測試
+```bash
+# 前端測試
+flutter test
 
-```json
-{
-  "error": "錯誤類型",
-  "message": "錯誤描述",
-  "isOperational": true/false
-}
+# 後端測試
+npm test
 ```
 
 ## 貢獻指南
-
-1. Fork 本項目
+1. Fork 項目
 2. 創建特性分支
 3. 提交更改
-4. 發起 Pull Request
+4. 推送到分支
+5. 創建 Pull Request
 
-## 許可證
+## 版本歷史
+- v0.1.0 - 初始版本
+  - 基礎架構搭建
+  - 核心服務實現
+  - 工具類開發
 
-MIT 
+## 授權協議
+本項目採用 MIT 授權協議 - 查看 [LICENSE](LICENSE) 文件了解更多細節。 
