@@ -14,8 +14,11 @@ final userIdentityProvider = StateNotifierProvider<UserIdentityNotifier, UserIde
 /// 運勢顯示配置提供者
 final fortuneDisplayConfigProvider = StateNotifierProvider<FortuneDisplayConfigNotifier, FortuneDisplayConfig>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
-  final identity = ref.watch(userIdentityProvider);
-  return FortuneDisplayConfigNotifier(prefs, identity);
+  return FortuneDisplayConfigNotifier(prefs);
+});
+
+final expandedFortuneTypesProvider = StateNotifierProvider<ExpandedFortuneTypesNotifier, Set<String>>((ref) {
+  return ExpandedFortuneTypesNotifier();
 });
 
 /// 用戶身份管理器
@@ -56,15 +59,13 @@ class UserIdentityNotifier extends StateNotifier<UserIdentity> {
 /// 運勢顯示配置管理器
 class FortuneDisplayConfigNotifier extends StateNotifier<FortuneDisplayConfig> {
   final SharedPreferences _prefs;
-  final UserIdentity _identity;
   static const String _key = 'fortune_display_config';
 
-  FortuneDisplayConfigNotifier(this._prefs, this._identity)
-      : super(_loadInitialConfig(_prefs, _identity));
+  FortuneDisplayConfigNotifier(this._prefs)
+      : super(_loadInitialConfig(_prefs));
 
   static FortuneDisplayConfig _loadInitialConfig(
     SharedPreferences prefs,
-    UserIdentity identity,
   ) {
     final json = prefs.getString(_key);
     if (json != null) {
@@ -72,10 +73,10 @@ class FortuneDisplayConfigNotifier extends StateNotifier<FortuneDisplayConfig> {
         return FortuneDisplayConfig.fromJson(jsonDecode(json));
       } catch (e) {
         // 如果加載失敗，返回基於身份的預設配置
-        return FortuneDisplayConfig.forIdentity(identity);
+        return FortuneDisplayConfig.forIdentity(UserIdentity.defaultIdentities.first);
       }
     }
-    return FortuneDisplayConfig.forIdentity(identity);
+    return FortuneDisplayConfig.forIdentity(UserIdentity.defaultIdentities.first);
   }
 
   /// 更新顯示順序
@@ -90,20 +91,35 @@ class FortuneDisplayConfigNotifier extends StateNotifier<FortuneDisplayConfig> {
     await _saveConfig();
   }
 
-  /// 更新展開狀態
-  Future<void> updateExpanded(FortuneType type, bool isExpanded) async {
-    state = state.updateExpanded(type, isExpanded);
-    await _saveConfig();
-  }
-
   /// 重置為預設配置
   Future<void> resetToDefault() async {
-    state = FortuneDisplayConfig.forIdentity(_identity);
+    state = FortuneDisplayConfig.forIdentity(UserIdentity.defaultIdentities.first);
     await _saveConfig();
   }
 
   /// 保存配置
   Future<void> _saveConfig() async {
     await _prefs.setString(_key, jsonEncode(state.toJson()));
+  }
+}
+
+/// 展開狀態管理
+class ExpandedFortuneTypesNotifier extends StateNotifier<Set<String>> {
+  ExpandedFortuneTypesNotifier() : super({});
+
+  void toggle(String type) {
+    if (state.contains(type)) {
+      state = Set.from(state)..remove(type);
+    } else {
+      state = Set.from(state)..add(type);
+    }
+  }
+
+  void expandAll() {
+    state = {'zodiac', 'horoscope', 'study', 'career'};
+  }
+
+  void collapseAll() {
+    state = {};
   }
 } 

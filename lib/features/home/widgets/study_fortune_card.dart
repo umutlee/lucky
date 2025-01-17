@@ -1,222 +1,214 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/study_fortune.dart';
 
+/// 學業運勢卡片
 class StudyFortuneCard extends StatelessWidget {
   final StudyFortune fortune;
+  final VoidCallback? onTap;
 
   const StudyFortuneCard({
     super.key,
     required this.fortune,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.school,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '今日學業運勢',
-                  style: theme.textTheme.titleLarge,
-                ),
-              ],
+            _buildHeader(context),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildScores(),
+                  const SizedBox(height: 16),
+                  _buildAdvice(),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  _buildStudyHours(),
+                  const SizedBox(height: 8),
+                  _buildSubjects(),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            _buildScoreSection(context),
-            const Divider(height: 32),
-            _buildAdviceSection(context),
-            if (fortune.bestStudyHours.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              _buildStudyHoursSection(context),
-            ],
-            if (fortune.suitableSubjects.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              _buildSubjectsSection(context),
-            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildScoreSection(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Row(
-      children: [
-        Expanded(
-          child: _buildScoreIndicator(
-            context,
-            label: '整體運勢',
-            score: fortune.overallScore,
-            description: '學習效率${fortune.overallScore}%',
-          ),
-        ),
-        Expanded(
-          child: _buildScoreIndicator(
-            context,
-            label: '記憶力',
-            score: fortune.memoryScore,
-            description: '記憶效果${fortune.memoryScore}%',
-          ),
-        ),
-        Expanded(
-          child: _buildScoreIndicator(
-            context,
-            label: '考試運',
-            score: fortune.examScore,
-            description: '考試表現${fortune.examScore}%',
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildScoreIndicator(
-    BuildContext context, {
-    required String label,
-    required int score,
-    required String description,
-  }) {
-    final theme = Theme.of(context);
-    final color = _getScoreColor(score);
-
-    return Column(
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.bodySmall,
-        ),
-        const SizedBox(height: 8),
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            CircularProgressIndicator(
-              value: score / 100,
-              backgroundColor: theme.colorScheme.surfaceVariant,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-            ),
-            Text(
-              '$score',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).primaryColor.withOpacity(0.8),
+            Theme.of(context).primaryColor,
           ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          description,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: color,
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 24,
+            backgroundColor: Colors.white,
+            child: Icon(
+              Icons.school,
+              color: Colors.indigo,
+              size: 24,
+            ),
           ),
-          textAlign: TextAlign.center,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '今日學業運勢',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '整體評分：${(fortune.overallScore * 100).toStringAsFixed(0)}分',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScores() {
+    return Column(
+      children: [
+        _buildScoreItem('記憶力', fortune.memoryScore),
+        const SizedBox(height: 8),
+        _buildScoreItem('考試運', fortune.examScore),
+      ],
+    );
+  }
+
+  Widget _buildScoreItem(String label, double score) {
+    final color = _getScoreColor(score);
+    return Row(
+      children: [
+        SizedBox(
+          width: 64,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: score,
+              backgroundColor: color.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '${(score * 100).toStringAsFixed(0)}%',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildAdviceSection(BuildContext context) {
-    final theme = Theme.of(context);
+  Color _getScoreColor(double score) {
+    if (score >= 0.8) return Colors.green;
+    if (score >= 0.6) return Colors.blue;
+    if (score >= 0.4) return Colors.orange;
+    return Colors.red;
+  }
 
-    return Column(
+  Widget _buildAdvice() {
+    return Text(
+      fortune.advice,
+      style: const TextStyle(
+        fontSize: 16,
+        height: 1.6,
+      ),
+    );
+  }
+
+  Widget _buildStudyHours() {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '學習建議',
-          style: theme.textTheme.titleMedium,
+        const SizedBox(
+          width: 80,
+          child: Text(
+            '建議時段',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: fortune.studyTips.map((tip) {
-            return Chip(
-              label: Text(tip),
-              backgroundColor: theme.colorScheme.secondaryContainer,
-              labelStyle: TextStyle(
-                color: theme.colorScheme.onSecondaryContainer,
-              ),
-            );
-          }).toList(),
+        Expanded(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: fortune.bestStudyHours.map((hour) => Text(hour)).toList(),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildStudyHoursSection(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
+  Widget _buildSubjects() {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '最佳學習時段',
-          style: theme.textTheme.titleMedium,
+        const SizedBox(
+          width: 80,
+          child: Text(
+            '適合科目',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: fortune.bestStudyHours.map((hour) {
-            return Chip(
-              label: Text(hour),
-              backgroundColor: theme.colorScheme.tertiaryContainer,
-              labelStyle: TextStyle(
-                color: theme.colorScheme.onTertiaryContainer,
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSubjectsSection(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '適合科目',
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: fortune.suitableSubjects.map((subject) {
-            return Chip(
+        Expanded(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: fortune.suitableSubjects.map((subject) => Chip(
               label: Text(subject),
-              backgroundColor: theme.colorScheme.primaryContainer,
-              labelStyle: TextStyle(
-                color: theme.colorScheme.onPrimaryContainer,
+              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+              side: BorderSide(
+                color: Theme.of(context).primaryColor.withOpacity(0.2),
               ),
-            );
-          }).toList(),
+            )).toList(),
+          ),
         ),
       ],
     );
-  }
-
-  Color _getScoreColor(int score) {
-    if (score >= 90) return Colors.red;
-    if (score >= 80) return Colors.orange;
-    if (score >= 70) return Colors.green;
-    if (score >= 60) return Colors.blue;
-    return Colors.grey;
   }
 } 

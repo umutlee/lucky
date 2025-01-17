@@ -18,6 +18,39 @@
 - [x] 狀態管理層實現（Provider）
 - [x] 首頁基礎 UI 組件（FortuneCard、LunarInfoCard）
 - [x] 月曆視圖基礎組件（CalendarView、FortunePreview）
+- 數據模型設計
+  - LunarDate（農曆日期）
+  - DailyFortune（每日運勢）
+  - ChineseZodiac（生肖）
+  - Horoscope（星座）
+  - StudyFortune（學業運勢）
+  - CareerFortune（事業運勢）
+  - UserIdentity（用戶身份）
+  - FortuneDisplayConfig（運勢顯示配置）
+
+- 工具類實現
+  - DateConverter（日期轉換）
+  - LunarCalculator（農曆計算）
+
+- 數據倉儲層實現
+  - AlmanacRepository（農曆倉儲）
+  - FortuneRepository（運勢倉儲）
+
+- 狀態管理層實現
+  - Provider 配置
+  - 用戶身份管理
+  - 運勢顯示配置管理
+  - 展開狀態管理
+
+- 基礎 UI 組件
+  - 主頁面卡片
+    - ZodiacFortuneCard（生肖運勢卡片）
+    - HoroscopeFortuneCard（星座運勢卡片）
+    - StudyFortuneCard（學業運勢卡片）
+    - CareerFortuneCard（事業運勢卡片）
+  - 卡片交互
+    - FortuneCardWrapper（卡片包裝器，支持展開/收起動畫）
+    - FortuneCardList（可拖放排序的卡片列表）
 
 ### 進行中
 - [ ] API 整合
@@ -26,6 +59,9 @@
 - [ ] 設置頁面開發
 - [ ] 學業及事業運勢功能
 - [ ] 愛情運勢功能
+- 卡片拖動視覺反饋優化
+- 展開內容動畫效果
+- 性能優化
 
 ### 待開發
 - [ ] 主題切換功能
@@ -34,6 +70,19 @@
 - [ ] 小組件支持
 - [ ] 分享功能
 - [ ] 自定義提醒
+- 設置頁面
+  - 身份切換
+  - 主題設置
+  - 語言風格切換
+  - 通知管理
+- 日曆頁面整合
+  - 月曆視圖
+  - 運勢預覽
+- 多語言支持
+- 離線模式支持
+- 數據備份與同步
+- 推送通知系統
+- 用戶反饋系統
 
 ## 功能特點
 
