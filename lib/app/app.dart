@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/providers/settings_provider.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -11,76 +12,23 @@ class App extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // TODO: 從 provider 獲取主題模式
-    final isDarkMode = false;
+    final isDarkMode = ref.watch(themeProvider);
+    final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
       // 應用標題
-      title: '諸事大吉',
+      title: '吉時萬事通',
       
       // 主題配置
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: getLightTheme(),
+      darkTheme: getDarkTheme(),
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
       
       // 路由配置
-      routerConfig: AppRouter.router,
+      routerConfig: router,
       
       // 調試標籤
       debugShowCheckedModeBanner: false,
-      
-      // 本地化配置
-      // TODO: 實現多語言支持
-      locale: const Locale('zh', 'TW'),
-      
-      // 全局捕獲錯誤
-      builder: (context, child) {
-        return _ErrorBoundary(child: child!);
-      },
     );
-  }
-}
-
-/// 錯誤邊界組件
-/// 用於捕獲和展示全局錯誤
-class _ErrorBoundary extends StatelessWidget {
-  final Widget child;
-
-  const _ErrorBoundary({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    ErrorWidget.builder = (FlutterErrorDetails details) {
-      return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.red,
-                  size: 48,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '發生錯誤',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  details.exception.toString(),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    };
-    
-    return child;
   }
 } 
