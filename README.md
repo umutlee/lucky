@@ -11,20 +11,27 @@
 - [x] 主題系統配置
 - [x] 錯誤處理機制
 - [x] 開發環境配置
+- [x] 數據模型設計（LunarDate、DailyFortune）
+- [x] 工具類實現（DateConverter）
+- [x] 服務層實現（LunarCalculator）
+- [x] 數據倉庫層實現（AlmanacRepository、FortuneRepository）
+- [x] 狀態管理層實現（Provider）
+- [x] 首頁基礎 UI 組件（FortuneCard、LunarInfoCard）
+- [x] 月曆視圖基礎組件（CalendarView、FortunePreview）
 
 ### 進行中
-- [ ] 首頁開發
-- [ ] 月曆視圖開發
+- [ ] API 整合
+- [ ] 本地存儲實現
+- [ ] 通知系統實現
 - [ ] 設置頁面開發
-- [ ] 數據服務層實現
 
 ### 待開發
-- [ ] 今日黃曆信息查看
-- [ ] 月曆視圖完善
-- [ ] 基礎查詢功能
-- [ ] 個人設置功能
-- [ ] 多語言支持
 - [ ] 主題切換功能
+- [ ] 多語言支持
+- [ ] 離線模式支持
+- [ ] 小組件支持
+- [ ] 分享功能
+- [ ] 自定義提醒
 
 ## 功能特點
 
