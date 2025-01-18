@@ -18,16 +18,20 @@
 - 緩存系統
   - 基本緩存機制
   - 緩存過期處理
+- 核心功能
+  - 農曆日期轉換
+  - 節氣計算
 
 ### 進行中功能 ⏳
-- 運勢計算核心邏輯
-- 農曆日期轉換
-- 節氣計算實現
+- 運勢計算邏輯整合
+  - 星座運勢 API 整合
+  - 生肖運勢 API 整合
+  - 運勢數據合併與計算
 
 ### 待開發功能 ❌
-- API 認證機制
 - 基本單元測試
 - API 端點測試
+- CORS 設置
 
 ## 環境要求
 
@@ -53,7 +57,7 @@
    ```bash
    # 複製環境變量範例檔案
    cp .env.example .env
-   # 編輯 .env 文件設置您的環境變量
+   # 編輯 .env 文件設置您的環境變量，特別是 RAPIDAPI_KEY
    ```
 
 4. **開發模式**
@@ -77,18 +81,22 @@ server/
 │   │   └── fortune.ts   - 運勢相關模型 ✅
 │   ├── services/        - 業務邏輯服務
 │   │   ├── fortune-service.ts     - 運勢服務 ⏳
-│   │   ├── almanac-service.ts     - 黃曆服務 ⏳
-│   │   └── storage-service.ts     - 緩存服務 ✅
+│   │   ├── almanac-service.ts     - 黃曆服務 ✅
+│   │   ├── storage-service.ts     - 緩存服務 ✅
+│   │   └── external/              - 外部 API 整合
+│   │       ├── api-client.ts      - API 客戶端基礎類 ✅
+│   │       ├── horoscope-api.ts   - 星座運勢 API ⏳
+│   │       ├── chinese-zodiac-api.ts - 生肖運勢 API ⏳
+│   │       └── fortune-integration.ts - 運勢整合服務 ⏳
 │   ├── routes/          - API 路由
-│   │   ├── fortune.ts   - 運勢路由 ✅
+│   │   ├── fortune.ts   - 運勢路由 ⏳
 │   │   └── almanac.ts   - 黃曆路由 ✅
 │   ├── middleware/      - 中間件
-│   │   ├── auth.ts      - 認證中間件 ❌
 │   │   ├── validators.ts - 驗證器 ✅
 │   │   └── error-handler.ts - 錯誤處理 ✅
 │   ├── utils/           - 工具函數
 │   │   ├── logger.ts    - 日誌工具 ✅
-│   │   └── date-utils.ts - 日期工具 ⏳
+│   │   └── date-utils.ts - 日期工具 ✅
 │   └── types/          - 型別定義
 │       └── lunar-calendar.d.ts - 農曆日期型別 ✅
 ├── tests/              - 測試文件 ❌
@@ -100,15 +108,14 @@ server/
 
 ## 環境變量說明
 
-| 變量名 | 說明 | 預設值 | 狀態 |
+| 變量名 | 說明 | 預設值 | 必填 |
 |--------|------|--------|------|
-| NODE_ENV | 執行環境 | development | ✅ |
-| PORT | 服務埠號 | 3000 | ✅ |
-| API_VERSION | API 版本 | v1 | ✅ |
-| LOG_LEVEL | 日誌等級 | info | ✅ |
-| CACHE_TTL | 緩存存活時間 | 12小時 | ✅ |
-| API_KEY_PREFIX | API 密鑰前綴 | lucky_ | ❌ |
-| ALLOWED_ORIGINS | 允許的 CORS 來源 | http://localhost:3000,... | ❌ |
+| NODE_ENV | 執行環境 | development | 否 |
+| PORT | 服務埠號 | 3000 | 否 |
+| API_VERSION | API 版本 | v1 | 否 |
+| LOG_LEVEL | 日誌等級 | info | 否 |
+| CACHE_TTL | 緩存存活時間 | 12小時 | 否 |
+| RAPIDAPI_KEY | RapidAPI 密鑰 | - | 是 |
 
 ## 開發指南
 

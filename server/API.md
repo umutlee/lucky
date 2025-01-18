@@ -5,10 +5,10 @@
 ### 運勢相關 API
 | 端點 | 方法 | 說明 | 狀態 |
 |------|------|------|------|
-| `/api/v1/fortune/daily/:date` | GET | 獲取每日運勢 | ⏳ 基礎完成 |
-| `/api/v1/fortune/study/:date` | GET | 獲取學業運勢 | ⏳ 基礎完成 |
-| `/api/v1/fortune/career/:date` | GET | 獲取事業運勢 | ⏳ 基礎完成 |
-| `/api/v1/fortune/love/:date` | GET | 獲取愛情運勢 | ⏳ 基礎完成 |
+| `/api/v1/fortune/daily/:date` | GET | 獲取每日運勢 | ⏳ 整合中 |
+| `/api/v1/fortune/study/:date` | GET | 獲取學業運勢 | ⏳ 整合中 |
+| `/api/v1/fortune/career/:date` | GET | 獲取事業運勢 | ⏳ 整合中 |
+| `/api/v1/fortune/love/:date` | GET | 獲取愛情運勢 | ⏳ 整合中 |
 
 ### 黃曆相關 API
 | 端點 | 方法 | 說明 | 狀態 |
@@ -38,32 +38,32 @@ GET /api/v1/fortune/daily/:date
   "overall": 85,
   "study": 90,
   "career": 80,
-  "love": 85
-}
-```
-
-### 黃曆相關 API
-
-#### 獲取每日黃曆
-```http
-GET /api/v1/almanac/daily/:date
-```
-
-**參數**
-- `date`: 日期（格式：YYYY-MM-DD）✅
-
-**響應** ⏳
-```json
-{
-  "lunarDate": {
-    "year": 2024,
-    "month": 1,
-    "day": 1,
-    "isLeap": false
-  },
-  "solarTerm": "立春",
-  "suitable": ["祈福", "開業", "入學"],
-  "unsuitable": ["搬家", "動土"]
+  "love": 85,
+  "details": {
+    "horoscope": {
+      "description": "今日運勢描述",
+      "mood": "excited",
+      "color": "紅色",
+      "lucky_time": "14:00-16:00"
+    },
+    "zodiac": {
+      "fortune": {
+        "overall": 80,
+        "career": 85,
+        "love": 75
+      },
+      "elements": {
+        "lucky_directions": ["東", "南"],
+        "lucky_numbers": ["3", "8"]
+      }
+    },
+    "advice": [
+      "今日幸運色：紅色",
+      "幸運時段：14:00-16:00",
+      "吉利方位：東、南",
+      "幸運數字：3、8"
+    ]
+  }
 }
 ```
 
@@ -74,37 +74,31 @@ GET /api/v1/almanac/daily/:date
 - 參數驗證
 - 錯誤處理
 - 基本緩存機制
-
-### 進行中 ⏳
-- 運勢計算邏輯
 - 農曆轉換
 - 節氣計算
 
+### 進行中 ⏳
+- 運勢計算邏輯整合
+  - 星座運勢 API 整合
+  - 生肖運勢 API 整合
+  - 運勢數據合併與計算
+
 ### 待實現 ❌
-- API 認證
-- 請求限制
+- API 認證（已移除，改用外部 API 的認證機制）
+- 請求限制（依賴外部 API 的限制）
 - CORS 設置
 
-## 錯誤處理
+## 外部 API 依賴
 
-所有 API 在發生錯誤時會返回統一格式的錯誤響應：
+### 星座運勢
+- API: Aztro API
+- 端點: https://aztro.sameerkumar.website
+- 狀態: ⏳ 整合中
 
-```json
-{
-  "error": "錯誤類型",
-  "message": "錯誤描述",
-  "isOperational": true
-}
-```
-
-### 錯誤碼說明
-| 狀態碼 | 說明 | 實現狀態 |
-|--------|------|----------|
-| 400 | 請求參數錯誤 | ✅ |
-| 401 | API 密鑰無效 | ❌ |
-| 404 | 資源不存在 | ✅ |
-| 429 | 請求過於頻繁 | ❌ |
-| 500 | 服務器內部錯誤 | ✅ |
+### 生肖運勢
+- API: Chinese Zodiac API
+- 端點: https://chinese-zodiac.p.rapidapi.com
+- 狀態: ⏳ 整合中
 
 ## 緩存策略
 
@@ -114,8 +108,13 @@ GET /api/v1/almanac/daily/:date
 | 黃曆數據 | 7 天 | ⏳ |
 | 節氣數據 | 30 天 | ⏳ |
 
-## 使用限制（待實現）
+## 環境變量
 
-- 每個 API 密鑰每分鐘最多 60 次請求 ❌
-- 每個 IP 每分鐘最多 30 次請求 ❌
-- 單個請求響應大小限制: 1MB ❌ 
+| 變量名 | 說明 | 預設值 | 狀態 |
+|--------|------|--------|------|
+| RAPIDAPI_KEY | RapidAPI 密鑰 | - | ⏳ |
+| NODE_ENV | 執行環境 | development | ✅ |
+| PORT | 服務埠號 | 3000 | ✅ |
+| API_VERSION | API 版本 | v1 | ✅ |
+| LOG_LEVEL | 日誌等級 | info | ✅ |
+| CACHE_TTL | 緩存存活時間 | 12小時 | ✅ | 
