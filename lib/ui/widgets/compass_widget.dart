@@ -12,11 +12,13 @@ final compassProvider = StreamProvider<CompassDirection>((ref) {
 class CompassWidget extends ConsumerWidget {
   final List<String> luckyDirections;
   final double size;
+  final void Function(CompassDirection)? onDirectionChanged;
 
   const CompassWidget({
     super.key,
     required this.luckyDirections,
     this.size = 300,
+    this.onDirectionChanged,
   });
 
   @override
@@ -24,7 +26,13 @@ class CompassWidget extends ConsumerWidget {
     final direction = ref.watch(compassProvider);
 
     return direction.when(
-      data: (data) => _buildCompass(context, data),
+      data: (data) {
+        // 當方位變化時調用回調
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onDirectionChanged?.call(data);
+        });
+        return _buildCompass(context, data);
+      },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(
         child: Text('錯誤: $error', style: const TextStyle(color: Colors.red)),

@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/compass_widget.dart';
+import '../../core/services/fortune_direction_service.dart';
+import '../../core/models/fortune.dart';
 
 class CompassScreen extends ConsumerWidget {
-  const CompassScreen({super.key});
+  final Fortune fortune;
+  
+  const CompassScreen({
+    super.key,
+    required this.fortune,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 這裡可以從運勢服務獲取吉利方位
-    final luckyDirections = ['東', '南'];
+    final fortuneDirectionService = ref.watch(fortuneDirectionProvider);
+    final luckyDirections = fortuneDirectionService.getLuckyDirections(fortune);
 
     return Scaffold(
       appBar: AppBar(
@@ -22,11 +29,20 @@ class CompassScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  '今日吉利方位',
-                  style: TextStyle(
+                Text(
+                  '${fortune.type}運勢指南',
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  fortune.description,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -35,6 +51,21 @@ class CompassScreen extends ConsumerWidget {
                   child: CompassWidget(
                     luckyDirections: luckyDirections,
                     size: MediaQuery.of(context).size.width * 0.8,
+                    onDirectionChanged: (direction) {
+                      // 當方位變化時更新建議
+                      final advice = fortuneDirectionService.getFullDirectionAdvice(
+                        fortune,
+                        direction,
+                        DateTime.now(),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(advice),
+                          duration: const Duration(seconds: 3),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -53,7 +84,7 @@ class CompassScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '紅色標記的方位為今日吉利方位，建議朝向這些方位進行重要活動。',
+                          '紅色標記的方位為今日吉利方位，建議朝向這些方位進行${fortune.type}相關活動。',
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.grey[600],
