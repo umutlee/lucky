@@ -1,4 +1,5 @@
 import { DailyAlmanac, MonthlyAlmanac, SolarTerms, LunarDate } from '../models/almanac';
+import { logger } from '../utils/logger';
 
 export class AlmanacService {
   private static instance: AlmanacService;
@@ -13,6 +14,7 @@ export class AlmanacService {
   }
 
   async getDailyAlmanac(date: string): Promise<DailyAlmanac> {
+    logger.info(`Calculating daily almanac for date: ${date}`);
     // TODO: 實現黃曆查詢邏輯
     return {
       date,
@@ -24,13 +26,24 @@ export class AlmanacService {
     };
   }
 
-  async getMonthlyAlmanac(year: string, month: string): Promise<MonthlyAlmanac> {
+  async getMonthlyAlmanac(year: number, month: number): Promise<MonthlyAlmanac> {
+    logger.info(`Calculating monthly almanac for year: ${year}, month: ${month}`);
+    
+    // 確保月份在有效範圍內
+    if (month < 1 || month > 12) {
+      throw new Error('Month must be between 1 and 12');
+    }
+
+    // 格式化年月以保持一致的字符串格式
+    const yearStr = year.toString();
+    const monthStr = month.toString().padStart(2, '0');
+
     return {
-      year,
-      month,
+      year: yearStr,
+      month: monthStr,
       days: [
         {
-          date: `${year}-${month}-01`,
+          date: `${yearStr}-${monthStr}-01`,
           lunar_date: '三月初一',
           zodiac: '兔',
           stem_branch: '癸卯',
@@ -42,13 +55,17 @@ export class AlmanacService {
     };
   }
 
-  async getSolarTerms(year: string): Promise<SolarTerms> {
+  async getSolarTerms(year: number): Promise<SolarTerms> {
+    logger.info(`Calculating solar terms for year: ${year}`);
+    
+    const yearStr = year.toString();
+    
     return {
-      year,
+      year: yearStr,
       terms: [
         {
           name: '立春',
-          date: `${year}-02-04`,
+          date: `${yearStr}-02-04`,
           time: '16:27',
         },
         // ... 其他節氣數據
@@ -57,6 +74,8 @@ export class AlmanacService {
   }
 
   async getLunarDate(date: string): Promise<LunarDate> {
+    logger.info(`Converting to lunar date: ${date}`);
+    
     return {
       solar_date: date,
       lunar_date: '三月初一',

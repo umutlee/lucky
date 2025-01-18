@@ -1,64 +1,36 @@
-export class Logger {
-  private static instance: Logger;
-  private env: string;
+import winston from 'winston';
 
-  private constructor() {
-    this.env = process.env.NODE_ENV || 'development';
-  }
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+    }),
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error'
+    }),
+    new winston.transports.File({
+      filename: 'logs/combined.log'
+    })
+  ]
+});
 
-  static getInstance(): Logger {
-    if (!Logger.instance) {
-      Logger.instance = new Logger();
-    }
-    return Logger.instance;
-  }
+// 在開發環境下添加更詳細的日誌
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple()
+    )
+  }));
+}
 
-  info(message: string, meta?: any): void {
-    if (this.env === 'test') return;
-    
-    console.log(JSON.stringify({
-      level: 'info',
-      timestamp: new Date().toISOString(),
-      message,
-      meta
-    }));
-  }
-
-  error(message: string, error?: Error, meta?: any): void {
-    if (this.env === 'test') return;
-    
-    console.error(JSON.stringify({
-      level: 'error',
-      timestamp: new Date().toISOString(),
-      message,
-      error: error ? {
-        name: error.name,
-        message: error.message,
-        stack: this.env === 'development' ? error.stack : undefined
-      } : undefined,
-      meta
-    }));
-  }
-
-  warn(message: string, meta?: any): void {
-    if (this.env === 'test') return;
-    
-    console.warn(JSON.stringify({
-      level: 'warn',
-      timestamp: new Date().toISOString(),
-      message,
-      meta
-    }));
-  }
-
-  debug(message: string, meta?: any): void {
-    if (this.env !== 'development') return;
-    
-    console.debug(JSON.stringify({
-      level: 'debug',
-      timestamp: new Date().toISOString(),
-      message,
-      meta
-    }));
-  }
-} 
+export { logger }; 
