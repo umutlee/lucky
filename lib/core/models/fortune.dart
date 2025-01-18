@@ -1,42 +1,42 @@
 import 'package:flutter/foundation.dart';
 
 enum FortuneType {
-  overall,
-  study,
-  career,
-  love,
+  daily,    // 每日運勢
+  study,    // 學業運勢
+  career,   // 事業運勢
+  love,     // 感情運勢
 }
 
 class Fortune {
   final FortuneType type;
-  final double score;
+  final int score;
   final DateTime date;
   final bool isLuckyDay;
   final List<String> luckyDirections;
   final List<String> suitableActivities;
-  final String? description;
-  final int recommendationScore;
+  final String description;
+  final double recommendationScore;
 
   const Fortune({
     required this.type,
     required this.score,
     required this.date,
-    required this.isLuckyDay,
-    required this.luckyDirections,
-    required this.suitableActivities,
-    this.description,
+    this.isLuckyDay = false,
+    this.luckyDirections = const [],
+    this.suitableActivities = const [],
+    this.description = '',
     this.recommendationScore = 0,
   });
 
   Fortune copyWith({
     FortuneType? type,
-    double? score,
+    int? score,
     DateTime? date,
     bool? isLuckyDay,
     List<String>? luckyDirections,
     List<String>? suitableActivities,
     String? description,
-    int? recommendationScore,
+    double? recommendationScore,
   }) {
     return Fortune(
       type: type ?? this.type,
@@ -77,16 +77,8 @@ class Fortune {
 
   @override
   String toString() {
-    return 'Fortune('
-        'type: $type, '
-        'score: $score, '
-        'date: $date, '
-        'isLuckyDay: $isLuckyDay, '
-        'luckyDirections: $luckyDirections, '
-        'suitableActivities: $suitableActivities, '
-        'description: $description, '
-        'recommendationScore: $recommendationScore)';
+    return 'Fortune{type: $type, score: $score, date: $date, isLuckyDay: $isLuckyDay, '
+        'luckyDirections: $luckyDirections, suitableActivities: $suitableActivities, '
+        'description: $description, recommendationScore: $recommendationScore}';
   }
-
-  double get compatibility => score * 0.8 + recommendationScore * 0.2;
 } 

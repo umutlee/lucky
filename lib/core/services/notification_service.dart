@@ -95,7 +95,7 @@ class NotificationService {
       _logger.info('排程每日運勢通知，時間: ${notifyTime.hour}:${notifyTime.minute}');
       
       final now = DateTime.now();
-      final scheduledDate = DateTime(
+      var scheduledDate = DateTime(
         now.year,
         now.month,
         now.day,
@@ -103,30 +103,25 @@ class NotificationService {
         notifyTime.minute,
       );
 
+      // 如果設定時間已過，則設置為明天
+      if (scheduledDate.isBefore(now)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+        _logger.info('通知時間已過，設置為明天: $scheduledDate');
+      }
+
       final payload = json.encode({
         'type': 'daily_fortune',
         'route': '/daily-fortune',
         'date': scheduledDate.toIso8601String(),
       });
 
-      await flutterLocalNotificationsPlugin.zonedSchedule(
-        0,
-        '每日運勢提醒',
-        '今天的運勢已經準備好了，點擊查看詳情',
-        tz.TZDateTime.from(scheduledDate, tz.local),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'daily_fortune',
-            '每日運勢',
-            channelDescription: '每日運勢提醒通知',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
+      await _scheduleNotification(
+        id: 0,
+        title: '每日運勢提醒',
+        body: '今天的運勢已經準備好了，點擊查看詳情',
+        scheduledDate: scheduledDate,
         payload: payload,
+        matchDateTimeComponents: DateTimeComponents.time,
       );
 
       _logger.info('每日運勢通知排程成功');
@@ -140,6 +135,11 @@ class NotificationService {
     try {
       _logger.info('排程節氣提醒通知，日期: $termDate，節氣: $termName');
       
+      if (termName.isEmpty) {
+        termName = '新節氣';
+        _logger.warning('節氣名稱為空，使用默認值');
+      }
+
       final payload = json.encode({
         'type': 'solar_term',
         'route': '/solar-term',
@@ -147,22 +147,11 @@ class NotificationService {
         'term': termName,
       });
 
-      await flutterLocalNotificationsPlugin.zonedSchedule(
-        1,
-        '節氣提醒',
-        '$termName即將到來，點擊查看詳情',
-        tz.TZDateTime.from(termDate, tz.local),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'solar_term',
-            '節氣提醒',
-            channelDescription: '節氣變化提醒通知',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      await _scheduleNotification(
+        id: 1,
+        title: '節氣提醒',
+        body: '$termName即將到來，點擊查看詳情',
+        scheduledDate: termDate,
         payload: payload,
       );
 
@@ -177,6 +166,11 @@ class NotificationService {
     try {
       _logger.info('排程吉日提醒通知，日期: $luckyDate，描述: $description');
       
+      if (description.isEmpty) {
+        description = '吉日';
+        _logger.warning('吉日描述為空，使用默認值');
+      }
+
       final payload = json.encode({
         'type': 'lucky_day',
         'route': '/lucky-day',
@@ -184,22 +178,11 @@ class NotificationService {
         'description': description,
       });
 
-      await flutterLocalNotificationsPlugin.zonedSchedule(
-        2,
-        '吉日提醒',
-        '明天是$description的好日子，點擊查看詳情',
-        tz.TZDateTime.from(luckyDate, tz.local),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'lucky_day',
-            '吉日提醒',
-            channelDescription: '吉日提醒通知',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      await _scheduleNotification(
+        id: 2,
+        title: '吉日提醒',
+        body: '明天是$description的好日子，點擊查看詳情',
+        scheduledDate: luckyDate,
         payload: payload,
       );
 
@@ -207,6 +190,103 @@ class NotificationService {
     } catch (e) {
       _logger.error('排程吉日提醒通知失敗: $e');
       throw NotificationException('排程吉日提醒通知失敗: $e', 'SCHEDULE_ERROR');
+    }
+  }
+
+  Future<void> _scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    required String payload,
+    DateTimeComponents? matchDateTimeComponents,
+  }) async {
+    var attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+      try {
+        await flutterLocalNotificationsPlugin.zonedSchedule(
+          id,
+          title,
+          body,
+          tz.TZDateTime.from(scheduledDate, tz.local),
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              'fortune_reminder',
+              '運勢提醒',
+              channelDescription: '運勢相關的提醒通知',
+              importance: Importance.high,
+              priority: Priority.high,
+            ),
+          ),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: matchDateTimeComponents,
+          payload: payload,
+        );
+        break;
+      } catch (e) {
+        attempts++;
+        _logger.warning('排程通知失敗，嘗試次數: $attempts');
+        if (attempts == maxAttempts) {
+          rethrow;
+        }
+        await Future.delayed(Duration(seconds: attempts));
+      }
+    }
+  }
+
+  Future<void> cancelAll() async {
+    try {
+      _logger.info('取消所有通知...');
+      await flutterLocalNotificationsPlugin.cancelAll();
+      _logger.info('所有通知已取消');
+    } catch (e) {
+      _logger.error('取消通知時發生錯誤: $e');
+      throw NotificationException('取消通知失敗: $e', 'CANCEL_ERROR');
+    }
+  }
+
+  Future<void> cancelNotification(int id) async {
+    try {
+      _logger.info('取消通知 ID: $id');
+      await flutterLocalNotificationsPlugin.cancel(id);
+      _logger.info('通知已取消');
+    } catch (e) {
+      _logger.error('取消通知時發生錯誤: $e');
+      throw NotificationException('取消通知失敗: $e', 'CANCEL_ERROR');
+    }
+  }
+
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async {
+    try {
+      _logger.info('獲取待處理通知列表...');
+      final notifications = await flutterLocalNotificationsPlugin.pendingNotificationRequests();
+      _logger.info('找到 ${notifications.length} 個待處理通知');
+      return notifications;
+    } catch (e) {
+      _logger.error('獲取待處理通知列表時發生錯誤: $e');
+      throw NotificationException('獲取待處理通知列表失敗: $e', 'GET_PENDING_ERROR');
+    }
+  }
+
+  void onNotificationResponse(NotificationResponse response) {
+    try {
+      _logger.info('收到通知點擊: ${response.payload}');
+      if (response.payload == null) {
+        _logger.warning('通知沒有包含 payload');
+        return;
+      }
+
+      final data = json.decode(response.payload!) as Map<String, dynamic>;
+      final type = data['type'] as String;
+      final route = data['route'] as String;
+
+      Get.toNamed(route, arguments: data);
+    } catch (e) {
+      _logger.error('處理通知點擊時發生錯誤: $e');
+      throw NotificationException('處理通知點擊失敗: $e', 'PAYLOAD_ERROR');
     }
   }
 } 

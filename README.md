@@ -1,134 +1,118 @@
-# 諸事大吉
+# 運勢預測應用
 
-基於 Flutter 開發的運勢預測與黃曆查詢應用。
+一款基於 Flutter 開發的運勢預測應用，提供每日運勢、節氣提醒和吉日查詢等功能。
 
-## 專案狀態
+## 功能特點
 
-### 已完成功能 ✅
+### 核心功能
+- 🎯 每日運勢預測
+- 📅 黃曆查詢（節氣、吉日）
+- 🔍 智能篩選系統
+- 📱 本地通知提醒
 
-- 基礎架構
-  - Flutter 框架配置
-  - Node.js 後端服務
-  - 狀態管理（Riverpod）
-  - 路由管理
-  - 本地存儲
+### 技術特點
+- ⚡ 高性能：優化的啟動時間和內存使用
+- 💾 智能緩存：LRU + 弱引用的多級緩存
+- 🎨 現代化 UI：Material Design 3
+- 📊 完整測試：單元測試 + 集成測試
 
-- 核心服務
-  - 運勢預測（基礎算法）
-  - 黃曆查詢
-  - 農曆轉換
-  - 節氣計算
-  - 緩存系統
+## 開發進度
 
-### 進行中功能 ⚠️
+### 已完成功能 (✅)
+- 基礎架構搭建
+- 運勢計算系統
+- 智能篩選系統
+- 本地通知系統
+- 性能優化
+  - 啟動時間優化 (90%)
+  - 內存使用優化 (70%)
+  - 列表滾動優化 (100%)
 
-- 智能篩選
-  - 多條件組合
-  - 結果排序
-  - 智能推薦
+### 進行中功能 (⏳)
+- 代碼分割和延遲加載
+- 內存泄漏檢測
+- 大對象回收優化
+- 代碼重構
 
-- 方位指引
-  - 指南針整合
-  - 即時方位提示
+## 技術棧
 
-### 待開發功能 ❌
-
-- 推送通知
-- 社交功能
-- 進階功能（桌面小部件等）
-- 商業化功能（會員系統、支付系統等）
-
-## 技術架構
-
-### 前端（Flutter）
-
-- 框架：Flutter 3.x
-- 狀態管理：Riverpod
-- 路由：go_router
-- 本地存儲：shared_preferences
-- UI 框架：Material Design 3
-
-### 後端（Node.js）
-
-- 框架：Express
-- 語言：TypeScript
-- 緩存：Redis
-- 日誌：Winston
-- API 文檔：Swagger
-
-## 快速開始
-
-### 環境要求
-
+### 前端
 - Flutter 3.x
-- Node.js 20.x
-- npm 10.x
-- Redis
+- Riverpod（狀態管理）
+- SQLite（本地存儲）
+- flutter_local_notifications（本地通知）
 
-### 安裝步驟
+### 後端
+- Node.js
+- Express
+- MongoDB
 
-1. 克隆專案
+## 開發環境設置
+
+1. 安裝依賴：
 ```bash
-git clone https://github.com/your-username/all-lucky.git
-cd all-lucky
-```
-
-2. 安裝依賴
-```bash
-# 前端
-cd client
 flutter pub get
-
-# 後端
-cd ../server
-npm install
 ```
 
-3. 運行開發環境
+2. 運行應用：
 ```bash
-# 前端
 flutter run
-
-# 後端
-npm run dev
 ```
 
-## 開發指南
+3. 運行測試：
+```bash
+flutter test
+```
 
-### 代碼風格
+## 項目結構
 
-- 遵循 Flutter 官方代碼規範
-- 使用 ESLint 和 Prettier 進行代碼格式化
-- 提交前運行測試和 lint 檢查
+```
+lib/
+├── core/           # 核心功能
+│   ├── models/     # 數據模型
+│   ├── services/   # 業務服務
+│   ├── providers/  # 狀態管理
+│   └── utils/      # 工具類
+├── features/       # 功能模塊
+│   ├── fortune/    # 運勢相關
+│   ├── settings/   # 設置相關
+│   └── common/     # 公共組件
+└── main.dart       # 入口文件
+```
 
-### 提交規範
+## 性能優化
 
-- feat: 新功能
-- fix: 修復問題
-- docs: 文檔變更
-- style: 代碼格式
-- refactor: 代碼重構
-- test: 測試相關
-- chore: 其他更改
+### 啟動優化
+- 並行資源加載
+- 後台線程預加載
+- 路由優化
+- 圖片緩存優化
 
-### 測試指南
+### 內存優化
+- 圖片緩存限制
+- 路由緩存管理
+- 資源釋放機制
 
-- 運行單元測試：`flutter test`
-- 運行集成測試：`flutter drive`
-- 檢查代碼覆蓋率：`flutter test --coverage`
+### 列表優化
+- 項目緩存
+- 固定高度
+- 懶加載實現
 
-## API 文檔
+## 待優化項目
 
-API 文檔請參考 [API.md](./API.md)
+1. 代碼分割和延遲加載
+2. 內存泄漏檢測
+3. 大對象回收優化
+4. 代碼重構
 
 ## 貢獻指南
 
-請參考 [CONTRIBUTING.md](./CONTRIBUTING.md)
+1. Fork 本項目
+2. 創建新分支：`git checkout -b feature/your-feature`
+3. 提交更改：`git commit -m 'Add some feature'`
+4. 推送分支：`git push origin feature/your-feature`
+5. 提交 Pull Request
 
-## 更新日誌
-
-請參考 [CHANGELOG.md](./CHANGELOG.md)
-
-## 開源協議
+## 許可證
 
 MIT License 

@@ -1,108 +1,147 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/fortune.dart';
+import '../../../core/providers/filter_provider.dart';
+import '../../../core/services/cache_service.dart';
+import '../../../core/utils/logger.dart';
 
-class FortuneList extends StatelessWidget {
-  final List<Fortune> fortunes;
+class FortuneList extends ConsumerStatefulWidget {
+  const FortuneList({super.key});
 
-  const FortuneList({
-    super.key,
-    required this.fortunes,
-  });
+  @override
+  ConsumerState<FortuneList> createState() => _FortuneListState();
+}
+
+class _FortuneListState extends ConsumerState<FortuneList> {
+  final _logger = Logger('FortuneList');
+  final _scrollController = ScrollController();
+  final _cacheService = CacheService();
+  final _itemExtent = 100.0; // 固定每個項目的高度
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 500) {
+      // 觸發加載更多
+      ref.read(fortuneListProvider.notifier).loadMore();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (fortunes.isEmpty) {
-      return const Center(
-        child: Text('沒有符合條件的運勢數據'),
-      );
-    }
+    final fortunes = ref.watch(filteredFortunesProvider);
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: fortunes.length,
-      itemBuilder: (context, index) {
-        final fortune = fortunes[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _getFortuneTypeLabel(fortune.type),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '${fortune.score}分',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: _getScoreColor(fortune.score),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text('日期：${_formatDate(fortune.date)}'),
-                if (fortune.isLuckyDay) ...[
-                  const SizedBox(height: 4),
-                  const Text(
-                    '吉日',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Text('適合活動：${fortune.suitableActivities.join('、')}'),
-                const SizedBox(height: 4),
-                Text('吉利方位：${fortune.luckyDirections.join('、')}'),
-                if (fortune.description != null) ...[
-                  const SizedBox(height: 8),
-                  Text('詳細說明：${fortune.description}'),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
+    return fortunes.when(
+      data: (data) => _buildList(data),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(
+        child: Text('載入失敗: $error'),
+      ),
     );
   }
 
-  String _getFortuneTypeLabel(FortuneType type) {
-    switch (type) {
-      case FortuneType.overall:
-        return '總運';
-      case FortuneType.study:
-        return '學業運';
-      case FortuneType.career:
-        return '事業運';
-      case FortuneType.love:
-        return '愛情運';
+  Widget _buildList(List<Fortune> fortunes) {
+    if (fortunes.isEmpty) {
+      return const Center(
+        child: Text('沒有符合條件的運勢'),
+      );
     }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(fortuneListProvider.notifier).refresh();
+      },
+      child: ListView.builder(
+        controller: _scrollController,
+        // 使用 ListView.builder 的性能優化選項
+        itemExtent: _itemExtent, // 固定高度
+        cacheExtent: _itemExtent * 10, // 預加載 10 個項目
+        itemCount: fortunes.length,
+        itemBuilder: (context, index) {
+          // 使用緩存服務緩存列表項
+          final cacheKey = 'fortune_item_$index';
+          var widget = _cacheService.get<Widget>(cacheKey);
+          
+          if (widget == null) {
+            widget = _buildListItem(fortunes[index]);
+            _cacheService.put(cacheKey, widget);
+          }
+
+          return widget;
+        },
+      ),
+    );
   }
 
-  Color _getScoreColor(double score) {
-    if (score >= 80) {
-      return Colors.red;
-    } else if (score >= 60) {
-      return Colors.orange;
-    } else if (score >= 40) {
-      return Colors.blue;
-    } else {
-      return Colors.grey;
-    }
+  Widget _buildListItem(Fortune fortune) {
+    return RepaintBoundary(
+      child: Card(
+        margin: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 8,
+        ),
+        child: ListTile(
+          onTap: () => _onItemTap(fortune),
+          title: Text(
+            fortune.description,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            '適合活動: ${fortune.suitableActivities.join(", ")}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                fortune.score.toString(),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                fortune.isLuckyDay ? '吉日' : '普通',
+                style: TextStyle(
+                  color: fortune.isLuckyDay
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.year}/${date.month}/${date.day}';
+  void _onItemTap(Fortune fortune) {
+    try {
+      Navigator.pushNamed(
+        context,
+        '/fortune-detail',
+        arguments: fortune,
+      );
+    } catch (e) {
+      _logger.error('導航到詳情頁面失敗', e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('打開詳情失敗'),
+        ),
+      );
+    }
   }
 } 
