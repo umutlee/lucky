@@ -1,4 +1,7 @@
-export interface LunarDate {
+import calendar from 'lunar-calendar';
+import { logger } from './logger';
+
+export interface LunarDateInfo {
   year: number;
   month: number;
   day: number;
@@ -6,66 +9,95 @@ export interface LunarDate {
 }
 
 export class DateUtils {
-  private readonly solarTerms2024: { [key: string]: string } = {
-    '2024-02-04': '立春',
-    '2024-02-19': '雨水',
-    '2024-03-05': '驚蟄',
-    '2024-03-20': '春分',
-    '2024-04-04': '清明',
-    '2024-04-20': '穀雨',
-    '2024-05-05': '立夏',
-    '2024-05-21': '小滿',
-    '2024-06-05': '芒種',
-    '2024-06-21': '夏至',
-    '2024-07-07': '小暑',
-    '2024-07-22': '大暑',
-    '2024-08-07': '立秋',
-    '2024-08-23': '處暑',
-    '2024-09-07': '白露',
-    '2024-09-22': '秋分',
-    '2024-10-08': '寒露',
-    '2024-10-23': '霜降',
-    '2024-11-07': '立冬',
-    '2024-11-22': '小雪',
-    '2024-12-07': '大雪',
-    '2024-12-21': '冬至',
-    '2024-01-06': '小寒',
-    '2024-01-20': '大寒'
-  };
+  /**
+   * 將陽曆日期轉換為農曆日期
+   * @param date 陽曆日期字符串 (YYYY-MM-DD)
+   * @returns 農曆日期信息
+   */
+  async getLunarDate(date: string): Promise<LunarDateInfo> {
+    try {
+      const [year, month, day] = date.split('-').map(Number);
+      const lunar = calendar.solarToLunar(year, month, day);
+      
+      if (!lunar) {
+        throw new Error('無效的日期');
+      }
 
+      return {
+        year: lunar.year,
+        month: lunar.month,
+        day: lunar.day,
+        isLeap: lunar.isLeap || false
+      };
+    } catch (error) {
+      logger.error(`農曆日期轉換錯誤: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * 獲取指定日期的節氣
+   * @param date 陽曆日期字符串 (YYYY-MM-DD)
+   * @returns 節氣名稱，如果當日不是節氣則返回 null
+   */
   async getSolarTerm(date: string): Promise<string | null> {
-    // 簡化版：直接查表
-    return this.solarTerms2024[date] || null;
+    try {
+      const [year, month, day] = date.split('-').map(Number);
+      const lunar = calendar.solarToLunar(year, month, day);
+      
+      return lunar?.solarTerm || null;
+    } catch (error) {
+      logger.error(`節氣獲取錯誤: ${error}`);
+      throw error;
+    }
   }
 
-  async getLunarDate(date: string): Promise<LunarDate> {
-    // 簡化版：使用固定偏移
-    const timestamp = new Date(date).getTime();
-    const baseTimestamp = new Date('2024-02-10').getTime(); // 農曆正月初一
-    const dayDiff = Math.floor((timestamp - baseTimestamp) / (24 * 60 * 60 * 1000));
-    
-    // 簡單的月份計算（每月30天）
-    const month = Math.floor(dayDiff / 30) + 1;
-    const day = (dayDiff % 30) + 1;
-
-    return {
-      year: 2024,
-      month: month > 0 ? month : 12,
-      day: day > 0 ? day : 30,
-      isLeap: false
-    };
+  /**
+   * 獲取指定年份的所有節氣
+   * @param year 年份
+   * @returns 節氣列表，包含名稱和日期
+   */
+  async getAllSolarTerms(year: number): Promise<Array<{name: string; date: string}>> {
+    try {
+      const terms = [];
+      for (let month = 1; month <= 12; month++) {
+        for (let day = 1; day <= 31; day++) {
+          try {
+            const lunar = calendar.solarToLunar(year, month, day);
+            if (lunar?.solarTerm) {
+              terms.push({
+                name: lunar.solarTerm,
+                date: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+              });
+            }
+          } catch {
+            // 跳過無效日期
+            continue;
+          }
+        }
+      }
+      return terms;
+    } catch (error) {
+      logger.error(`獲取節氣列表錯誤: ${error}`);
+      throw error;
+    }
   }
 
-  formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
-  }
+  /**
+   * 驗證日期格式是否正確
+   * @param date 日期字符串 (YYYY-MM-DD)
+   * @returns 是否為有效日期
+   */
+  isValidDate(date: string): boolean {
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(date)) {
+      return false;
+    }
 
-  parseDate(dateString: string): Date {
-    return new Date(dateString);
-  }
-
-  isValidDate(dateString: string): boolean {
-    const date = new Date(dateString);
-    return date instanceof Date && !isNaN(date.getTime());
+    const [year, month, day] = date.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
+    return d.getFullYear() === year && 
+           d.getMonth() === month - 1 && 
+           d.getDate() === day;
   }
 } 

@@ -1,20 +1,15 @@
 declare module 'lunar-calendar' {
-  interface LunarDate {
+  export interface LunarDate {
     year: number;
     month: number;
     day: number;
-    isLeap: boolean;
+    isLeap?: boolean;
+    solarTerm?: string;
   }
 
-  interface SolarDate {
-    year: number;
-    month: number;
-    day: number;
-  }
-
-  interface LunarCalendar {
+  export interface LunarCalendar {
     solarToLunar(year: number, month: number, day: number): LunarDate;
-    lunarToSolar(year: number, month: number, day: number, isLeap?: boolean): SolarDate;
+    lunarToSolar(year: number, month: number, day: number, isLeap?: boolean): Date;
   }
 
   const calendar: LunarCalendar;

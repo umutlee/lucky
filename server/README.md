@@ -1,5 +1,34 @@
 # All Lucky 後端服務
 
+## 專案狀態
+
+### 已完成功能 ✅
+- 基礎架構搭建
+  - Express 服務器設置
+  - TypeScript 配置
+  - 路由結構
+  - 中間件設置
+  - 日誌系統
+- API 端點設置
+  - 運勢預測路由 (/fortune/*)
+  - 黃曆查詢路由 (/almanac/*)
+- 資料驗證
+  - 日期格式驗證
+  - 生肖和星座驗證
+- 緩存系統
+  - 基本緩存機制
+  - 緩存過期處理
+
+### 進行中功能 ⏳
+- 運勢計算核心邏輯
+- 農曆日期轉換
+- 節氣計算實現
+
+### 待開發功能 ❌
+- API 認證機制
+- 基本單元測試
+- API 端點測試
+
 ## 環境要求
 
 - Node.js >= 20.18.1
@@ -44,29 +73,42 @@
 server/
 ├── src/
 │   ├── models/          - 資料模型定義
+│   │   ├── almanac.ts   - 黃曆相關模型 ✅
+│   │   └── fortune.ts   - 運勢相關模型 ✅
 │   ├── services/        - 業務邏輯服務
+│   │   ├── fortune-service.ts     - 運勢服務 ⏳
+│   │   ├── almanac-service.ts     - 黃曆服務 ⏳
+│   │   └── storage-service.ts     - 緩存服務 ✅
 │   ├── routes/          - API 路由
+│   │   ├── fortune.ts   - 運勢路由 ✅
+│   │   └── almanac.ts   - 黃曆路由 ✅
 │   ├── middleware/      - 中間件
+│   │   ├── auth.ts      - 認證中間件 ❌
+│   │   ├── validators.ts - 驗證器 ✅
+│   │   └── error-handler.ts - 錯誤處理 ✅
 │   ├── utils/           - 工具函數
+│   │   ├── logger.ts    - 日誌工具 ✅
+│   │   └── date-utils.ts - 日期工具 ⏳
 │   └── types/          - 型別定義
-├── tests/              - 測試文件
-├── .env.example        - 環境變量範例
-├── .nvmrc             - Node.js 版本設定
-├── tsconfig.json      - TypeScript 配置
-└── package.json       - 專案配置
+│       └── lunar-calendar.d.ts - 農曆日期型別 ✅
+├── tests/              - 測試文件 ❌
+├── .env.example        - 環境變量範例 ✅
+├── .nvmrc             - Node.js 版本設定 ✅
+├── tsconfig.json      - TypeScript 配置 ✅
+└── package.json       - 專案配置 ✅
 ```
 
 ## 環境變量說明
 
-| 變量名 | 說明 | 預設值 |
-|--------|------|--------|
-| NODE_ENV | 執行環境 | development |
-| PORT | 服務埠號 | 3000 |
-| API_VERSION | API 版本 | v1 |
-| LOG_LEVEL | 日誌等級 | info |
-| CACHE_TTL | 緩存存活時間 | 12小時 |
-| API_KEY_PREFIX | API 密鑰前綴 | lucky_ |
-| ALLOWED_ORIGINS | 允許的 CORS 來源 | http://localhost:3000,http://localhost:8080 |
+| 變量名 | 說明 | 預設值 | 狀態 |
+|--------|------|--------|------|
+| NODE_ENV | 執行環境 | development | ✅ |
+| PORT | 服務埠號 | 3000 | ✅ |
+| API_VERSION | API 版本 | v1 | ✅ |
+| LOG_LEVEL | 日誌等級 | info | ✅ |
+| CACHE_TTL | 緩存存活時間 | 12小時 | ✅ |
+| API_KEY_PREFIX | API 密鑰前綴 | lucky_ | ❌ |
+| ALLOWED_ORIGINS | 允許的 CORS 來源 | http://localhost:3000,... | ❌ |
 
 ## 開發指南
 
@@ -93,7 +135,7 @@ server/
 - test: 新增測試
 - chore: 建構過程或輔助工具的變動
 
-### 測試
+### 測試（待實現）
 ```bash
 # 運行所有測試
 npm test
