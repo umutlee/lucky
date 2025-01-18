@@ -67,6 +67,61 @@ GET /api/v1/fortune/daily/:date
 }
 ```
 
+### 愛情運勢 API
+
+#### 獲取愛情運勢
+```http
+GET /api/v1/fortune/love/:date
+```
+
+**參數**
+- `date`: 日期（格式：YYYY-MM-DD）✅
+- `zodiac`: 生肖（必填）✅
+- `constellation`: 星座（必填）✅
+- `partner_zodiac`: 對象生肖（可選）
+- `partner_constellation`: 對象星座（可選）
+
+**響應**
+```json
+{
+  "love": {
+    "score": 85,
+    "horoscope": {
+      "description": "今日愛情運勢描述",
+      "compatibility": "處女座",
+      "lucky_time": "19:00-21:00",
+      "romance_aspects": ["月亮與金星相位有利桃花運"]
+    },
+    "chinese_astrology": {
+      "red_romance_star": true,
+      "peach_blossom": "旺",
+      "compatible_zodiac": "兔",
+      "elements": {
+        "day_pillar": "甲子",
+        "romance_star": ["紅鸞星", "天喜"]
+      }
+    },
+    "compatibility": {
+      "zodiac_match": 90,
+      "constellation_match": 85,
+      "overall_match": 87
+    },
+    "advice": [
+      "今日桃花位在東南方",
+      "適合穿粉色增進桃花運",
+      "良緣貴人在傍晚出現",
+      "建議多參加社交活動"
+    ]
+  }
+}
+```
+
+**實現說明**
+1. 星座運勢：整合 Aztro API 的愛情相關預測
+2. 紫微斗數：計算紅鸞、天喜等桃花星動向
+3. 生肖配對：根據生肖相配理論提供匹配建議
+4. 綜合分析：結合多項指標給出整體評分和建議
+
 ## 實現狀態說明
 
 ### 已完成 ✅
