@@ -8,45 +8,71 @@ enum FortuneType {
 }
 
 class Fortune {
-  final FortuneType type;
-  final int score;
-  final DateTime date;
-  final bool isLuckyDay;
-  final List<String> luckyDirections;
-  final List<String> suitableActivities;
+  final String id;
   final String description;
-  final double recommendationScore;
+  final int score;
+  final String type;
+  final DateTime date;
+  final List<String> recommendations;
+  final String zodiac;
+  final Map<String, int> zodiacAffinity;
 
-  const Fortune({
-    required this.type,
+  Fortune({
+    required this.id,
+    required this.description,
     required this.score,
+    required this.type,
     required this.date,
-    this.isLuckyDay = false,
-    this.luckyDirections = const [],
-    this.suitableActivities = const [],
-    this.description = '',
-    this.recommendationScore = 0,
+    required this.recommendations,
+    required this.zodiac,
+    required this.zodiacAffinity,
   });
 
   Fortune copyWith({
-    FortuneType? type,
-    int? score,
-    DateTime? date,
-    bool? isLuckyDay,
-    List<String>? luckyDirections,
-    List<String>? suitableActivities,
+    String? id,
     String? description,
-    double? recommendationScore,
+    int? score,
+    String? type,
+    DateTime? date,
+    List<String>? recommendations,
+    String? zodiac,
+    Map<String, int>? zodiacAffinity,
   }) {
     return Fortune(
-      type: type ?? this.type,
-      score: score ?? this.score,
-      date: date ?? this.date,
-      isLuckyDay: isLuckyDay ?? this.isLuckyDay,
-      luckyDirections: luckyDirections ?? this.luckyDirections,
-      suitableActivities: suitableActivities ?? this.suitableActivities,
+      id: id ?? this.id,
       description: description ?? this.description,
-      recommendationScore: recommendationScore ?? this.recommendationScore,
+      score: score ?? this.score,
+      type: type ?? this.type,
+      date: date ?? this.date,
+      recommendations: recommendations ?? this.recommendations,
+      zodiac: zodiac ?? this.zodiac,
+      zodiacAffinity: zodiacAffinity ?? this.zodiacAffinity,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'description': description,
+      'score': score,
+      'type': type,
+      'date': date.toIso8601String(),
+      'recommendations': recommendations,
+      'zodiac': zodiac,
+      'zodiacAffinity': zodiacAffinity,
+    };
+  }
+
+  factory Fortune.fromJson(Map<String, dynamic> json) {
+    return Fortune(
+      id: json['id'] as String,
+      description: json['description'] as String,
+      score: json['score'] as int,
+      type: json['type'] as String,
+      date: DateTime.parse(json['date'] as String),
+      recommendations: List<String>.from(json['recommendations'] as List),
+      zodiac: json['zodiac'] as String,
+      zodiacAffinity: Map<String, int>.from(json['zodiacAffinity'] as Map),
     );
   }
 
@@ -55,30 +81,23 @@ class Fortune {
       identical(this, other) ||
       other is Fortune &&
           runtimeType == other.runtimeType &&
-          type == other.type &&
-          score == other.score &&
-          date == other.date &&
-          isLuckyDay == other.isLuckyDay &&
-          listEquals(luckyDirections, other.luckyDirections) &&
-          listEquals(suitableActivities, other.suitableActivities) &&
+          id == other.id &&
           description == other.description &&
-          recommendationScore == other.recommendationScore;
+          score == other.score &&
+          type == other.type &&
+          date == other.date &&
+          recommendations == other.recommendations &&
+          zodiac == other.zodiac &&
+          zodiacAffinity == other.zodiacAffinity;
 
   @override
   int get hashCode =>
-      type.hashCode ^
-      score.hashCode ^
-      date.hashCode ^
-      isLuckyDay.hashCode ^
-      luckyDirections.hashCode ^
-      suitableActivities.hashCode ^
+      id.hashCode ^
       description.hashCode ^
-      recommendationScore.hashCode;
-
-  @override
-  String toString() {
-    return 'Fortune{type: $type, score: $score, date: $date, isLuckyDay: $isLuckyDay, '
-        'luckyDirections: $luckyDirections, suitableActivities: $suitableActivities, '
-        'description: $description, recommendationScore: $recommendationScore}';
-  }
+      score.hashCode ^
+      type.hashCode ^
+      date.hashCode ^
+      recommendations.hashCode ^
+      zodiac.hashCode ^
+      zodiacAffinity.hashCode;
 } 
