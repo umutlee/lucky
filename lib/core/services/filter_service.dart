@@ -120,14 +120,14 @@ class FilterService {
       Map<String, int> directionPreferences = {};
 
       for (var fortune in userHistory) {
-        // 統計運勢類型偏好
+        // 統計運勢類型偏好（加大權重）
         typePreferences[fortune.type] = 
-            (typePreferences[fortune.type] ?? 0) + 1;
+            (typePreferences[fortune.type] ?? 0) + 5;
 
         // 統計活動偏好
         for (var activity in fortune.suitableActivities) {
           activityPreferences[activity] = 
-              (activityPreferences[activity] ?? 0) + 1;
+              (activityPreferences[activity] ?? 0) + 2;
         }
 
         // 統計方位偏好
@@ -138,28 +138,33 @@ class FilterService {
       }
 
       // 為每個運勢計算推薦分數
-      return fortunes.map((fortune) {
+      final scoredFortunes = fortunes.map((fortune) {
         int recommendationScore = 0;
 
-        // 根據運勢類型加分
-        recommendationScore += typePreferences[fortune.type] ?? 0;
+        // 根據運勢類型加分（最高權重）
+        recommendationScore += (typePreferences[fortune.type] ?? 0) * 5;
 
         // 根據活動匹配度加分
         for (var activity in fortune.suitableActivities) {
-          recommendationScore += activityPreferences[activity] ?? 0;
+          recommendationScore += (activityPreferences[activity] ?? 0) * 2;
         }
 
         // 根據方位匹配度加分
         for (var direction in fortune.luckyDirections) {
-          recommendationScore += directionPreferences[direction] ?? 0;
+          recommendationScore += (directionPreferences[direction] ?? 0);
         }
 
         // 將推薦分數添加到運勢對象中
         return fortune.copyWith(
           recommendationScore: recommendationScore,
         );
-      }).toList()
-        ..sort((a, b) => b.recommendationScore.compareTo(a.recommendationScore));
+      }).toList();
+
+      // 按推薦分數降序排序
+      scoredFortunes.sort((a, b) => 
+          b.recommendationScore.compareTo(a.recommendationScore));
+
+      return scoredFortunes;
     } catch (e) {
       _logger.error('生成推薦時發生錯誤: $e');
       return fortunes;

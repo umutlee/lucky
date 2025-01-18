@@ -5,6 +5,7 @@ import '../../../core/providers/user_identity_provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/fortune_config_provider.dart';
 import '../widgets/fortune_settings_section.dart';
+import 'notification_settings_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -56,6 +57,20 @@ class SettingsScreen extends ConsumerWidget {
                 const FortuneSettingsSection(),
               ],
             ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.notifications),
+            title: const Text('通知設置'),
+            subtitle: const Text('管理運勢提醒和其他通知'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NotificationSettingsScreen(),
+                ),
+              );
+            },
           ),
           const Divider(),
           // 其他設置選項將在後續添加

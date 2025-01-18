@@ -1,40 +1,46 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'core/providers/storage_provider.dart';
-import 'core/providers/theme_provider.dart';
-import 'core/router/router.dart';
-import 'core/theme/app_theme.dart';
+import 'core/routes/app_routes.dart';
+import 'core/services/notification_service.dart';
+import 'core/providers/fortune_provider.dart';
+import 'core/providers/calendar_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // 初始化 SharedPreferences
   final prefs = await SharedPreferences.getInstance();
+  Get.put(prefs);
+
+  // 初始化 Providers
+  Get.put(FortuneProvider());
+  Get.put(CalendarProvider());
   
-  runApp(
-    ProviderScope(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  // 初始化通知服務
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  Get.put(notificationService);
+
+  runApp(const MyApp());
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
-    final themeMode = ref.watch(themeModeProvider);
-    
-    return MaterialApp.router(
-      title: '吉時萬事通',
-      themeMode: themeMode,
-      theme: AppTheme.getLightTheme(),
-      darkTheme: AppTheme.getDarkTheme(),
-      routerConfig: router,
+  Widget build(BuildContext context) {
+    return GetMaterialApp(
+      title: '諸事大吉',
+      theme: ThemeData(
+        primarySwatch: Colors.red,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      initialRoute: '/',
+      getPages: AppRoutes.pages,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
+      navigatorObservers: [AppRoutes.routeObserver],
+      debugShowCheckedModeBanner: false,
     );
   }
 } 
