@@ -22,11 +22,53 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     GlobalKey<FormState>(),
   ];
   int _currentPage = 0;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    ref.read(userProfileServiceProvider).init();
+    _initializeServices();
+  }
+
+  Future<void> _initializeServices() async {
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(userProfileServiceProvider).init();
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('初始化失敗', '請檢查您的網絡連接並重試。');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('確定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
   }
 
   @override
@@ -55,24 +97,52 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   bool _validateCurrentPage() {
-    if (_currentPage == 0) return true; // Welcome page doesn't need validation
-    if (_currentPage == 1) return true; // User type page doesn't need form validation
+    if (_currentPage == 0) return true;
+    if (_currentPage == 1) return true;
     
     final formKey = _formKeys[_currentPage];
-    return formKey.currentState?.validate() ?? false;
+    final isValid = formKey.currentState?.validate() ?? false;
+    
+    if (!isValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('請檢查並填寫所有必填項'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+    
+    return isValid;
   }
 
   Future<void> _completeOnboarding() async {
-    final userProfileService = ref.read(userProfileServiceProvider);
-    await userProfileService.completeOnboarding();
-    
-    if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/home');
+    _showLoadingDialog();
+    try {
+      final userProfileService = ref.read(userProfileServiceProvider);
+      await userProfileService.completeOnboarding();
+      
+      if (mounted) {
+        Navigator.of(context).pop(); // 關閉加載對話框
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // 關閉加載對話框
+        _showErrorDialog('保存失敗', '無法保存您的設置，請稍後重試。');
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       body: SafeArea(
         child: Column(

@@ -35,8 +35,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-    - assets/images/zodiac/
     - assets/images/horoscope/
+    - assets/images/zodiac/
   fonts:
     - family: NotoSansTC
       fonts:
