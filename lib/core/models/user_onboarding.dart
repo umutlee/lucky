@@ -1,39 +1,44 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'user_identity.dart';
+import 'package:hive/hive.dart';
 
 part 'user_onboarding.g.dart';
-part 'user_onboarding.freezed.dart';
 
-enum OnboardingStep {
-  welcome,      // 歡迎頁面
-  userType,     // 選擇用戶類型（訪客/註冊）
-  identity,     // 選擇用戶身份
-  basicInfo,    // 基本信息（姓名等）
-  birthInfo,    // 生辰信息
-  preferences,  // 偏好設置
-  completed     // 完成引導
-}
+@HiveType(typeId: 1)
+class UserOnboarding extends HiveObject {
+  @HiveField(0)
+  final bool hasCompletedBasicInfo;
 
-@freezed
-class UserOnboarding with _$UserOnboarding {
-  const factory UserOnboarding({
-    required bool hasCompletedIntro,
-    required OnboardingStep currentStep,
-    required Map<OnboardingStep, bool> completedSteps,
-    required Map<String, dynamic> tempData,
-    @Default(LanguageStyle.modern) LanguageStyle selectedLanguageStyle,
-  }) = _UserOnboarding;
+  @HiveField(1)
+  final bool hasCompletedPreferences;
 
-  factory UserOnboarding.fromJson(Map<String, dynamic> json) =>
-      _$UserOnboardingFromJson(json);
+  @HiveField(2)
+  final bool hasCompletedTutorial;
 
-  factory UserOnboarding.initial() => UserOnboarding(
-    hasCompletedIntro: false,
-    currentStep: OnboardingStep.welcome,
-    completedSteps: {
-      for (var step in OnboardingStep.values) step: false
-    },
-    tempData: {},
-    selectedLanguageStyle: LanguageStyle.modern,
-  );
+  @HiveField(3)
+  final DateTime? completedAt;
+
+  UserOnboarding({
+    this.hasCompletedBasicInfo = false,
+    this.hasCompletedPreferences = false,
+    this.hasCompletedTutorial = false,
+    this.completedAt,
+  });
+
+  bool get isCompleted => 
+    hasCompletedBasicInfo && 
+    hasCompletedPreferences && 
+    hasCompletedTutorial;
+
+  UserOnboarding copyWith({
+    bool? hasCompletedBasicInfo,
+    bool? hasCompletedPreferences,
+    bool? hasCompletedTutorial,
+    DateTime? completedAt,
+  }) {
+    return UserOnboarding(
+      hasCompletedBasicInfo: hasCompletedBasicInfo ?? this.hasCompletedBasicInfo,
+      hasCompletedPreferences: hasCompletedPreferences ?? this.hasCompletedPreferences,
+      hasCompletedTutorial: hasCompletedTutorial ?? this.hasCompletedTutorial,
+      completedAt: completedAt ?? this.completedAt,
+    );
+  }
 } 

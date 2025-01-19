@@ -1,83 +1,86 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:all_lucky/core/models/user_profile.dart';
-import 'package:all_lucky/core/services/storage_service.dart';
+import 'package:all_lucky/core/utils/date_utils.dart' as date_utils;
 
 final userProfileServiceProvider = Provider<UserProfileService>((ref) {
-  return UserProfileService(ref.read(storageServiceProvider));
+  return UserProfileService();
 });
 
 class UserProfileService {
-  static const String _profileKey = 'user_profile';
-  static const String _onboardingKey = 'onboarding_completed';
-  
-  final StorageService _storage;
+  static const String _boxName = 'user_profile';
+  static const String _currentProfileKey = 'current_profile';
+  late Box<UserProfile> _box;
   UserProfile? _currentProfile;
 
-  UserProfileService(this._storage);
-
   Future<void> init() async {
-    await _loadProfile();
+    await Hive.initFlutter();
+    Hive.registerAdapter(UserProfileAdapter());
+    _box = await Hive.openBox<UserProfile>(_boxName);
+    _loadCurrentProfile();
   }
 
-  Future<void> _loadProfile() async {
-    final profileData = _storage.getData<Map<String, dynamic>>(_profileKey);
-    if (profileData != null) {
-      _currentProfile = UserProfile.fromJson(profileData);
-    }
+  void _loadCurrentProfile() {
+    _currentProfile = _box.get(_currentProfileKey);
   }
 
-  Future<void> updateUserType({required bool isGuest}) async {
-    _currentProfile = (_currentProfile ?? UserProfile()).copyWith(isGuest: isGuest);
-    await _saveProfile();
-  }
+  UserProfile? get currentProfile => _currentProfile;
 
   Future<void> updateBasicInfo({
     required String name,
     required String gender,
     required DateTime birthDateTime,
   }) async {
-    _currentProfile = (_currentProfile ?? UserProfile()).copyWith(
+    final profile = _currentProfile?.copyWith(
+      name: name,
+      gender: gender,
+      birthDateTime: birthDateTime,
+      updatedAt: DateTime.now(),
+    ) ?? UserProfile(
       name: name,
       gender: gender,
       birthDateTime: birthDateTime,
     );
-    await _saveProfile();
+
+    await _box.put(_currentProfileKey, profile);
+    _currentProfile = profile;
   }
 
-  Future<void> updatePreferences({
-    required List<String> fortuneTypes,
-    required bool enableDailyNotification,
-    required bool enableSolarTermNotification,
-    required bool enableLuckyDayNotification,
-  }) async {
-    _currentProfile = (_currentProfile ?? UserProfile()).copyWith(
-      preferredFortuneTypes: fortuneTypes,
-      enableDailyNotification: enableDailyNotification,
-      enableSolarTermNotification: enableSolarTermNotification,
-      enableLuckyDayNotification: enableLuckyDayNotification,
-    );
-    await _saveProfile();
-  }
-
-  Future<void> _saveProfile() async {
-    if (_currentProfile != null) {
-      await _storage.saveData(_profileKey, _currentProfile!.toJson());
+  Future<void> updatePreferences(Map<String, dynamic> preferences) async {
+    if (_currentProfile == null) {
+      throw Exception('No current profile found');
     }
+
+    final updatedProfile = _currentProfile!.copyWith(
+      preferences: preferences,
+      updatedAt: DateTime.now(),
+    );
+
+    await _box.put(_currentProfileKey, updatedProfile);
+    _currentProfile = updatedProfile;
   }
 
-  Future<void> completeOnboarding() async {
-    await _storage.saveData(_onboardingKey, true);
-  }
-
-  bool isOnboardingCompleted() {
-    return _storage.getData<bool>(_onboardingKey) ?? false;
-  }
-
-  UserProfile? get currentProfile => _currentProfile;
-
-  Future<void> clearProfile() async {
-    await _storage.removeData(_profileKey);
-    await _storage.removeData(_onboardingKey);
+  Future<void> clearCurrentProfile() async {
+    await _box.delete(_currentProfileKey);
     _currentProfile = null;
+  }
+
+  String? getZodiacSign() {
+    if (_currentProfile == null) return null;
+    return date_utils.DateUtils.getZodiacSign(_currentProfile!.birthDateTime);
+  }
+
+  String? getChineseZodiac() {
+    if (_currentProfile == null) return null;
+    return date_utils.DateUtils.getChineseZodiac(_currentProfile!.birthDateTime);
+  }
+
+  int? getAge() {
+    if (_currentProfile == null) return null;
+    return date_utils.DateUtils.calculateAge(_currentProfile!.birthDateTime);
+  }
+
+  Future<void> dispose() async {
+    await _box.close();
   }
 } 
