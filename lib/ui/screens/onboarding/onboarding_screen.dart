@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:all_lucky/core/models/user_onboarding.dart';
 import 'package:all_lucky/core/services/user_profile_service.dart';
 import 'package:all_lucky/ui/screens/onboarding/welcome_page.dart';
+import 'package:all_lucky/ui/screens/onboarding/user_type_page.dart';
+import 'package:all_lucky/ui/screens/onboarding/basic_info_page.dart';
+import 'package:all_lucky/ui/screens/onboarding/preference_page.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({Key? key}) : super(key: key);
@@ -13,6 +16,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final PageController _pageController = PageController();
+  final List<GlobalKey<State>> _pageKeys = List.generate(4, (_) => GlobalKey());
   int _currentPage = 0;
 
   @override
@@ -37,11 +41,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: PageView(
                 controller: _pageController,
                 onPageChanged: _onPageChanged,
-                children: const [
-                  WelcomePage(),
-                  _UserTypePage(),
-                  _BasicInfoPage(),
-                  _PreferencePage(),
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  WelcomePage(key: _pageKeys[0]),
+                  UserTypePage(key: _pageKeys[1]),
+                  BasicInfoPage(key: _pageKeys[2]),
+                  PreferencePage(key: _pageKeys[3]),
                 ],
               ),
             ),
@@ -72,16 +77,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             const SizedBox(width: 80),
           _buildPageIndicator(),
           TextButton(
-            onPressed: () {
-              if (_currentPage < 3) {
-                _pageController.nextPage(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              } else {
-                _completeOnboarding();
-              }
-            },
+            onPressed: () => _handleNextPage(),
             child: Text(_currentPage < 3 ? '下一步' : '完成'),
           ),
         ],
@@ -108,52 +104,35 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
+  void _handleNextPage() {
+    if (_currentPage < 3) {
+      // 驗證當前頁面
+      if (_validateCurrentPage()) {
+        _pageController.nextPage(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    } else {
+      _completeOnboarding();
+    }
+  }
+
+  bool _validateCurrentPage() {
+    final currentPageWidget = _pageKeys[_currentPage].currentState;
+    if (_currentPage == 2 && currentPageWidget is _BasicInfoPageState) {
+      return currentPageWidget.validateAndSave();
+    } else if (_currentPage == 3 && currentPageWidget is _PreferencePageState) {
+      return currentPageWidget.savePreferences();
+    }
+    return true;
+  }
+
   void _completeOnboarding() {
-    // TODO: 完成引導流程，保存用戶資料
-    Navigator.of(context).pushReplacementNamed('/home');
-  }
-}
-
-class _WelcomePage extends StatelessWidget {
-  const _WelcomePage();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('歡迎使用諸事大吉'),
-    );
-  }
-}
-
-class _UserTypePage extends StatelessWidget {
-  const _UserTypePage();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('選擇使用模式'),
-    );
-  }
-}
-
-class _BasicInfoPage extends StatelessWidget {
-  const _BasicInfoPage();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('輸入基本資料'),
-    );
-  }
-}
-
-class _PreferencePage extends StatelessWidget {
-  const _PreferencePage();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('設置偏好'),
-    );
+    if (_validateCurrentPage()) {
+      // 完成引導流程
+      ref.read(userProfileServiceProvider).completeOnboarding();
+      Navigator.of(context).pushReplacementNamed('/home');
+    }
   }
 } 
