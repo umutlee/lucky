@@ -1,122 +1,83 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user_profile.dart';
-import '../models/user_onboarding.dart';
-import '../models/user_identity.dart';
-import '../utils/zodiac_calculator.dart';
-import '../utils/horoscope_calculator.dart';
+import 'package:all_lucky/core/models/user_profile.dart';
+import 'package:all_lucky/core/services/storage_service.dart';
 
 final userProfileServiceProvider = Provider<UserProfileService>((ref) {
-  return UserProfileService();
+  return UserProfileService(ref.read(storageServiceProvider));
 });
 
 class UserProfileService {
   static const String _profileKey = 'user_profile';
-  static const String _onboardingKey = 'user_onboarding';
+  static const String _onboardingKey = 'onboarding_completed';
   
-  Future<UserProfile?> loadProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? profileJson = prefs.getString(_profileKey);
-    if (profileJson == null) return null;
-    return UserProfile.fromJson(jsonDecode(profileJson));
+  final StorageService _storage;
+  UserProfile? _currentProfile;
+
+  UserProfileService(this._storage);
+
+  Future<void> init() async {
+    await _loadProfile();
   }
 
-  Future<void> saveProfile(UserProfile profile) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_profileKey, jsonEncode(profile.toJson()));
+  Future<void> _loadProfile() async {
+    final profileData = _storage.getData<Map<String, dynamic>>(_profileKey);
+    if (profileData != null) {
+      _currentProfile = UserProfile.fromJson(profileData);
+    }
   }
 
-  Future<UserOnboarding> loadOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? onboardingJson = prefs.getString(_onboardingKey);
-    if (onboardingJson == null) return UserOnboarding.initial();
-    return UserOnboarding.fromJson(jsonDecode(onboardingJson));
+  Future<void> updateUserType({required bool isGuest}) async {
+    _currentProfile = (_currentProfile ?? UserProfile()).copyWith(isGuest: isGuest);
+    await _saveProfile();
   }
 
-  Future<void> saveOnboarding(UserOnboarding onboarding) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_onboardingKey, jsonEncode(onboarding.toJson()));
-  }
-
-  Future<UserProfile> createProfileFromBirthInfo({
+  Future<void> updateBasicInfo({
     required String name,
-    String? email,
+    required String gender,
     required DateTime birthDateTime,
-    required String birthPlace,
-    required UserIdentityType identityType,
-    required bool isGuest,
   }) async {
-    final String zodiac = ZodiacCalculator.calculateZodiac(birthDateTime);
-    final String horoscope = HoroscopeCalculator.calculateHoroscope(birthDateTime);
-    
-    // 根據身份類型獲取對應的運勢類型和語言風格
-    final identity = UserIdentity.defaultIdentities
-        .firstWhere((i) => i.type == identityType);
-    
-    final profile = UserProfile(
-      id: 'user_${DateTime.now().millisecondsSinceEpoch}',
+    _currentProfile = (_currentProfile ?? UserProfile()).copyWith(
       name: name,
-      email: email,
+      gender: gender,
       birthDateTime: birthDateTime,
-      birthPlace: birthPlace,
-      identityType: identityType,
-      isGuest: isGuest,
-      calculatedZodiac: zodiac,
-      calculatedHoroscope: horoscope,
-      preferredFortuneTypes: identity.fortuneTypes,
-      languageStyle: identity.languageStyle,
     );
-
-    await saveProfile(profile);
-    return profile;
+    await _saveProfile();
   }
 
-  Future<void> completeOnboardingStep(OnboardingStep step) async {
-    final onboarding = await loadOnboarding();
-    final updatedSteps = Map<OnboardingStep, bool>.from(onboarding.completedSteps);
-    updatedSteps[step] = true;
-
-    final nextStep = _getNextStep(step);
-    
-    final updatedOnboarding = onboarding.copyWith(
-      currentStep: nextStep,
-      completedSteps: updatedSteps,
-      hasCompletedIntro: nextStep == OnboardingStep.completed,
+  Future<void> updatePreferences({
+    required List<String> fortuneTypes,
+    required bool enableDailyNotification,
+    required bool enableSolarTermNotification,
+    required bool enableLuckyDayNotification,
+  }) async {
+    _currentProfile = (_currentProfile ?? UserProfile()).copyWith(
+      preferredFortuneTypes: fortuneTypes,
+      enableDailyNotification: enableDailyNotification,
+      enableSolarTermNotification: enableSolarTermNotification,
+      enableLuckyDayNotification: enableLuckyDayNotification,
     );
-
-    await saveOnboarding(updatedOnboarding);
+    await _saveProfile();
   }
 
-  OnboardingStep _getNextStep(OnboardingStep currentStep) {
-    final steps = OnboardingStep.values;
-    final currentIndex = steps.indexOf(currentStep);
-    if (currentIndex < steps.length - 1) {
-      return steps[currentIndex + 1];
+  Future<void> _saveProfile() async {
+    if (_currentProfile != null) {
+      await _storage.saveData(_profileKey, _currentProfile!.toJson());
     }
-    return OnboardingStep.completed;
   }
 
-  Future<void> saveTempData(String key, dynamic value) async {
-    final onboarding = await loadOnboarding();
-    final updatedTempData = Map<String, dynamic>.from(onboarding.tempData);
-    updatedTempData[key] = value;
-    
-    await saveOnboarding(onboarding.copyWith(tempData: updatedTempData));
+  Future<void> completeOnboarding() async {
+    await _storage.saveData(_onboardingKey, true);
   }
 
-  Future<bool> isOnboardingCompleted() async {
-    final onboarding = await loadOnboarding();
-    return onboarding.hasCompletedIntro;
+  bool isOnboardingCompleted() {
+    return _storage.getData<bool>(_onboardingKey) ?? false;
   }
 
-  Future<void> updateLanguageStyle(LanguageStyle style) async {
-    final onboarding = await loadOnboarding();
-    await saveOnboarding(onboarding.copyWith(selectedLanguageStyle: style));
-    
-    final profile = await loadProfile();
-    if (profile != null) {
-      await saveProfile(profile.copyWith(languageStyle: style));
-    }
+  UserProfile? get currentProfile => _currentProfile;
+
+  Future<void> clearProfile() async {
+    await _storage.removeData(_profileKey);
+    await _storage.removeData(_onboardingKey);
+    _currentProfile = null;
   }
 } 
