@@ -51,6 +51,38 @@ class NotificationError {
 }
 ```
 
+### 4. 用戶資料系統
+
+#### 4.1 數據結構
+```dart
+class UserProfile {
+  final DateTime birthDateTime;    // 出生日期時間
+  final String calculatedZodiac;   // 計算得出的生肖
+  final String calculatedHoroscope; // 計算得出的星座
+  final List<String> preferredFortuneTypes; // 偏好運勢類型
+  final bool isGuest;             // 是否為遊客模式
+}
+
+class UserOnboarding {
+  final bool hasCompletedIntro;    // 是否完成引導
+  final bool hasInputProfile;      // 是否已輸入個人資料
+}
+```
+
+#### 4.2 用戶資料流程
+```
+首次使用 -> 引導頁面 -> 選擇模式（遊客/個人）
+                    -> 個人模式 -> 輸入生辰八字 -> 自動計算生肖星座
+                    -> 遊客模式 -> 使用預設值
+                               -> 後續可從設置更新個人資料
+```
+
+#### 4.3 核心服務
+- UserProfileService: 用戶資料管理
+- ZodiacCalculator: 生肖計算
+- HoroscopeCalculator: 星座計算
+- OnboardingService: 首次使用引導
+
 ## 整體架構
 
 ### 前端架構 (Flutter)
@@ -218,3 +250,36 @@ class Logger {
 - 代碼混淆
 - 應用加固
 - 越獄檢測
+
+## 用戶身份系統
+### 數據結構
+1. UserIdentity
+   - 身份類型（UserIdentityType）
+   - 語言風格（LanguageStyle）
+   - 運勢類型映射
+   - 描述風格定制
+
+2. UserProfile
+   - 基本信息（ID、姓名、郵箱）
+   - 生辰信息（出生日期、地點）
+   - 身份信息（身份類型、訪客標記）
+   - 計算結果（生肖、星座）
+   - 偏好設置（運勢類型、語言風格）
+
+3. UserOnboarding
+   - 引導步驟（OnboardingStep）
+   - 完成狀態追蹤
+   - 臨時數據存儲
+   - 語言風格選擇
+
+### 核心服務
+1. UserProfileService
+   - 用戶資料管理
+   - 引導流程控制
+   - 身份信息整合
+   - 數據持久化
+
+2. 計算工具
+   - ZodiacCalculator（生肖計算）
+   - HoroscopeCalculator（星座計算）
+   - ZodiacImageHelper（生肖圖片）
