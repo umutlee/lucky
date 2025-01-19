@@ -100,6 +100,18 @@ class DatabaseService {
     }
   }
 
+  Future<T> transaction<T>(Future<T> Function(Transaction txn) action) async {
+    try {
+      final db = _database;
+      if (db == null) throw Exception('數據庫未初始化');
+
+      return await db.transaction(action);
+    } catch (e, stack) {
+      _logger.error('事務執行失敗', e, stack);
+      rethrow;
+    }
+  }
+
   Future<int> insert(String table, Map<String, dynamic> data) async {
     try {
       final db = _database;

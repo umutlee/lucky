@@ -169,35 +169,56 @@ void main() {
   });
 
   group('DatabaseService - 事務處理', () {
+    test('成功的事務操作', () async {
+      await databaseService.transaction((txn) async {
+        await txn.insert('fortune_records', {
+          'id': '1',
+          'user_id': 'user1',
+          'type': 'daily',
+          'content': 'transaction test 1',
+          'created_at': DateTime.now().toIso8601String(),
+          'is_synced': 0,
+        });
+
+        await txn.insert('fortune_records', {
+          'id': '2',
+          'user_id': 'user1',
+          'type': 'daily',
+          'content': 'transaction test 2',
+          'created_at': DateTime.now().toIso8601String(),
+          'is_synced': 0,
+        });
+      });
+
+      final results = await databaseService.query('fortune_records');
+      expect(results.length, 2);
+    });
+
     test('事務回滾', () async {
-      try {
+      expect(() async {
         await databaseService.transaction((txn) async {
-          // 第一個操作成功
           await txn.insert('fortune_records', {
-            'id': 'txn_test_1',
-            'user_id': 'user_1',
+            'id': '1',
+            'user_id': 'user1',
             'type': 'daily',
-            'content': '事務測試1',
+            'content': 'rollback test 1',
             'created_at': DateTime.now().toIso8601String(),
             'is_synced': 0,
           });
 
-          // 第二個操作失敗（插入無效數據）
+          // 插入無效數據觸發錯誤
           await txn.insert('fortune_records', {
-            'id': 'txn_test_2',
-            // 缺少必要欄位，將導致失敗
+            'id': '1', // 重複的主鍵
+            'user_id': 'user1',
+            'type': 'daily',
+            'content': 'rollback test 2',
+            'created_at': DateTime.now().toIso8601String(),
+            'is_synced': 0,
           });
-        });
-        fail('應該拋出異常');
-      } catch (e) {
-        // 驗證事務是否已回滾（第一個插入的數據也應該被回滾）
-        final records = await databaseService.query(
-          'fortune_records',
-          where: 'id = ?',
-          whereArgs: ['txn_test_1'],
-        );
-        expect(records.isEmpty, true);
-      }
+        }), throwsException);
+
+      final results = await databaseService.query('fortune_records');
+      expect(results.isEmpty, true);
     });
   });
 } 

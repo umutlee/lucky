@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:all_lucky/core/services/user_profile_service.dart';
 import 'package:all_lucky/core/services/preferences_service.dart';
 import 'package:all_lucky/core/services/database_service.dart';
@@ -29,8 +30,8 @@ Future<void> main() async {
       _initDatabaseService(),
       // 預加載資源
       _preloadResources(),
-      // 預加載系統字體
-      _loadSystemFonts(),
+      // 預加載系統字體（僅在非測試環境）
+      if (!kIsWeb && !kDebugMode) _loadSystemFonts(),
       // 優化圖片緩存
       _optimizeImageCache(),
     ]);
@@ -104,8 +105,10 @@ Future<void> _loadResources(void _) async {
   try {
     // 預加載圖片
     final imageFutures = [
-      precacheImage(const AssetImage('assets/images/logo.png'), null),
-      precacheImage(const AssetImage('assets/images/background.png'), null),
+      if (!kIsWeb && !kDebugMode) ...[
+        precacheImage(const AssetImage('assets/images/logo.png'), null),
+        precacheImage(const AssetImage('assets/images/background.png'), null),
+      ],
     ];
     await Future.wait(imageFutures);
   } catch (e, stack) {

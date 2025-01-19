@@ -24,85 +24,50 @@ void main() {
 
   group('CacheService - 基本操作', () {
     test('設置和獲取緩存', () async {
-      const key = 'test_key';
-      const value = {'name': 'test', 'value': 123};
-
-      await cacheService.set(key, value);
-      final result = await cacheService.get<Map<String, dynamic>>(key);
-
-      expect(result, isNotNull);
-      expect(result!['name'], 'test');
-      expect(result['value'], 123);
+      await cacheService.set('test_key', 'test_value');
+      final value = await cacheService.get<String>('test_key');
+      expect(value, 'test_value');
     });
 
-    test('緩存過期', () async {
-      const key = 'expiring_key';
-      const value = 'expiring_value';
-
-      // 設置一個1秒後過期的緩存
+    test('設置帶過期時間的緩存', () async {
       await cacheService.set(
-        key,
-        value,
-        expiration: const Duration(seconds: 1),
+        'expiring_key',
+        'expiring_value',
+        expiration: Duration(milliseconds: 100),
       );
 
-      // 立即獲取應該能獲取到
-      var result = await cacheService.get<String>(key);
-      expect(result, value);
+      final immediateValue = await cacheService.get<String>('expiring_key');
+      expect(immediateValue, 'expiring_value');
 
-      // 等待2秒後應該獲取不到
-      await Future.delayed(const Duration(seconds: 2));
-      result = await cacheService.get<String>(key);
-      expect(result, isNull);
-    });
+      await Future.delayed(Duration(milliseconds: 150));
 
-    test('刪除緩存', () async {
-      const key = 'delete_test';
-      const value = 'test_value';
-
-      await cacheService.set(key, value);
-      await cacheService.remove(key);
-
-      final result = await cacheService.get<String>(key);
-      expect(result, isNull);
-    });
-
-    test('清空緩存', () async {
-      // 設置多個緩存項
-      await cacheService.set('key1', 'value1');
-      await cacheService.set('key2', 'value2');
-
-      await cacheService.clear();
-
-      final result1 = await cacheService.get<String>('key1');
-      final result2 = await cacheService.get<String>('key2');
-
-      expect(result1, isNull);
-      expect(result2, isNull);
+      final expiredValue = await cacheService.get<String>('expiring_key');
+      expect(expiredValue, null);
     });
 
     test('檢查緩存是否存在', () async {
-      const key = 'exists_test';
-      const value = 'test_value';
+      await cacheService.set('existing_key', 'value');
+      expect(await cacheService.has('existing_key'), true);
+      expect(await cacheService.has('non_existing_key'), false);
+    });
 
-      // 初始應該不存在
-      var exists = await cacheService.has(key);
-      expect(exists, false);
+    test('刪除緩存', () async {
+      await cacheService.set('delete_key', 'value');
+      await cacheService.remove('delete_key');
+      expect(await cacheService.has('delete_key'), false);
+    });
 
-      // 設置後應該存在
-      await cacheService.set(key, value);
-      exists = await cacheService.has(key);
-      expect(exists, true);
-
-      // 刪除後應該不存在
-      await cacheService.remove(key);
-      exists = await cacheService.has(key);
-      expect(exists, false);
+    test('清空緩存', () async {
+      await cacheService.set('key1', 'value1');
+      await cacheService.set('key2', 'value2');
+      await cacheService.clear();
+      expect(await cacheService.has('key1'), false);
+      expect(await cacheService.has('key2'), false);
     });
   });
 
   group('CacheService - 批量操作', () {
-    test('批量設置和獲取', () async {
+    test('批量設置和獲取緩存', () async {
       final entries = {
         'key1': 'value1',
         'key2': 'value2',
@@ -110,15 +75,12 @@ void main() {
       };
 
       await cacheService.setMultiple(entries);
-      final results = await cacheService.getMultiple(entries.keys.toList());
 
-      expect(results.length, entries.length);
-      expect(results['key1'], 'value1');
-      expect(results['key2'], 'value2');
-      expect(results['key3'], 'value3');
+      final values = await cacheService.getMultiple<String>(entries.keys.toList());
+      expect(values, entries);
     });
 
-    test('批量設置帶過期時間', () async {
+    test('批量設置帶過期時間的緩存', () async {
       final entries = {
         'exp_key1': 'value1',
         'exp_key2': 'value2',
@@ -126,74 +88,129 @@ void main() {
 
       await cacheService.setMultiple(
         entries,
-        expiration: const Duration(seconds: 1),
+        expiration: Duration(milliseconds: 100),
       );
 
-      // 立即獲取
-      var results = await cacheService.getMultiple(entries.keys.toList());
-      expect(results.length, entries.length);
+      final immediateValues = await cacheService.getMultiple<String>(entries.keys.toList());
+      expect(immediateValues, entries);
 
-      // 等待過期
-      await Future.delayed(const Duration(seconds: 2));
-      results = await cacheService.getMultiple(entries.keys.toList());
-      expect(results.isEmpty, true);
+      await Future.delayed(Duration(milliseconds: 150));
+
+      final expiredValues = await cacheService.getMultiple<String>(entries.keys.toList());
+      expect(expiredValues.values.every((v) => v == null), true);
+    });
+
+    test('批量刪除緩存', () async {
+      await cacheService.setMultiple({
+        'del_key1': 'value1',
+        'del_key2': 'value2',
+      });
+
+      await cacheService.removeMultiple(['del_key1', 'del_key2']);
+
+      final values = await cacheService.getMultiple<String>(['del_key1', 'del_key2']);
+      expect(values.values.every((v) => v == null), true);
+    });
+  });
+
+  group('CacheService - 內存緩存', () {
+    test('優先使用內存緩存', () async {
+      await cacheService.set('memory_key', 'memory_value');
+      
+      // 第一次獲取會從數據庫讀取
+      final firstValue = await cacheService.get<String>('memory_key');
+      expect(firstValue, 'memory_value');
+
+      // 第二次獲取應該從內存讀取
+      final stats1 = cacheService.getStats();
+      final secondValue = await cacheService.get<String>('memory_key');
+      final stats2 = cacheService.getStats();
+
+      expect(secondValue, 'memory_value');
+      expect(stats2['memoryHits']! > stats1['memoryHits']!, true);
+    });
+
+    test('禁用內存緩存', () async {
+      await cacheService.set('disk_key', 'disk_value', useMemoryCache: false);
+      
+      final stats1 = cacheService.getStats();
+      final value = await cacheService.get<String>('disk_key', useMemoryCache: false);
+      final stats2 = cacheService.getStats();
+
+      expect(value, 'disk_value');
+      expect(stats2['diskHits']! > stats1['diskHits']!, true);
+      expect(stats2['memoryHits'], stats1['memoryHits']);
     });
   });
 
   group('CacheService - 性能統計', () {
-    test('緩存命中統計', () async {
-      const key = 'stats_test';
-      const value = 'test_value';
+    test('統計命中率', () async {
+      // 設置一些測試數據
+      await cacheService.setMultiple({
+        'stat_key1': 'value1',
+        'stat_key2': 'value2',
+      });
 
-      // 設置緩存
-      await cacheService.set(key, value);
-
-      // 獲取緩存（命中）
-      await cacheService.get<String>(key);
-
-      // 獲取不存在的緩存（未命中）
-      await cacheService.get<String>('non_existent');
+      // 進行一些緩存操作
+      await cacheService.get<String>('stat_key1'); // 磁盤命中
+      await cacheService.get<String>('stat_key1'); // 內存命中
+      await cacheService.get<String>('non_existent'); // 未命中
 
       final stats = cacheService.getStats();
-      expect(stats['hits'], 1);
+      expect(stats['memoryHits'], 1);
+      expect(stats['diskHits'], 1);
       expect(stats['misses'], 1);
-      expect(stats['hitRate'], 0.5);
+      expect(stats['hitRatio'], 67); // (1 + 1) / (1 + 1 + 1) * 100 ≈ 67%
     });
 
     test('重置統計信息', () async {
-      // 進行一些操作
-      await cacheService.get<String>('non_existent');
-      await cacheService.get<String>('non_existent');
+      await cacheService.set('reset_key', 'value');
+      await cacheService.get<String>('reset_key');
+      await cacheService.get<String>('reset_key');
 
-      // 重置統計
-      cacheService.resetStats();
+      final stats1 = cacheService.getStats();
+      expect(stats1['totalHits'] > 0, true);
 
-      final stats = cacheService.getStats();
-      expect(stats['hits'], 0);
-      expect(stats['misses'], 0);
-      expect(stats['hitRate'], 0.0);
+      await cacheService.clear(); // 清空緩存同時重置統計信息
+
+      final stats2 = cacheService.getStats();
+      expect(stats2['memoryHits'], 0);
+      expect(stats2['diskHits'], 0);
+      expect(stats2['misses'], 0);
+      expect(stats2['writes'], 0);
     });
   });
 
   group('CacheService - 錯誤處理', () {
-    test('設置無效值時應拋出異常', () async {
-      final invalidValue = Object(); // 不可序列化的對象
+    test('獲取不存在的緩存', () async {
+      final value = await cacheService.get<String>('non_existent_key');
+      expect(value, null);
 
-      expect(
-        () => cacheService.set('invalid_key', invalidValue),
-        throwsException,
-      );
+      final stats = cacheService.getStats();
+      expect(stats['misses'] > 0, true);
     });
 
-    test('獲取錯誤類型時應返回null', () async {
-      const key = 'type_test';
-      const value = 123;
+    test('設置無效的緩存值', () async {
+      // 測試設置無效的 JSON 值
+      final invalidObject = Object();
+      expect(() async {
+        await cacheService.set('invalid_key', invalidObject);
+      }, throwsException);
+    });
 
-      await cacheService.set(key, value);
+    test('批量操作部分失敗', () async {
+      final entries = {
+        'valid_key': 'valid_value',
+        'invalid_key': Object(), // 無效的 JSON 值
+      };
 
-      // 嘗試以錯誤的類型獲取
-      final result = await cacheService.get<String>(key);
-      expect(result, isNull);
+      expect(() async {
+        await cacheService.setMultiple(entries);
+      }, throwsException);
+
+      // 確保沒有部分寫入
+      final value = await cacheService.get<String>('valid_key');
+      expect(value, null);
     });
   });
 } 

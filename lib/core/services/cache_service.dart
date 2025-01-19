@@ -6,15 +6,18 @@ import '../utils/logger.dart';
 import 'package:all_lucky/core/services/database_service.dart';
 
 final cacheServiceProvider = Provider<CacheService>((ref) {
-  return CacheService(ref.read(databaseServiceProvider));
+  final databaseService = ref.watch(databaseServiceProvider);
+  return CacheService(databaseService);
 });
 
 class CacheService {
   static const String _tableName = 'cache_records';
-  final DatabaseService _database;
+  final DatabaseService _databaseService;
   final _logger = Logger('CacheService');
+  final _memoryCache = <String, dynamic>{};
+  final _stats = _CacheStats();
 
-  CacheService(this._database);
+  CacheService(this._databaseService);
 
   // LRU 緩存，用於存儲最近使用的數據
   final _lruCache = _LruCache<String, dynamic>(maxSize: 100);
@@ -30,172 +33,228 @@ class CacheService {
     String key,
     dynamic value, {
     Duration? expiration,
+    bool useMemoryCache = true,
   }) async {
     try {
       final now = DateTime.now();
-      final expiresAt = expiration != null 
-        ? now.add(expiration)
-        : null;
+      final expiresAt = expiration != null ? now.add(expiration) : null;
+      final jsonValue = json.encode(value);
 
-      await _database.insert(
-        _tableName,
-        {
-          'key': key,
-          'value': jsonEncode(value),
-          'created_at': now.toIso8601String(),
-          'expires_at': expiresAt?.toIso8601String(),
-        },
-      );
+      await _databaseService.transaction((txn) async {
+        await txn.insert(
+          _tableName,
+          {
+            'key': key,
+            'value': jsonValue,
+            'created_at': now.toIso8601String(),
+            'expires_at': expiresAt?.toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      });
 
-      _logger.debug('緩存數據成功: $key');
+      if (useMemoryCache) {
+        _memoryCache[key] = value;
+      }
+
+      _stats.incrementWrites();
+      _logger.info('緩存設置成功: $key');
     } catch (e, stack) {
-      _logger.error('緩存數據失敗: $key', e, stack);
+      _logger.error('緩存設置失敗', e, stack);
       rethrow;
     }
   }
 
-  Future<T?> get<T>(String key) async {
+  Future<void> setMultiple(
+    Map<String, dynamic> entries, {
+    Duration? expiration,
+    bool useMemoryCache = true,
+  }) async {
     try {
       final now = DateTime.now();
-      final results = await _database.query(
+      final expiresAt = expiration != null ? now.add(expiration) : null;
+
+      await _databaseService.transaction((txn) async {
+        for (final entry in entries.entries) {
+          final jsonValue = json.encode(entry.value);
+          await txn.insert(
+            _tableName,
+            {
+              'key': entry.key,
+              'value': jsonValue,
+              'created_at': now.toIso8601String(),
+              'expires_at': expiresAt?.toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      });
+
+      if (useMemoryCache) {
+        _memoryCache.addAll(entries);
+      }
+
+      _stats.incrementWrites(entries.length);
+      _logger.info('批量緩存設置成功: ${entries.length} 條記錄');
+    } catch (e, stack) {
+      _logger.error('批量緩存設置失敗', e, stack);
+      rethrow;
+    }
+  }
+
+  Future<T?> get<T>(String key, {bool useMemoryCache = true}) async {
+    try {
+      if (useMemoryCache && _memoryCache.containsKey(key)) {
+        _stats.incrementMemoryHits();
+        return _memoryCache[key] as T?;
+      }
+
+      final results = await _databaseService.query(
         _tableName,
         where: 'key = ? AND (expires_at IS NULL OR expires_at > ?)',
-        whereArgs: [key, now.toIso8601String()],
+        whereArgs: [key, DateTime.now().toIso8601String()],
       );
 
       if (results.isEmpty) {
+        _stats.incrementMisses();
         return null;
       }
 
-      final value = results.first['value'] as String;
-      return jsonDecode(value) as T;
+      final value = json.decode(results.first['value'] as String);
+      
+      if (useMemoryCache) {
+        _memoryCache[key] = value;
+      }
+
+      _stats.incrementDiskHits();
+      return value as T?;
     } catch (e, stack) {
-      _logger.error('獲取緩存數據失敗: $key', e, stack);
-      return null;
+      _logger.error('緩存獲取失敗', e, stack);
+      rethrow;
+    }
+  }
+
+  Future<Map<String, T?>> getMultiple<T>(
+    List<String> keys, {
+    bool useMemoryCache = true,
+  }) async {
+    try {
+      final result = <String, T?>{};
+      final keysToFetch = <String>[];
+
+      if (useMemoryCache) {
+        for (final key in keys) {
+          if (_memoryCache.containsKey(key)) {
+            result[key] = _memoryCache[key] as T?;
+            _stats.incrementMemoryHits();
+          } else {
+            keysToFetch.add(key);
+          }
+        }
+      } else {
+        keysToFetch.addAll(keys);
+      }
+
+      if (keysToFetch.isNotEmpty) {
+        final results = await _databaseService.query(
+          _tableName,
+          where: 'key IN (${List.filled(keysToFetch.length, '?').join(',')}) '
+              'AND (expires_at IS NULL OR expires_at > ?)',
+          whereArgs: [...keysToFetch, DateTime.now().toIso8601String()],
+        );
+
+        for (final row in results) {
+          final key = row['key'] as String;
+          final value = json.decode(row['value'] as String) as T?;
+          result[key] = value;
+          
+          if (useMemoryCache) {
+            _memoryCache[key] = value;
+          }
+          
+          _stats.incrementDiskHits();
+        }
+
+        _stats.incrementMisses(keysToFetch.length - results.length);
+      }
+
+      return result;
+    } catch (e, stack) {
+      _logger.error('批量緩存獲取失敗', e, stack);
+      rethrow;
     }
   }
 
   Future<void> remove(String key) async {
     try {
-      await _database.delete(
+      await _databaseService.delete(
         _tableName,
         where: 'key = ?',
         whereArgs: [key],
       );
 
-      _logger.debug('刪除緩存數據成功: $key');
+      _memoryCache.remove(key);
+      _logger.info('緩存刪除成功: $key');
     } catch (e, stack) {
-      _logger.error('刪除緩存數據失敗: $key', e, stack);
+      _logger.error('緩存刪除失敗', e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> removeMultiple(List<String> keys) async {
+    try {
+      await _databaseService.transaction((txn) async {
+        await txn.delete(
+          _tableName,
+          where: 'key IN (${List.filled(keys.length, '?').join(',')})',
+          whereArgs: keys,
+        );
+      });
+
+      for (final key in keys) {
+        _memoryCache.remove(key);
+      }
+
+      _logger.info('批量緩存刪除成功: ${keys.length} 條記錄');
+    } catch (e, stack) {
+      _logger.error('批量緩存刪除失敗', e, stack);
       rethrow;
     }
   }
 
   Future<void> clear() async {
     try {
-      await _database.clearTable(_tableName);
-      _logger.info('清空緩存成功');
+      await _databaseService.clearTable(_tableName);
+      _memoryCache.clear();
+      _stats.reset();
+      _logger.info('緩存清空成功');
     } catch (e, stack) {
-      _logger.error('清空緩存失敗', e, stack);
-      rethrow;
-    }
-  }
-
-  Future<void> clearExpired() async {
-    try {
-      final now = DateTime.now();
-      await _database.delete(
-        _tableName,
-        where: 'expires_at IS NOT NULL AND expires_at <= ?',
-        whereArgs: [now.toIso8601String()],
-      );
-
-      _logger.info('清理過期緩存成功');
-    } catch (e, stack) {
-      _logger.error('清理過期緩存失敗', e, stack);
+      _logger.error('緩存清空失敗', e, stack);
       rethrow;
     }
   }
 
   Future<bool> has(String key) async {
     try {
-      final now = DateTime.now();
-      final results = await _database.query(
+      if (_memoryCache.containsKey(key)) {
+        return true;
+      }
+
+      final results = await _databaseService.query(
         _tableName,
-        columns: ['key'],
         where: 'key = ? AND (expires_at IS NULL OR expires_at > ?)',
-        whereArgs: [key, now.toIso8601String()],
+        whereArgs: [key, DateTime.now().toIso8601String()],
       );
 
       return results.isNotEmpty;
     } catch (e, stack) {
-      _logger.error('檢查緩存是否存在失敗: $key', e, stack);
-      return false;
-    }
-  }
-
-  Future<Map<String, dynamic>> getMultiple(List<String> keys) async {
-    try {
-      final now = DateTime.now();
-      final results = await _database.query(
-        _tableName,
-        where: 'key IN (${List.filled(keys.length, '?').join(',')}) '
-            'AND (expires_at IS NULL OR expires_at > ?)',
-        whereArgs: [...keys, now.toIso8601String()],
-      );
-
-      return {
-        for (var row in results)
-          row['key'] as String: jsonDecode(row['value'] as String)
-      };
-    } catch (e, stack) {
-      _logger.error('批量獲取緩存數據失敗', e, stack);
-      return {};
-    }
-  }
-
-  Future<void> setMultiple(Map<String, dynamic> entries, {
-    Duration? expiration,
-  }) async {
-    try {
-      final now = DateTime.now();
-      final expiresAt = expiration != null 
-        ? now.add(expiration)
-        : null;
-
-      await Future.wait(
-        entries.entries.map((entry) => _database.insert(
-          _tableName,
-          {
-            'key': entry.key,
-            'value': jsonEncode(entry.value),
-            'created_at': now.toIso8601String(),
-            'expires_at': expiresAt?.toIso8601String(),
-          },
-        )),
-      );
-
-      _logger.debug('批量緩存數據成功: ${entries.keys.join(', ')}');
-    } catch (e, stack) {
-      _logger.error('批量緩存數據失敗', e, stack);
+      _logger.error('緩存檢查失敗', e, stack);
       rethrow;
     }
   }
 
-  // 獲取緩存統計信息
-  Map<String, dynamic> getStats() {
-    return {
-      'hits': _hits,
-      'misses': _misses,
-      'hitRate': _hits / (_hits + _misses),
-      'lruSize': _lruCache.size,
-      'weakSize': _weakCache.size,
-    };
-  }
-
-  // 重置統計信息
-  void resetStats() {
-    _hits = 0;
-    _misses = 0;
+  Map<String, int> getStats() {
+    return _stats.toMap();
   }
 }
 
@@ -260,5 +319,41 @@ class WeakCache<K, V> {
 
   void clear() {
     _cache.clear();
+  }
+}
+
+class _CacheStats {
+  int _memoryHits = 0;
+  int _diskHits = 0;
+  int _misses = 0;
+  int _writes = 0;
+
+  void incrementMemoryHits([int count = 1]) => _memoryHits += count;
+  void incrementDiskHits([int count = 1]) => _diskHits += count;
+  void incrementMisses([int count = 1]) => _misses += count;
+  void incrementWrites([int count = 1]) => _writes += count;
+
+  void reset() {
+    _memoryHits = 0;
+    _diskHits = 0;
+    _misses = 0;
+    _writes = 0;
+  }
+
+  Map<String, int> toMap() {
+    return {
+      'memoryHits': _memoryHits,
+      'diskHits': _diskHits,
+      'misses': _misses,
+      'writes': _writes,
+      'totalHits': _memoryHits + _diskHits,
+      'hitRatio': _calculateHitRatio(),
+    };
+  }
+
+  int _calculateHitRatio() {
+    final totalOperations = _memoryHits + _diskHits + _misses;
+    if (totalOperations == 0) return 0;
+    return ((_memoryHits + _diskHits) * 100 ~/ totalOperations);
   }
 } 
