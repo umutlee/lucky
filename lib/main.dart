@@ -5,6 +5,8 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter/services.dart';
 import 'package:all_lucky/core/services/user_profile_service.dart';
 import 'package:all_lucky/core/services/preferences_service.dart';
+import 'package:all_lucky/core/services/database_service.dart';
+import 'package:all_lucky/core/services/cache_service.dart';
 import 'package:all_lucky/core/utils/logger.dart';
 import 'package:all_lucky/ui/app.dart';
 
@@ -23,6 +25,8 @@ Future<void> main() async {
       _initUserProfileService(),
       // 初始化偏好設置服務
       _initPreferencesService(),
+      // 初始化數據庫服務
+      _initDatabaseService(),
       // 預加載資源
       _preloadResources(),
       // 預加載系統字體
@@ -33,6 +37,8 @@ Future<void> main() async {
 
     final userProfileService = futures[1] as UserProfileService;
     final preferencesService = futures[2] as PreferencesService;
+    final databaseService = futures[3] as DatabaseService;
+    final cacheService = CacheService(databaseService);
 
     // 運行應用
     runApp(
@@ -40,6 +46,8 @@ Future<void> main() async {
         overrides: [
           userProfileServiceProvider.overrideWithValue(userProfileService),
           preferencesServiceProvider.overrideWithValue(preferencesService),
+          databaseServiceProvider.overrideWithValue(databaseService),
+          cacheServiceProvider.overrideWithValue(cacheService),
         ],
         child: const App(),
       ),
@@ -68,6 +76,17 @@ Future<PreferencesService> _initPreferencesService() async {
     return service;
   } catch (e, stack) {
     _logger.error('初始化偏好設置服務失敗', e, stack);
+    rethrow;
+  }
+}
+
+Future<DatabaseService> _initDatabaseService() async {
+  try {
+    final service = DatabaseService();
+    await service.init();
+    return service;
+  } catch (e, stack) {
+    _logger.error('初始化數據庫服務失敗', e, stack);
     rethrow;
   }
 }

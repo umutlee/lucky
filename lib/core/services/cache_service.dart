@@ -1,14 +1,21 @@
 import 'dart:collection';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/logger.dart';
+import 'package:all_lucky/core/services/database_service.dart';
+
+final cacheServiceProvider = Provider<CacheService>((ref) {
+  return CacheService(ref.read(databaseServiceProvider));
+});
 
 class CacheService {
-  static final CacheService _instance = CacheService._internal();
-  factory CacheService() => _instance;
-  CacheService._internal();
-
+  static const String _tableName = 'cache_records';
+  final DatabaseService _database;
   final _logger = Logger('CacheService');
-  
+
+  CacheService(this._database);
+
   // LRU 緩存，用於存儲最近使用的數據
   final _lruCache = _LruCache<String, dynamic>(maxSize: 100);
   
@@ -19,64 +26,158 @@ class CacheService {
   int _hits = 0;
   int _misses = 0;
 
-  T? get<T>(String key) {
+  Future<void> set(
+    String key,
+    dynamic value, {
+    Duration? expiration,
+  }) async {
     try {
-      // 先從 LRU 緩存中獲取
-      var value = _lruCache.get(key);
-      if (value != null) {
-        _hits++;
-        _logger.info('從 LRU 緩存中獲取數據: $key');
-        return value as T;
+      final now = DateTime.now();
+      final expiresAt = expiration != null 
+        ? now.add(expiration)
+        : null;
+
+      await _database.insert(
+        _tableName,
+        {
+          'key': key,
+          'value': jsonEncode(value),
+          'created_at': now.toIso8601String(),
+          'expires_at': expiresAt?.toIso8601String(),
+        },
+      );
+
+      _logger.debug('緩存數據成功: $key');
+    } catch (e, stack) {
+      _logger.error('緩存數據失敗: $key', e, stack);
+      rethrow;
+    }
+  }
+
+  Future<T?> get<T>(String key) async {
+    try {
+      final now = DateTime.now();
+      final results = await _database.query(
+        _tableName,
+        where: 'key = ? AND (expires_at IS NULL OR expires_at > ?)',
+        whereArgs: [key, now.toIso8601String()],
+      );
+
+      if (results.isEmpty) {
+        return null;
       }
 
-      // 再從弱引用緩存中獲取
-      value = _weakCache.get(key);
-      if (value != null) {
-        // 如果從弱引用緩存中找到，則移動到 LRU 緩存
-        _lruCache.put(key, value);
-        _hits++;
-        _logger.info('從弱引用緩存中獲取數據: $key');
-        return value as T;
-      }
-
-      _misses++;
-      _logger.info('緩存未命中: $key');
-      return null;
-    } catch (e) {
-      _logger.error('獲取緩存數據失敗: $e');
+      final value = results.first['value'] as String;
+      return jsonDecode(value) as T;
+    } catch (e, stack) {
+      _logger.error('獲取緩存數據失敗: $key', e, stack);
       return null;
     }
   }
 
-  void put<T>(String key, T value) {
+  Future<void> remove(String key) async {
     try {
-      // 先放入 LRU 緩存
-      _lruCache.put(key, value);
-      // 同時放入弱引用緩存
-      _weakCache.put(key, value);
-      _logger.info('添加數據到緩存: $key');
-    } catch (e) {
-      _logger.error('添加緩存數據失敗: $e');
+      await _database.delete(
+        _tableName,
+        where: 'key = ?',
+        whereArgs: [key],
+      );
+
+      _logger.debug('刪除緩存數據成功: $key');
+    } catch (e, stack) {
+      _logger.error('刪除緩存數據失敗: $key', e, stack);
+      rethrow;
     }
   }
 
-  void remove(String key) {
+  Future<void> clear() async {
     try {
-      _lruCache.remove(key);
-      _weakCache.remove(key);
-      _logger.info('從緩存中移除數據: $key');
-    } catch (e) {
-      _logger.error('移除緩存數據失敗: $e');
+      await _database.clearTable(_tableName);
+      _logger.info('清空緩存成功');
+    } catch (e, stack) {
+      _logger.error('清空緩存失敗', e, stack);
+      rethrow;
     }
   }
 
-  void clear() {
+  Future<void> clearExpired() async {
     try {
-      _lruCache.clear();
-      _weakCache.clear();
-      _logger.info('清空緩存');
-    } catch (e) {
-      _logger.error('清空緩存失敗: $e');
+      final now = DateTime.now();
+      await _database.delete(
+        _tableName,
+        where: 'expires_at IS NOT NULL AND expires_at <= ?',
+        whereArgs: [now.toIso8601String()],
+      );
+
+      _logger.info('清理過期緩存成功');
+    } catch (e, stack) {
+      _logger.error('清理過期緩存失敗', e, stack);
+      rethrow;
+    }
+  }
+
+  Future<bool> has(String key) async {
+    try {
+      final now = DateTime.now();
+      final results = await _database.query(
+        _tableName,
+        columns: ['key'],
+        where: 'key = ? AND (expires_at IS NULL OR expires_at > ?)',
+        whereArgs: [key, now.toIso8601String()],
+      );
+
+      return results.isNotEmpty;
+    } catch (e, stack) {
+      _logger.error('檢查緩存是否存在失敗: $key', e, stack);
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> getMultiple(List<String> keys) async {
+    try {
+      final now = DateTime.now();
+      final results = await _database.query(
+        _tableName,
+        where: 'key IN (${List.filled(keys.length, '?').join(',')}) '
+            'AND (expires_at IS NULL OR expires_at > ?)',
+        whereArgs: [...keys, now.toIso8601String()],
+      );
+
+      return {
+        for (var row in results)
+          row['key'] as String: jsonDecode(row['value'] as String)
+      };
+    } catch (e, stack) {
+      _logger.error('批量獲取緩存數據失敗', e, stack);
+      return {};
+    }
+  }
+
+  Future<void> setMultiple(Map<String, dynamic> entries, {
+    Duration? expiration,
+  }) async {
+    try {
+      final now = DateTime.now();
+      final expiresAt = expiration != null 
+        ? now.add(expiration)
+        : null;
+
+      await Future.wait(
+        entries.entries.map((entry) => _database.insert(
+          _tableName,
+          {
+            'key': entry.key,
+            'value': jsonEncode(entry.value),
+            'created_at': now.toIso8601String(),
+            'expires_at': expiresAt?.toIso8601String(),
+          },
+        )),
+      );
+
+      _logger.debug('批量緩存數據成功: ${entries.keys.join(', ')}');
+    } catch (e, stack) {
+      _logger.error('批量緩存數據失敗', e, stack);
+      rethrow;
     }
   }
 
