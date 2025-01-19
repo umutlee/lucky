@@ -17,15 +17,14 @@ class HoroscopeImageHelper {
   };
 
   static String getHoroscopeImage(String horoscope) {
-    final englishName = _horoscopeNameMap[horoscope];
-    if (englishName == null) {
+    if (!isValidHoroscope(horoscope)) {
       throw ArgumentError('Invalid horoscope name: $horoscope');
     }
-    return '$_basePath$englishName.png';
+    return '$_basePath${_horoscopeNameMap[horoscope]}.jpg';
   }
 
   static List<String> getAllHoroscopeImages() {
-    return _horoscopeNameMap.values.map((name) => '$_basePath$name.png').toList();
+    return _horoscopeNameMap.values.map((name) => '$_basePath$name.jpg').toList();
   }
 
   static bool isValidHoroscope(String horoscope) {
