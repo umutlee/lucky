@@ -10,13 +10,11 @@ final compassProvider = StreamProvider<CompassDirection>((ref) {
 });
 
 class CompassWidget extends ConsumerStatefulWidget {
-  final List<String> luckyDirections;
   final double size;
   final void Function(CompassDirection)? onDirectionChanged;
 
   const CompassWidget({
     super.key,
-    required this.luckyDirections,
     this.size = 300,
     this.onDirectionChanged,
   });
@@ -52,11 +50,9 @@ class _CompassWidgetState extends ConsumerState<CompassWidget>
 
     return direction.when(
       data: (data) {
-        // 計算旋轉角度差異
         final angleDiff = (data.degrees - _lastAngle) % 360;
         _lastAngle = data.degrees;
 
-        // 只有當方位發生顯著變化時才觸發回調
         if (_lastDirection == null ||
             !data.isNear(_lastDirection!, tolerance: 5.0)) {
           _lastDirection = data;
@@ -65,7 +61,6 @@ class _CompassWidgetState extends ConsumerState<CompassWidget>
           });
         }
 
-        // 使用動畫進行平滑過渡
         _controller.forward(from: 0.0);
 
         return _buildCompass(context, data, angleDiff);
@@ -82,12 +77,6 @@ class _CompassWidgetState extends ConsumerState<CompassWidget>
     CompassDirection direction,
     double angleDiff,
   ) {
-    final service = CompassService();
-    final nearestLucky = service.getNearestLuckyDirection(
-      direction,
-      widget.luckyDirections,
-    );
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -97,7 +86,6 @@ class _CompassWidgetState extends ConsumerState<CompassWidget>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // 背景圓圈
               Container(
                 width: widget.size,
                 height: widget.size,
@@ -113,11 +101,9 @@ class _CompassWidgetState extends ConsumerState<CompassWidget>
                   ],
                 ),
               ),
-              // 方位標記
               ...List.generate(8, (index) {
                 final angle = index * 45.0;
                 final rad = angle * math.pi / 180;
-                final isLucky = widget.luckyDirections.contains(_getDirectionName(angle));
                 
                 return Transform(
                   transform: Matrix4.identity()
@@ -127,15 +113,14 @@ class _CompassWidgetState extends ConsumerState<CompassWidget>
                     ),
                   child: Text(
                     _getDirectionName(angle),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isLucky ? Colors.red : Colors.black54,
+                      color: Colors.black54,
                     ),
                   ),
                 );
               }),
-              // 指針
               AnimatedBuilder(
                 animation: _controller,
                 builder: (context, child) {
@@ -151,7 +136,6 @@ class _CompassWidgetState extends ConsumerState<CompassWidget>
                   painter: CompassNeedlePainter(),
                 ),
               ),
-              // 中心點
               Container(
                 width: 20,
                 height: 20,
@@ -164,7 +148,6 @@ class _CompassWidgetState extends ConsumerState<CompassWidget>
           ),
         ),
         const SizedBox(height: 16),
-        // 當前方位信息
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           child: Text(
@@ -173,21 +156,6 @@ class _CompassWidgetState extends ConsumerState<CompassWidget>
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
-        if (nearestLucky != null) ...[
-          const SizedBox(height: 8),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: Text(
-              '最近的吉利方位: ${nearestLucky.direction}',
-              key: ValueKey(nearestLucky.direction),
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.red,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -233,5 +201,5 @@ class CompassNeedlePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 } 

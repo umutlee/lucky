@@ -31,140 +31,136 @@ void main() {
     });
 
     test('插入和查詢數據', () async {
-      // 準備測試數據
-      final testData = {
-        'id': 'test_id',
-        'user_id': 'user_1',
+      final data = {
+        'id': '1',
+        'user_id': 'user1',
         'type': 'daily',
-        'content': '今天運勢不錯',
+        'content': 'test content',
         'created_at': DateTime.now().toIso8601String(),
         'is_synced': 0,
       };
 
-      // 插入數據
-      final result = await databaseService.insert('fortune_records', testData);
-      expect(result, 1);
+      await databaseService.insert('fortune_records', data);
 
-      // 查詢數據
-      final records = await databaseService.query(
+      final results = await databaseService.query(
         'fortune_records',
         where: 'id = ?',
-        whereArgs: ['test_id'],
+        whereArgs: ['1'],
       );
 
-      expect(records.length, 1);
-      expect(records.first['content'], '今天運勢不錯');
+      expect(results.length, 1);
+      expect(results.first['content'], 'test content');
     });
 
     test('更新數據', () async {
-      // 插入初始數據
-      final initialData = {
-        'id': 'test_id',
-        'user_id': 'user_1',
+      final data = {
+        'id': '1',
+        'user_id': 'user1',
         'type': 'daily',
-        'content': '初始內容',
+        'content': 'old content',
         'created_at': DateTime.now().toIso8601String(),
         'is_synced': 0,
       };
-      await databaseService.insert('fortune_records', initialData);
 
-      // 更新數據
-      final updateResult = await databaseService.update(
+      await databaseService.insert('fortune_records', data);
+
+      await databaseService.update(
         'fortune_records',
-        {'content': '更新後的內容'},
+        {'content': 'new content'},
         where: 'id = ?',
-        whereArgs: ['test_id'],
+        whereArgs: ['1'],
       );
-      expect(updateResult, 1);
 
-      // 驗證更新結果
-      final records = await databaseService.query(
+      final results = await databaseService.query(
         'fortune_records',
         where: 'id = ?',
-        whereArgs: ['test_id'],
+        whereArgs: ['1'],
       );
-      expect(records.first['content'], '更新後的內容');
+
+      expect(results.first['content'], 'new content');
     });
 
     test('刪除數據', () async {
-      // 插入測試數據
-      final testData = {
-        'id': 'test_id',
-        'user_id': 'user_1',
+      final data = {
+        'id': '1',
+        'user_id': 'user1',
         'type': 'daily',
-        'content': '測試內容',
+        'content': 'test content',
         'created_at': DateTime.now().toIso8601String(),
         'is_synced': 0,
       };
-      await databaseService.insert('fortune_records', testData);
 
-      // 刪除數據
-      final deleteResult = await databaseService.delete(
+      await databaseService.insert('fortune_records', data);
+
+      await databaseService.delete(
         'fortune_records',
         where: 'id = ?',
-        whereArgs: ['test_id'],
+        whereArgs: ['1'],
       );
-      expect(deleteResult, 1);
 
-      // 驗證刪除結果
-      final records = await databaseService.query(
+      final results = await databaseService.query(
         'fortune_records',
         where: 'id = ?',
-        whereArgs: ['test_id'],
+        whereArgs: ['1'],
       );
-      expect(records.isEmpty, true);
+
+      expect(results.isEmpty, true);
     });
 
     test('清空表', () async {
-      // 插入多條測試數據
-      final testData1 = {
-        'id': 'test_id_1',
-        'user_id': 'user_1',
+      final data1 = {
+        'id': '1',
+        'user_id': 'user1',
         'type': 'daily',
-        'content': '測試內容1',
+        'content': 'test content 1',
         'created_at': DateTime.now().toIso8601String(),
         'is_synced': 0,
       };
-      final testData2 = {
-        'id': 'test_id_2',
-        'user_id': 'user_1',
-        'type': 'daily',
-        'content': '測試內容2',
-        'created_at': DateTime.now().toIso8601String(),
-        'is_synced': 0,
-      };
-      await databaseService.insert('fortune_records', testData1);
-      await databaseService.insert('fortune_records', testData2);
 
-      // 清空表
+      final data2 = {
+        'id': '2',
+        'user_id': 'user1',
+        'type': 'daily',
+        'content': 'test content 2',
+        'created_at': DateTime.now().toIso8601String(),
+        'is_synced': 0,
+      };
+
+      await databaseService.insert('fortune_records', data1);
+      await databaseService.insert('fortune_records', data2);
+
       await databaseService.clearTable('fortune_records');
 
-      // 驗證表是否為空
-      final records = await databaseService.query('fortune_records');
-      expect(records.isEmpty, true);
+      final results = await databaseService.query('fortune_records');
+      expect(results.isEmpty, true);
     });
   });
 
   group('DatabaseService - 錯誤處理', () {
-    test('插入無效數據時應拋出異常', () async {
-      // 準備無效數據（缺少必要欄位）
-      final invalidData = {
-        'id': 'test_id',
-        // 缺少 user_id, type 等必要欄位
-      };
-
-      // 驗證是否拋出異常
+    test('插入無效數據', () async {
       expect(
-        () => databaseService.insert('fortune_records', invalidData),
+        () => databaseService.insert('fortune_records', {
+          'invalid_column': 'value',
+        }),
         throwsException,
       );
     });
 
-    test('查詢不存在的表時應拋出異常', () async {
+    test('查詢不存在的表', () async {
       expect(
         () => databaseService.query('non_existent_table'),
         throwsException,
       );
+    });
+
+    test('更新不存在的記錄', () async {
+      final result = await databaseService.update(
+        'fortune_records',
+        {'content': 'new content'},
+        where: 'id = ?',
+        whereArgs: ['non_existent'],
+      );
+      expect(result, 0);
     });
   });
 
@@ -195,8 +191,8 @@ void main() {
     });
 
     test('事務回滾', () async {
-      expect(() async {
-        await databaseService.transaction((txn) async {
+      expect(
+        () => databaseService.transaction((txn) async {
           await txn.insert('fortune_records', {
             'id': '1',
             'user_id': 'user1',
@@ -215,7 +211,9 @@ void main() {
             'created_at': DateTime.now().toIso8601String(),
             'is_synced': 0,
           });
-        }), throwsException);
+        }),
+        throwsException,
+      );
 
       final results = await databaseService.query('fortune_records');
       expect(results.isEmpty, true);

@@ -5,6 +5,7 @@ import 'package:all_lucky/ui/screens/onboarding/welcome_page.dart';
 import 'package:all_lucky/ui/screens/onboarding/user_type_page.dart';
 import 'package:all_lucky/ui/screens/onboarding/basic_info_page.dart';
 import 'package:all_lucky/ui/screens/onboarding/preference_page.dart';
+import 'package:all_lucky/core/utils/logger.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({Key? key}) : super(key: key);
@@ -13,7 +14,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   final List<GlobalKey<FormState>> _formKeys = [
     GlobalKey<FormState>(),
@@ -21,20 +22,38 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     GlobalKey<FormState>(),
     GlobalKey<FormState>(),
   ];
+  
+  late AnimationController _animationController;
+  late Animation<double> _progressAnimation;
+  
   int _currentPage = 0;
   bool _isLoading = false;
+  final _logger = Logger('OnboardingScreen');
 
   @override
   void initState() {
     super.initState();
     _initializeServices();
+    _setupAnimations();
+  }
+
+  void _setupAnimations() {
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _progressAnimation = Tween<double>(begin: 0, end: 0.25).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
   }
 
   Future<void> _initializeServices() async {
     setState(() => _isLoading = true);
     try {
       await ref.read(userProfileServiceProvider).init();
+      _logger.info('用戶配置服務初始化成功');
     } catch (e) {
+      _logger.error('用戶配置服務初始化失敗: $e');
       if (mounted) {
         _showErrorDialog('初始化失敗', '請檢查您的網絡連接並重試。');
       }
@@ -74,6 +93,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -89,7 +109,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       setState(() {
         _currentPage++;
       });
-      _pageController.nextPage(
+      
+      // 更新進度動畫
+      _progressAnimation = Tween<double>(
+        begin: _currentPage * 0.25,
+        end: (_currentPage + 1) * 0.25,
+      ).animate(
+        CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+      );
+      _animationController.forward(from: 0);
+
+      await _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
@@ -107,6 +137,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('請檢查並填寫所有必填項'),
+          behavior: SnackBarBehavior.floating,
           duration: Duration(seconds: 2),
         ),
       );
@@ -120,12 +151,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     try {
       final userProfileService = ref.read(userProfileServiceProvider);
       await userProfileService.completeOnboarding();
+      _logger.info('完成引導流程');
       
       if (mounted) {
         Navigator.of(context).pop(); // 關閉加載對話框
         Navigator.of(context).pushReplacementNamed('/home');
       }
     } catch (e) {
+      _logger.error('保存用戶設置失敗: $e');
       if (mounted) {
         Navigator.of(context).pop(); // 關閉加載對話框
         _showErrorDialog('保存失敗', '無法保存您的設置，請稍後重試。');
@@ -147,6 +180,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // 進度指示器
+            LinearProgressIndicator(
+              value: _progressAnimation.value,
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).primaryColor,
+              ),
+            ),
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -170,7 +211,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (_currentPage > 0)
-                    TextButton(
+                    TextButton.icon(
                       onPressed: () {
                         _pageController.previousPage(
                           duration: const Duration(milliseconds: 300),
@@ -180,14 +221,36 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           _currentPage--;
                         });
                       },
-                      child: const Text('上一步'),
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('上一步'),
                     )
                   else
-                    const SizedBox(width: 80),
-                  Text('${_currentPage + 1}/4'),
-                  ElevatedButton(
+                    const SizedBox(width: 100),
+                  Row(
+                    children: List.generate(4, (index) => 
+                      Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: index == _currentPage 
+                            ? Theme.of(context).primaryColor
+                            : Colors.grey[300],
+                        ),
+                      ),
+                    ),
+                  ),
+                  ElevatedButton.icon(
                     onPressed: _handleNextPage,
-                    child: Text(_currentPage == 3 ? '完成' : '下一步'),
+                    icon: Icon(_currentPage == 3 ? Icons.check : Icons.arrow_forward),
+                    label: Text(_currentPage == 3 ? '完成' : '下一步'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                    ),
                   ),
                 ],
               ),

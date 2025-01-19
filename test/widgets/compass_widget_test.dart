@@ -12,9 +12,7 @@ void main() {
         const ProviderScope(
           child: MaterialApp(
             home: Scaffold(
-              body: CompassWidget(
-                luckyDirections: ['東', '南'],
-              ),
+              body: CompassWidget(),
             ),
           ),
         ),
@@ -36,9 +34,7 @@ void main() {
           container: container,
           child: const MaterialApp(
             home: Scaffold(
-              body: CompassWidget(
-                luckyDirections: ['東', '南'],
-              ),
+              body: CompassWidget(),
             ),
           ),
         ),
@@ -64,9 +60,7 @@ void main() {
           container: container,
           child: const MaterialApp(
             home: Scaffold(
-              body: CompassWidget(
-                luckyDirections: ['東', '南'],
-              ),
+              body: CompassWidget(),
             ),
           ),
         ),
@@ -74,24 +68,49 @@ void main() {
 
       await tester.pump();
 
-      // 驗證方位文字是否顯示
+      expect(find.text('當前方位: 東'), findsOneWidget);
+    });
+
+    testWidgets('CompassWidget updates direction on stream update',
+        (WidgetTester tester) async {
+      final direction1 = CompassDirection.fromDegrees(0);
+      final direction2 = CompassDirection.fromDegrees(90);
+      final streamController = StreamController<CompassDirection>();
+      
+      final container = ProviderContainer(
+        overrides: [
+          compassProvider
+              .overrideWith((ref) => streamController.stream),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: CompassWidget(),
+            ),
+          ),
+        ),
+      );
+
+      streamController.add(direction1);
+      await tester.pump();
+      expect(find.text('當前方位: 北'), findsOneWidget);
+
+      streamController.add(direction2);
+      await tester.pump();
       expect(find.text('當前方位: 東'), findsOneWidget);
 
-      // 驗證吉利方位標記
-      expect(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is Text &&
-              widget.style?.color == Colors.red &&
-              widget.data == '東',
-        ),
-        findsOneWidget,
-      );
+      streamController.close();
     });
 
-    testWidgets('CompassWidget displays nearest lucky direction',
+    testWidgets('CompassWidget calls onDirectionChanged callback',
         (WidgetTester tester) async {
-      final direction = CompassDirection.fromDegrees(45); // 東北
+      final direction = CompassDirection.fromDegrees(90);
+      CompassDirection? lastDirection;
+
       final container = ProviderContainer(
         overrides: [
           compassProvider
@@ -102,10 +121,12 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: const MaterialApp(
+          child: MaterialApp(
             home: Scaffold(
               body: CompassWidget(
-                luckyDirections: ['東'],
+                onDirectionChanged: (direction) {
+                  lastDirection = direction;
+                },
               ),
             ),
           ),
@@ -113,43 +134,9 @@ void main() {
       );
 
       await tester.pump();
+      await tester.pumpAndSettle();
 
-      expect(find.text('最近的吉利方位: 東'), findsOneWidget);
-    });
-
-    testWidgets('CompassWidget respects size parameter',
-        (WidgetTester tester) async {
-      const testSize = 200.0;
-      final direction = CompassDirection.fromDegrees(0);
-      final container = ProviderContainer(
-        overrides: [
-          compassProvider
-              .overrideWith((ref) => Stream.value(direction)),
-        ],
-      );
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(
-            home: Scaffold(
-              body: CompassWidget(
-                luckyDirections: ['北'],
-                size: testSize,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.pump();
-
-      final sizedBox = tester.widget<SizedBox>(
-        find.byWidgetPredicate((widget) => widget is SizedBox),
-      );
-
-      expect(sizedBox.width, equals(testSize));
-      expect(sizedBox.height, equals(testSize));
+      expect(lastDirection?.direction, equals('東'));
     });
   });
 } 

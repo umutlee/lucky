@@ -4,7 +4,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:get/get.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/logger.dart';
 
 class NotificationException implements Exception {
@@ -25,7 +24,6 @@ class NotificationService {
   final _logger = Logger('NotificationService');
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-  // 用於測試的 setter
   @visibleForTesting
   set testNotificationsPlugin(FlutterLocalNotificationsPlugin plugin) {
     flutterLocalNotificationsPlugin = plugin;
@@ -76,7 +74,6 @@ class NotificationService {
       }
 
       final data = json.decode(response.payload!) as Map<String, dynamic>;
-      final type = data['type'] as String;
       final route = data['route'] as String;
 
       Get.toNamed(route, arguments: data);
@@ -103,7 +100,6 @@ class NotificationService {
         notifyTime.minute,
       );
 
-      // 如果設定時間已過，則設置為明天
       if (scheduledDate.isBefore(now)) {
         scheduledDate = scheduledDate.add(const Duration(days: 1));
         _logger.info('通知時間已過，設置為明天: $scheduledDate');
@@ -128,68 +124,6 @@ class NotificationService {
     } catch (e) {
       _logger.error('排程每日運勢通知失敗: $e');
       throw NotificationException('排程每日運勢通知失敗: $e', 'SCHEDULE_ERROR');
-    }
-  }
-
-  Future<void> scheduleSolarTermNotification(DateTime termDate, String termName) async {
-    try {
-      _logger.info('排程節氣提醒通知，日期: $termDate，節氣: $termName');
-      
-      if (termName.isEmpty) {
-        termName = '新節氣';
-        _logger.warning('節氣名稱為空，使用默認值');
-      }
-
-      final payload = json.encode({
-        'type': 'solar_term',
-        'route': '/solar-term',
-        'date': termDate.toIso8601String(),
-        'term': termName,
-      });
-
-      await _scheduleNotification(
-        id: 1,
-        title: '節氣提醒',
-        body: '$termName即將到來，點擊查看詳情',
-        scheduledDate: termDate,
-        payload: payload,
-      );
-
-      _logger.info('節氣提醒通知排程成功');
-    } catch (e) {
-      _logger.error('排程節氣提醒通知失敗: $e');
-      throw NotificationException('排程節氣提醒通知失敗: $e', 'SCHEDULE_ERROR');
-    }
-  }
-
-  Future<void> scheduleLuckyDayNotification(DateTime luckyDate, String description) async {
-    try {
-      _logger.info('排程吉日提醒通知，日期: $luckyDate，描述: $description');
-      
-      if (description.isEmpty) {
-        description = '吉日';
-        _logger.warning('吉日描述為空，使用默認值');
-      }
-
-      final payload = json.encode({
-        'type': 'lucky_day',
-        'route': '/lucky-day',
-        'date': luckyDate.toIso8601String(),
-        'description': description,
-      });
-
-      await _scheduleNotification(
-        id: 2,
-        title: '吉日提醒',
-        body: '明天是$description的好日子，點擊查看詳情',
-        scheduledDate: luckyDate,
-        payload: payload,
-      );
-
-      _logger.info('吉日提醒通知排程成功');
-    } catch (e) {
-      _logger.error('排程吉日提醒通知失敗: $e');
-      throw NotificationException('排程吉日提醒通知失敗: $e', 'SCHEDULE_ERROR');
     }
   }
 
@@ -248,17 +182,6 @@ class NotificationService {
     }
   }
 
-  Future<void> cancelNotification(int id) async {
-    try {
-      _logger.info('取消通知 ID: $id');
-      await flutterLocalNotificationsPlugin.cancel(id);
-      _logger.info('通知已取消');
-    } catch (e) {
-      _logger.error('取消通知時發生錯誤: $e');
-      throw NotificationException('取消通知失敗: $e', 'CANCEL_ERROR');
-    }
-  }
-
   Future<List<PendingNotificationRequest>> getPendingNotifications() async {
     try {
       _logger.info('獲取待處理通知列表...');
@@ -268,25 +191,6 @@ class NotificationService {
     } catch (e) {
       _logger.error('獲取待處理通知列表時發生錯誤: $e');
       throw NotificationException('獲取待處理通知列表失敗: $e', 'GET_PENDING_ERROR');
-    }
-  }
-
-  void onNotificationResponse(NotificationResponse response) {
-    try {
-      _logger.info('收到通知點擊: ${response.payload}');
-      if (response.payload == null) {
-        _logger.warning('通知沒有包含 payload');
-        return;
-      }
-
-      final data = json.decode(response.payload!) as Map<String, dynamic>;
-      final type = data['type'] as String;
-      final route = data['route'] as String;
-
-      Get.toNamed(route, arguments: data);
-    } catch (e) {
-      _logger.error('處理通知點擊時發生錯誤: $e');
-      throw NotificationException('處理通知點擊失敗: $e', 'PAYLOAD_ERROR');
     }
   }
 } 

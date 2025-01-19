@@ -1,45 +1,40 @@
 import 'package:logger/logger.dart' as log;
-import 'package:flutter/foundation.dart';
 
 class Logger {
   final String _tag;
   late final log.Logger _logger;
 
-  static final Map<String, Logger> _cache = {};
-
-  factory Logger(String tag) {
-    return _cache.putIfAbsent(tag, () => Logger._internal(tag));
-  }
-
-  Logger._internal(this._tag) {
+  Logger(this._tag) {
     _logger = log.Logger(
-      printer: _CustomPrinter(_tag),
-      level: kDebugMode ? log.Level.verbose : log.Level.warning,
+      printer: log.PrettyPrinter(
+        methodCount: 2,
+        errorMethodCount: 8,
+        lineLength: 120,
+        colors: true,
+        printEmojis: true,
+        printTime: true,
+      ),
     );
   }
 
-  void verbose(String message) {
-    _logger.v(message);
+  void debug(String message, [dynamic error, StackTrace? stackTrace]) {
+    _logger.d('[$_tag] $message', error, stackTrace);
   }
 
-  void debug(String message) {
-    _logger.d(message);
-  }
-
-  void info(String message) {
-    _logger.i(message);
+  void info(String message, [dynamic error, StackTrace? stackTrace]) {
+    _logger.i('[$_tag] $message', error, stackTrace);
   }
 
   void warning(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.w(message, error: error, stackTrace: stackTrace);
+    _logger.w('[$_tag] $message', error, stackTrace);
   }
 
   void error(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.e(message, error: error, stackTrace: stackTrace);
+    _logger.e('[$_tag] $message', error, stackTrace);
   }
 
   void wtf(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.wtf(message, error: error, stackTrace: stackTrace);
+    _logger.wtf('[$_tag] $message', error, stackTrace);
   }
 }
 

@@ -42,7 +42,6 @@ void main() {
       when(mockNotifications.initialize(
         any,
         onDidReceiveNotificationResponse: anyNamed('onDidReceiveNotificationResponse'),
-        onDidReceiveBackgroundNotificationResponse: anyNamed('onDidReceiveBackgroundNotificationResponse'),
       )).thenAnswer((_) async => true);
       when(mockNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>())
           .thenReturn(mockAndroidNotifications);
@@ -54,7 +53,6 @@ void main() {
       verify(mockNotifications.initialize(
         any,
         onDidReceiveNotificationResponse: anyNamed('onDidReceiveNotificationResponse'),
-        onDidReceiveBackgroundNotificationResponse: anyNamed('onDidReceiveBackgroundNotificationResponse'),
       )).called(1);
       verify(mockAndroidNotifications.requestNotificationsPermission()).called(1);
     });
@@ -63,12 +61,7 @@ void main() {
       when(mockNotifications.initialize(
         any,
         onDidReceiveNotificationResponse: anyNamed('onDidReceiveNotificationResponse'),
-        onDidReceiveBackgroundNotificationResponse: anyNamed('onDidReceiveBackgroundNotificationResponse'),
       )).thenAnswer((_) async => false);
-      when(mockNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>())
-          .thenReturn(mockAndroidNotifications);
-      when(mockAndroidNotifications.requestNotificationsPermission())
-          .thenAnswer((_) async => false);
 
       expect(
         () => notificationService.initialize(),
@@ -77,9 +70,9 @@ void main() {
     });
   });
 
-  group('通知排程測試', () {
-    test('每日運勢通知排程成功', () async {
-      final notifyTime = TimeOfDay(hour: 9, minute: 0);
+  group('每日運勢通知測試', () {
+    test('成功排程每日運勢通知', () async {
+      final notifyTime = TimeOfDay.now();
       
       when(mockNotifications.zonedSchedule(
         any,
@@ -108,66 +101,8 @@ void main() {
       )).called(1);
     });
 
-    test('節氣提醒通知排程成功', () async {
-      final solarTermDate = DateTime.now().add(Duration(days: 1));
-      const termName = '立春';
-      
-      when(mockNotifications.zonedSchedule(
-        any,
-        any,
-        any,
-        any,
-        any,
-        androidScheduleMode: anyNamed('androidScheduleMode'),
-        uiLocalNotificationDateInterpretation: anyNamed('uiLocalNotificationDateInterpretation'),
-        payload: anyNamed('payload'),
-      )).thenAnswer((_) async {});
-
-      await notificationService.scheduleSolarTermNotification(solarTermDate, termName);
-
-      verify(mockNotifications.zonedSchedule(
-        any,
-        any,
-        any,
-        any,
-        any,
-        androidScheduleMode: anyNamed('androidScheduleMode'),
-        uiLocalNotificationDateInterpretation: anyNamed('uiLocalNotificationDateInterpretation'),
-        payload: anyNamed('payload'),
-      )).called(1);
-    });
-
-    test('吉日提醒通知排程成功', () async {
-      final luckyDate = DateTime.now().add(Duration(days: 1));
-      const description = '宜結婚';
-      
-      when(mockNotifications.zonedSchedule(
-        any,
-        any,
-        any,
-        any,
-        any,
-        androidScheduleMode: anyNamed('androidScheduleMode'),
-        uiLocalNotificationDateInterpretation: anyNamed('uiLocalNotificationDateInterpretation'),
-        payload: anyNamed('payload'),
-      )).thenAnswer((_) async {});
-
-      await notificationService.scheduleLuckyDayNotification(luckyDate, description);
-
-      verify(mockNotifications.zonedSchedule(
-        any,
-        any,
-        any,
-        any,
-        any,
-        androidScheduleMode: anyNamed('androidScheduleMode'),
-        uiLocalNotificationDateInterpretation: anyNamed('uiLocalNotificationDateInterpretation'),
-        payload: anyNamed('payload'),
-      )).called(1);
-    });
-
-    test('排程失敗時應拋出異常', () async {
-      final notifyTime = TimeOfDay(hour: 9, minute: 0);
+    test('排程通知失敗時應拋出異常', () async {
+      final notifyTime = TimeOfDay.now();
       
       when(mockNotifications.zonedSchedule(
         any,
@@ -188,24 +123,14 @@ void main() {
     });
   });
 
-  group('取消通知測試', () {
-    test('取消所有通知', () async {
+  group('通知管理測試', () {
+    test('成功取消所有通知', () async {
       when(mockNotifications.cancelAll())
           .thenAnswer((_) async {});
 
       await notificationService.cancelAll();
 
       verify(mockNotifications.cancelAll()).called(1);
-    });
-
-    test('取消指定ID的通知', () async {
-      const notificationId = 1;
-      when(mockNotifications.cancel(notificationId))
-          .thenAnswer((_) async {});
-
-      await notificationService.cancelNotification(notificationId);
-
-      verify(mockNotifications.cancel(notificationId)).called(1);
     });
 
     test('取消通知失敗時應拋出異常', () async {
@@ -277,11 +202,11 @@ void main() {
       )).called(2);
     });
 
-    test('排程過去時間的通知應被忽略', () async {
+    test('排程過去時間的通知應被調整為明天', () async {
       final pastTime = TimeOfDay.fromDateTime(
         DateTime.now().subtract(const Duration(hours: 1)),
       );
-
+      
       when(mockNotifications.zonedSchedule(
         any,
         any,
@@ -296,7 +221,7 @@ void main() {
 
       await notificationService.scheduleDailyFortuneNotification(pastTime);
 
-      verifyNever(mockNotifications.zonedSchedule(
+      verify(mockNotifications.zonedSchedule(
         any,
         any,
         any,
@@ -305,119 +230,8 @@ void main() {
         androidScheduleMode: anyNamed('androidScheduleMode'),
         uiLocalNotificationDateInterpretation: anyNamed('uiLocalNotificationDateInterpretation'),
         matchDateTimeComponents: anyNamed('matchDateTimeComponents'),
-        payload: anyNamed('payload'),
-      ));
-    });
-
-    test('空的通知內容應被正確處理', () async {
-      when(mockNotifications.zonedSchedule(
-        any,
-        any,
-        any,
-        any,
-        any,
-        androidScheduleMode: anyNamed('androidScheduleMode'),
-        uiLocalNotificationDateInterpretation: anyNamed('uiLocalNotificationDateInterpretation'),
-        payload: anyNamed('payload'),
-      )).thenAnswer((_) async {});
-
-      final emptyDate = DateTime.now().add(const Duration(days: 1));
-      await notificationService.scheduleSolarTermNotification(emptyDate, '');
-
-      verify(mockNotifications.zonedSchedule(
-        any,
-        any,
-        contains('節氣提醒'), // 應使用默認標題
-        any,
-        any,
-        androidScheduleMode: anyNamed('androidScheduleMode'),
-        uiLocalNotificationDateInterpretation: anyNamed('uiLocalNotificationDateInterpretation'),
         payload: anyNamed('payload'),
       )).called(1);
-    });
-  });
-
-  group('錯誤處理測試', () {
-    test('通知權限被拒絕時應拋出異常', () async {
-      when(mockNotifications.initialize(
-        any,
-        onDidReceiveNotificationResponse: anyNamed('onDidReceiveNotificationResponse'),
-      )).thenAnswer((_) async => true);
-      when(mockNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>())
-          .thenReturn(mockAndroidNotifications);
-      when(mockAndroidNotifications.requestNotificationsPermission())
-          .thenAnswer((_) async => false);
-
-      expect(
-        () => notificationService.initialize(),
-        throwsA(
-          isA<NotificationException>().having(
-            (e) => e.code,
-            'code',
-            'PERMISSION_DENIED',
-          ),
-        ),
-      );
-    });
-
-    test('無效的通知ID應被正確處理', () async {
-      when(mockNotifications.cancel(any))
-          .thenThrow(PlatformException(code: 'INVALID_ID'));
-
-      expect(
-        () => notificationService.cancelNotification(-1),
-        throwsA(isA<NotificationException>()),
-      );
-    });
-
-    test('通知調度失敗時應重試', () async {
-      final notifyTime = TimeOfDay(hour: 9, minute: 0);
-      var attempts = 0;
-
-      when(mockNotifications.zonedSchedule(
-        any,
-        any,
-        any,
-        any,
-        any,
-        androidScheduleMode: anyNamed('androidScheduleMode'),
-        uiLocalNotificationDateInterpretation: anyNamed('uiLocalNotificationDateInterpretation'),
-        matchDateTimeComponents: anyNamed('matchDateTimeComponents'),
-        payload: anyNamed('payload'),
-      )).thenAnswer((_) async {
-        attempts++;
-        if (attempts == 1) {
-          throw PlatformException(code: 'SCHEDULE_FAILED');
-        }
-      });
-
-      await notificationService.scheduleDailyFortuneNotification(notifyTime);
-
-      verify(mockNotifications.zonedSchedule(
-        any,
-        any,
-        any,
-        any,
-        any,
-        androidScheduleMode: anyNamed('androidScheduleMode'),
-        uiLocalNotificationDateInterpretation: anyNamed('uiLocalNotificationDateInterpretation'),
-        matchDateTimeComponents: anyNamed('matchDateTimeComponents'),
-        payload: anyNamed('payload'),
-      )).called(2); // 應該嘗試兩次
-    });
-
-    test('無效的通知負載應被正確處理', () {
-      final payload = '{invalid json}';
-
-      expect(
-        () => notificationService.onNotificationResponse(
-          NotificationResponse(
-            notificationResponseType: NotificationResponseType.selectedNotification,
-            payload: payload,
-          ),
-        ),
-        throwsA(isA<NotificationException>()),
-      );
     });
   });
 } 

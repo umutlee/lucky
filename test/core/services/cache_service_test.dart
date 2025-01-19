@@ -127,7 +127,7 @@ void main() {
       final stats2 = cacheService.getStats();
 
       expect(secondValue, 'memory_value');
-      expect(stats2['memoryHits']! > stats1['memoryHits']!, true);
+      expect(stats2['memoryHits']! - stats1['memoryHits']!, 1);
     });
 
     test('禁用內存緩存', () async {
@@ -138,7 +138,7 @@ void main() {
       final stats2 = cacheService.getStats();
 
       expect(value, 'disk_value');
-      expect(stats2['diskHits']! > stats1['diskHits']!, true);
+      expect(stats2['diskHits']! - stats1['diskHits']!, 1);
       expect(stats2['memoryHits'], stats1['memoryHits']);
     });
   });
@@ -169,7 +169,7 @@ void main() {
       await cacheService.get<String>('reset_key');
 
       final stats1 = cacheService.getStats();
-      expect(stats1['totalHits'] > 0, true);
+      expect(stats1['totalHits']! > 0, true);
 
       await cacheService.clear(); // 清空緩存同時重置統計信息
 
@@ -187,7 +187,7 @@ void main() {
       expect(value, null);
 
       final stats = cacheService.getStats();
-      expect(stats['misses'] > 0, true);
+      expect(stats['misses']! > 0, true);
     });
 
     test('設置無效的緩存值', () async {

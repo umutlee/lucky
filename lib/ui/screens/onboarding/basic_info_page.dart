@@ -1,23 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:all_lucky/core/services/user_profile_service.dart';
+import 'package:all_lucky/core/utils/logger.dart';
 import 'package:all_lucky/core/utils/validators.dart';
-import 'package:all_lucky/core/utils/date_utils.dart' as date_utils;
+import 'package:all_lucky/core/models/user_profile.dart';
 
 class BasicInfoPage extends ConsumerStatefulWidget {
-  const BasicInfoPage({Key? key}) : super(key: key);
+  final GlobalKey<FormState> formKey;
+
+  const BasicInfoPage({
+    Key? key,
+    required this.formKey,
+  }) : super(key: key);
 
   @override
   ConsumerState<BasicInfoPage> createState() => _BasicInfoPageState();
 }
 
 class _BasicInfoPageState extends ConsumerState<BasicInfoPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final _logger = Logger('BasicInfoPage');
+  
   DateTime? _birthDate;
   TimeOfDay? _birthTime;
-  String _selectedGender = '男';
+  String? _selectedGender;
   bool _isSubmitting = false;
+  bool _autoValidate = false;
+
+  final List<String> _genderOptions = ['男', '女', '其他'];
 
   @override
   void initState() {
@@ -32,13 +42,80 @@ class _BasicInfoPageState extends ConsumerState<BasicInfoPage> {
   }
 
   Future<void> _loadSavedData() async {
-    final userProfile = ref.read(userProfileServiceProvider).currentProfile;
-    if (userProfile != null) {
+    try {
+      final userProfile = ref.read(userProfileServiceProvider).currentProfile;
+      if (userProfile != null) {
+        setState(() {
+          _nameController.text = userProfile.name;
+          _selectedGender = userProfile.gender;
+          _birthDate = userProfile.birthDateTime;
+          _birthTime = TimeOfDay.fromDateTime(userProfile.birthDateTime);
+        });
+        _logger.info('成功加載用戶資料');
+      }
+    } catch (e) {
+      _logger.error('加載用戶資料失敗: $e');
+      if (mounted) {
+        _showErrorSnackBar('無法加載已保存的資料');
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _selectBirthDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _birthDate ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      locale: const Locale('zh'),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Theme.of(context).primaryColor,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null && picked != _birthDate) {
       setState(() {
-        _nameController.text = userProfile.name;
-        _selectedGender = userProfile.gender;
-        _birthDate = userProfile.birthDateTime;
-        _birthTime = TimeOfDay.fromDateTime(userProfile.birthDateTime);
+        _birthDate = picked;
+      });
+    }
+  }
+
+  Future<void> _selectBirthTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _birthTime ?? TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Theme.of(context).primaryColor,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null && picked != _birthTime) {
+      setState(() {
+        _birthTime = picked;
       });
     }
   }
@@ -48,7 +125,10 @@ class _BasicInfoPageState extends ConsumerState<BasicInfoPage> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Form(
-        key: _formKey,
+        key: widget.formKey,
+        autovalidateMode: _autoValidate 
+          ? AutovalidateMode.onUserInteraction
+          : AutovalidateMode.disabled,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -68,65 +148,133 @@ class _BasicInfoPageState extends ConsumerState<BasicInfoPage> {
             const SizedBox(height: 32),
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: '姓名 *',
-                border: OutlineInputBorder(),
-                helperText: '2-20個字元',
-                counterText: '',
+              decoration: InputDecoration(
+                labelText: '姓名',
+                hintText: '請輸入您的姓名',
+                prefixIcon: const Icon(Icons.person),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              maxLength: 20,
-              validator: (value) => Validators.validateName(value),
-              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return '請輸入姓名';
+                }
+                if (value.length < 2) {
+                  return '姓名至少需要2個字';
+                }
+                return null;
+              },
+              onChanged: (_) {
+                if (!_autoValidate) {
+                  setState(() {
+                    _autoValidate = true;
+                  });
+                }
+              },
             ),
             const SizedBox(height: 24),
             DropdownButtonFormField<String>(
               value: _selectedGender,
-              decoration: const InputDecoration(
-                labelText: '性別 *',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: '性別',
+                prefixIcon: const Icon(Icons.people),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              items: ['男', '女', '其他'].map((gender) {
-                return DropdownMenuItem(
+              items: _genderOptions.map((String gender) {
+                return DropdownMenuItem<String>(
                   value: gender,
                   child: Text(gender),
                 );
               }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _selectedGender = value;
-                  });
-                }
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedGender = newValue;
+                });
               },
-              validator: (value) => value == null ? '請選擇性別' : null,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return '請選擇性別';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 24),
-            _buildDateTimePicker(
-              title: '出生日期 *',
-              value: _birthDate != null 
-                ? date_utils.DateUtils.formatDate(_birthDate!)
-                : '請選擇',
+            InkWell(
               onTap: _selectBirthDate,
-              error: _birthDate == null ? '請選擇出生日期' : null,
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: '出生日期',
+                  prefixIcon: const Icon(Icons.calendar_today),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _birthDate == null
+                          ? '請選擇出生日期'
+                          : '${_birthDate!.year}年${_birthDate!.month}月${_birthDate!.day}日',
+                      style: TextStyle(
+                        color: _birthDate == null ? Colors.grey : Colors.black,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
-            _buildDateTimePicker(
-              title: '出生時間 *',
-              value: _birthTime != null
-                ? '${_birthTime!.hour.toString().padLeft(2, '0')}:${_birthTime!.minute.toString().padLeft(2, '0')}'
-                : '請選擇',
+            if (_birthDate == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 12),
+                child: Text(
+                  '請選擇出生日期',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 24),
+            InkWell(
               onTap: _selectBirthTime,
-              error: _birthTime == null ? '請選擇出生時間' : null,
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: '出生時間',
+                  prefixIcon: const Icon(Icons.access_time),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _birthTime == null
+                          ? '請選擇出生時間'
+                          : '${_birthTime!.hour.toString().padLeft(2, '0')}:${_birthTime!.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        color: _birthTime == null ? Colors.grey : Colors.black,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 32),
-            if (_isSubmitting)
-              const Center(child: CircularProgressIndicator())
-            else
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: validateAndSave,
-                  child: const Text('下一步'),
+            if (_birthTime == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 12),
+                child: Text(
+                  '請選擇出生時間',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
                 ),
               ),
           ],
@@ -135,120 +283,29 @@ class _BasicInfoPageState extends ConsumerState<BasicInfoPage> {
     );
   }
 
-  Widget _buildDateTimePicker({
-    required String title,
-    required String value,
-    required VoidCallback onTap,
-    String? error,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: error != null ? Colors.red : Colors.grey,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: error != null ? Colors.red : null,
-                  ),
-                ),
-                const Icon(Icons.arrow_drop_down),
-              ],
-            ),
-          ),
-        ),
-        if (error != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              error,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontSize: 12,
-              ),
-            ),
-          ),
-      ],
-    );
+  bool validateForm() {
+    if (!widget.formKey.currentState!.validate()) {
+      return false;
+    }
+    if (_birthDate == null) {
+      _showErrorSnackBar('請選擇出生日期');
+      return false;
+    }
+    if (_birthTime == null) {
+      _showErrorSnackBar('請選擇出生時間');
+      return false;
+    }
+    return true;
   }
 
-  Future<void> _selectBirthDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _birthDate ?? DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-      helpText: '選擇出生日期',
-      cancelText: '取消',
-      confirmText: '確定',
-      errorFormatText: '日期格式錯誤',
-      errorInvalidText: '日期無效',
-      fieldLabelText: '出生日期',
-      fieldHintText: 'YYYY/MM/DD',
-    );
-    if (picked != null && picked != _birthDate) {
-      setState(() {
-        _birthDate = picked;
-      });
-    }
-  }
-
-  Future<void> _selectBirthTime() async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: _birthTime ?? TimeOfDay.now(),
-      helpText: '選擇出生時間',
-      cancelText: '取消',
-      confirmText: '確定',
-      hourLabelText: '時',
-      minuteLabelText: '分',
-    );
-    if (picked != null && picked != _birthTime) {
-      setState(() {
-        _birthTime = picked;
-      });
-    }
-  }
-
-  Future<void> validateAndSave() async {
-    if (_isSubmitting) return;
-
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_birthDate == null || _birthTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('請填寫所有必填項目'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+  Future<void> saveData() async {
+    if (!validateForm()) return;
 
     setState(() {
       _isSubmitting = true;
     });
 
     try {
-      // 組合出生日期時間
       final birthDateTime = DateTime(
         _birthDate!.year,
         _birthDate!.month,
@@ -257,35 +314,28 @@ class _BasicInfoPageState extends ConsumerState<BasicInfoPage> {
         _birthTime!.minute,
       );
 
-      // 驗證日期是否合理
-      if (!date_utils.DateUtils.isValidBirthDate(birthDateTime)) {
-        throw Exception('出生日期不在有效範圍內');
-      }
-
-      // 保存用戶資料
-      await ref.read(userProfileServiceProvider).updateBasicInfo(
-        name: _nameController.text,
-        gender: _selectedGender,
+      final userProfile = UserProfile(
+        name: _nameController.text.trim(),
+        gender: _selectedGender!,
         birthDateTime: birthDateTime,
       );
 
+      await ref.read(userProfileServiceProvider).updateProfile(userProfile);
+      _logger.info('成功保存用戶資料');
+
       if (mounted) {
-        // 顯示成功消息
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('資料保存成功'),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } catch (e) {
+      _logger.error('保存用戶資料失敗: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('保存失敗：${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar('保存失敗：${e.toString()}');
       }
     } finally {
       if (mounted) {
