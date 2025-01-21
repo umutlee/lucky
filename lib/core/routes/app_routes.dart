@@ -6,6 +6,7 @@ import '../../features/calendar/screens/lucky_day_screen.dart';
 import '../../ui/screens/home/home_screen.dart';
 import '../../ui/screens/settings/settings_screen.dart';
 import '../../ui/widgets/error_screen.dart';
+import '../../presentation/pages/cache_stats_page.dart';
 
 class RouteParams {
   static Map<String, dynamic>? tryParseExtra(Object? extra) {
@@ -83,6 +84,10 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/cache-stats',
+      builder: (context, state) => const CacheStatsPage(),
     ),
   ],
   errorBuilder: (context, state) => ErrorScreen(

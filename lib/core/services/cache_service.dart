@@ -100,36 +100,25 @@ class CacheService {
     }
   }
 
-  Future<T?> get<T>(String key, {bool useMemoryCache = true}) async {
-    try {
-      if (useMemoryCache && _memoryCache.containsKey(key)) {
-        _stats.incrementMemoryHits();
-        return _memoryCache[key] as T?;
-      }
-
-      final results = await _databaseService.query(
-        _tableName,
-        where: 'key = ? AND (expires_at IS NULL OR expires_at > ?)',
-        whereArgs: [key, DateTime.now().toIso8601String()],
-      );
-
-      if (results.isEmpty) {
-        _stats.incrementMisses();
-        return null;
-      }
-
-      final value = json.decode(results.first['value'] as String);
-      
-      if (useMemoryCache) {
-        _memoryCache[key] = value;
-      }
-
-      _stats.incrementDiskHits();
-      return value as T?;
-    } catch (e, stack) {
-      _logger.error('緩存獲取失敗', e, stack);
-      rethrow;
+  Future<T?> get<T>(String key) async {
+    // 先檢查內存緩存
+    if (_memoryCache.containsKey(key)) {
+      return _memoryCache[key] as T?;
     }
+
+    final results = await _databaseService.query(
+      _tableName,
+      where: 'key = ? AND (expires_at IS NULL OR expires_at > ?)',
+      whereArgs: [key, DateTime.now().toIso8601String()],
+    );
+
+    if (results.isNotEmpty) {
+      final value = json.decode(results.first['value']) as T?;
+      _memoryCache[key] = value; // 更新內存緩存
+      return value;
+    }
+    
+    return null;
   }
 
   Future<Map<String, T?>> getMultiple<T>(

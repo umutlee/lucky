@@ -63,15 +63,22 @@ class DatabaseService {
           )
         ''');
 
-        // 創建緩存表
+        // 創建通用緩存表
         await txn.execute('''
           CREATE TABLE cache_records (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            expires_at TEXT
+            expires_at TEXT,
+            type TEXT,
+            metadata TEXT
           )
         ''');
+        
+        // 創建緩存索引
+        await txn.execute(
+          'CREATE INDEX idx_cache_expires ON cache_records(expires_at)'
+        );
       });
 
       _logger.info('數據庫表創建成功');
@@ -225,5 +232,13 @@ class DatabaseService {
       _logger.error('關閉數據庫失敗', e, stack);
       rethrow;
     }
+  }
+
+  Future<void> cleanExpiredCache() async {
+    await delete(
+      'cache_records',
+      where: 'expires_at < ?',
+      whereArgs: [DateTime.now().toIso8601String()],
+    );
   }
 } 

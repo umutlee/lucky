@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences.dart';
+import '../services/database_service.dart';
 import '../models/daily_fortune.dart';
 
 /// 運勢數據倉庫
@@ -9,8 +9,8 @@ class FortuneRepository {
   /// HTTP 客戶端
   final Dio _dio;
   
-  /// SharedPreferences 實例
-  final SharedPreferences _prefs;
+  /// DatabaseService 實例
+  final DatabaseService _databaseService;
   
   /// API 基礎 URL
   static const String _baseUrl = 'https://api.example.com/v1';
@@ -18,21 +18,32 @@ class FortuneRepository {
   /// 緩存鍵前綴
   static const String _cacheKeyPrefix = 'fortune_';
   
+  /// 數據庫表名
+  static const String _tableName = 'cache_records';
+  
   /// 構造函數
-  FortuneRepository(this._dio, this._prefs);
+  FortuneRepository(this._dio, this._databaseService);
   
   /// 獲取指定日期的運勢信息
   Future<DailyFortune> getDailyFortune(DateTime date) async {
     final cacheKey = _getCacheKey(date);
     
-    // 嘗試從緩存獲取
-    final cached = _prefs.getString(cacheKey);
-    if (cached != null) {
+    // 從數據庫緩存獲取
+    final cached = await _databaseService.query(
+      _tableName,
+      where: 'key = ?',
+      whereArgs: [cacheKey],
+    );
+    
+    if (cached.isNotEmpty) {
       try {
-        return DailyFortune.fromJson(json.decode(cached));
+        return DailyFortune.fromJson(json.decode(cached.first['value']));
       } catch (e) {
-        // 緩存數據無效，刪除它
-        await _prefs.remove(cacheKey);
+        await _databaseService.delete(
+          _tableName,
+          where: 'key = ?',
+          whereArgs: [cacheKey],
+        );
       }
     }
     
@@ -81,21 +92,18 @@ class FortuneRepository {
   /// 清除過期緩存
   Future<void> clearExpiredCache() async {
     final now = DateTime.now();
-    final keys = _prefs.getKeys().where((key) => key.startsWith(_cacheKeyPrefix));
+    final keys = await _databaseService.query(
+      _tableName,
+      where: 'expires_at < ?',
+      whereArgs: [now.toIso8601String()],
+    );
     
     for (final key in keys) {
-      try {
-        final dateStr = key.substring(_cacheKeyPrefix.length);
-        final date = DateTime.parse(dateStr);
-        
-        // 如果緩存超過7天，刪除它
-        if (now.difference(date).inDays > 7) {
-          await _prefs.remove(key);
-        }
-      } catch (e) {
-        // 無效的緩存鍵，刪除它
-        await _prefs.remove(key);
-      }
+      await _databaseService.delete(
+        _tableName,
+        where: 'key = ?',
+        whereArgs: [key['key']],
+      );
     }
   }
   
@@ -106,7 +114,15 @@ class FortuneRepository {
   
   /// 緩存運勢數據
   Future<void> _cacheFortune(DateTime date, DailyFortune fortune) async {
-    final cacheKey = _getCacheKey(date);
-    await _prefs.setString(cacheKey, json.encode(fortune.toJson()));
+    await _databaseService.insert(
+      _tableName,
+      {
+        'key': _getCacheKey(date),
+        'value': json.encode(fortune.toJson()),
+        'created_at': DateTime.now().toIso8601String(),
+        'expires_at': DateTime.now().add(const Duration(days: 7)).toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 } 

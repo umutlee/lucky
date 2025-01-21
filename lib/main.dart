@@ -10,6 +10,7 @@ import 'package:all_lucky/core/services/database_service.dart';
 import 'package:all_lucky/core/services/cache_service.dart';
 import 'package:all_lucky/core/utils/logger.dart';
 import 'package:all_lucky/ui/app.dart';
+import 'core/services/cache_cleanup_service.dart';
 
 final _logger = Logger('Main');
 
@@ -41,15 +42,15 @@ Future<void> main() async {
     final databaseService = futures[3] as DatabaseService;
     final cacheService = CacheService(databaseService);
 
+    // 啟動緩存清理服務
+    final container = ProviderContainer();
+    await container.read(databaseServiceProvider).init();
+    container.read(cacheCleanupServiceProvider).startPeriodicCleanup();
+
     // 運行應用
     runApp(
-      ProviderScope(
-        overrides: [
-          userProfileServiceProvider.overrideWithValue(userProfileService),
-          preferencesServiceProvider.overrideWithValue(preferencesService),
-          databaseServiceProvider.overrideWithValue(databaseService),
-          cacheServiceProvider.overrideWithValue(cacheService),
-        ],
+      UncontrolledProviderScope(
+        container: container,
         child: const App(),
       ),
     );
