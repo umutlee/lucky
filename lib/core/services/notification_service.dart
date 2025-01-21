@@ -6,13 +6,13 @@ import '../utils/logger.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
-  final _logger = Logger('NotificationService');
+  final _logger = AppLogger();
   
   factory NotificationService() => _instance;
   
   NotificationService._internal();
 
-  FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
 
   @visibleForTesting
@@ -23,24 +23,26 @@ class NotificationService {
   Future<bool> initialize() async {
     if (_isInitialized) return true;
 
-    const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initializationSettingsIOS = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-    const initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
-
     try {
-      _isInitialized = await _notifications.initialize(initializationSettings) ?? false;
-      _logger.info('通知服務初始化成功');
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      
+      const initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
+
+      await _notifications.initialize(initSettings);
+      _logger.i('通知服務初始化成功');
+      _isInitialized = true;
       return _isInitialized;
     } catch (e) {
-      _logger.error('通知服務初始化失敗', e);
-      return false;
+      _logger.e('通知服務初始化失敗', e);
+      rethrow;
     }
   }
 
@@ -55,47 +57,93 @@ class NotificationService {
       final result = await platform.requestPermission();
       return result ?? false;
     } catch (e) {
-      _logger.error('檢查通知權限失敗', e);
+      _logger.e('檢查通知權限失敗', e);
       return false;
     }
   }
 
-  Future<void> scheduleNotification({
-    required int id,
+  Future<void> showFortuneNotification({
     required String title,
     required String body,
-    required tz.TZDateTime scheduledDate,
+    String? payload,
   }) async {
-    if (!_isInitialized) return;
-
     try {
+      const androidDetails = AndroidNotificationDetails(
+        'fortune_channel',
+        '運勢通知',
+        channelDescription: '接收每日運勢預測通知',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _notifications.show(
+        0,
+        title,
+        body,
+        details,
+        payload: payload,
+      );
+      
+      _logger.i('發送通知成功: $title');
+    } catch (e) {
+      _logger.e('發送通知失敗', e);
+      rethrow;
+    }
+  }
+
+  Future<void> scheduleFortuneNotification({
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    String? payload,
+  }) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'fortune_channel',
+        '運勢通知',
+        channelDescription: '接收每日運勢預測通知',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
       await _notifications.zonedSchedule(
-        id,
+        0,
         title,
         body,
         scheduledDate,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'lucky_app_channel',
-            '運勢通知',
-            channelDescription: '每日運勢提醒',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        details,
+        androidAllowWhileIdle: true,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
+        payload: payload,
       );
-
-      _logger.info('已排程通知：${scheduledDate.toString()}');
+      
+      _logger.i('排程通知成功: $title, 時間: $scheduledDate');
     } catch (e) {
-      _logger.error('排程通知失敗', e);
+      _logger.e('排程通知失敗', e);
+      rethrow;
     }
   }
 
@@ -116,9 +164,9 @@ class NotificationService {
     if (!_isInitialized) return;
     try {
       await _notifications.cancelAll();
-      _logger.info('已取消所有通知');
-    } catch (e, stack) {
-      _logger.error('取消通知失敗', e, stack);
+      _logger.i('取消所有通知成功');
+    } catch (e) {
+      _logger.e('取消通知失敗', e);
       rethrow;
     }
   }

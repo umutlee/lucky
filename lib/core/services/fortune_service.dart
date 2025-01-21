@@ -7,12 +7,17 @@ import 'user_settings_service.dart';
 import '../services/cache_service.dart';
 import '../utils/logger.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/study_fortune.dart';
+import '../models/career_fortune.dart';
+import '../models/love_fortune.dart';
 
 final fortuneServiceProvider = Provider<FortuneService>((ref) {
   final zodiacFortuneService = ref.watch(zodiacFortuneServiceProvider);
   final userSettingsService = ref.watch(userSettingsServiceProvider);
   final cacheService = ref.watch(cacheServiceProvider);
-  return FortuneService(zodiacFortuneService, userSettingsService, cacheService);
+  return FortuneService(zodiacFortuneService: zodiacFortuneService, userSettingsService: userSettingsService, cacheService: cacheService);
 });
 
 class FortuneService {
@@ -22,8 +27,18 @@ class FortuneService {
   final _uuid = const Uuid();
   final _logger = Logger('FortuneService');
   static const _cacheDuration = Duration(hours: 12);
+  static const String _baseUrl = 'https://api.example.com/v1';
+  final http.Client _client;
 
-  FortuneService(this._zodiacFortuneService, this._userSettingsService, this._cacheService);
+  FortuneService({
+    http.Client? client,
+    required ZodiacFortuneService zodiacFortuneService,
+    required UserSettingsService userSettingsService,
+    required CacheService cacheService,
+  }) : _zodiacFortuneService = zodiacFortuneService,
+       _userSettingsService = userSettingsService,
+       _cacheService = cacheService,
+       _client = client ?? http.Client();
 
   // 生成運勢
   Future<Fortune> generateFortune(String type) async {
@@ -217,12 +232,16 @@ class FortuneService {
   // 實際的 API 調用方法
   Future<Fortune?> _fetchDailyFortune(String date, String zodiac, String constellation) async {
     try {
-      final fortune = await _zodiacFortuneService.getDailyFortune(
-        date: date,
-        zodiac: zodiac,
-        constellation: constellation,
+      final response = await _client.get(
+        Uri.parse('$_baseUrl/fortune/daily/$date/$zodiac/$constellation'),
       );
-      return fortune;
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return Fortune.fromJson(json);
+      } else {
+        throw Exception('Failed to load daily fortune');
+      }
     } catch (e, stack) {
       _logger.error('API 調用失敗', e, stack);
       return null;
@@ -231,12 +250,16 @@ class FortuneService {
 
   Future<List<Fortune>> _fetchFortuneHistory(String zodiac, String constellation, int limit) async {
     try {
-      final history = await _zodiacFortuneService.getFortuneHistory(
-        zodiac: zodiac,
-        constellation: constellation,
-        limit: limit,
+      final response = await _client.get(
+        Uri.parse('$_baseUrl/fortune/history/$zodiac/$constellation/$limit'),
       );
-      return history;
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return json.map<Fortune>((e) => Fortune.fromJson(e as Map<String, dynamic>)).toList();
+      } else {
+        throw Exception('Failed to load fortune history');
+      }
     } catch (e, stack) {
       _logger.error('API 調用失敗', e, stack);
       return [];

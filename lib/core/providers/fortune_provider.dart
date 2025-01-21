@@ -5,6 +5,8 @@ import '../models/career_fortune.dart';
 import '../models/love_fortune.dart';
 import '../models/api_response.dart';
 import 'api_provider.dart';
+import '../services/fortune_service.dart';
+import '../utils/cache_manager.dart';
 
 /// 運勢數據 Provider
 class FortuneNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
@@ -56,19 +58,66 @@ final dailyFortuneProvider = Provider<AsyncValue<DailyFortune?>>((ref) {
 });
 
 /// 學業運勢 Provider
-final studyFortuneProvider = Provider.family<AsyncValue<Map<String, dynamic>>, DateTime>((ref, date) {
-  return ref.watch(fortuneProvider).whenData((data) => data['study'] as Map<String, dynamic>);
+final studyFortuneProvider = FutureProvider.family<StudyFortune, DateTime>((ref, date) async {
+  final cacheManager = ref.read(fortuneCacheManagerProvider);
+  final cacheKey = 'study_fortune_${date.toIso8601String()}';
+  
+  // 嘗試從緩存獲取
+  final cachedData = await cacheManager.get<StudyFortune>(cacheKey);
+  if (cachedData != null) {
+    return cachedData;
+  }
+
+  // 從服務獲取新數據
+  final service = ref.read(fortuneServiceProvider);
+  final fortune = await service.getStudyFortune(date);
+  
+  // 緩存數據
+  await cacheManager.set(cacheKey, fortune, const Duration(hours: 24));
+  
+  return fortune;
 });
 
 /// 事業運勢 Provider
-final careerFortuneProvider = Provider.family<AsyncValue<Map<String, dynamic>>, DateTime>((ref, date) {
-  return ref.watch(fortuneProvider).whenData((data) => data['career'] as Map<String, dynamic>);
+final careerFortuneProvider = FutureProvider.family<CareerFortune, DateTime>((ref, date) async {
+  final cacheManager = ref.read(fortuneCacheManagerProvider);
+  final cacheKey = 'career_fortune_${date.toIso8601String()}';
+  
+  // 嘗試從緩存獲取
+  final cachedData = await cacheManager.get<CareerFortune>(cacheKey);
+  if (cachedData != null) {
+    return cachedData;
+  }
+
+  // 從服務獲取新數據
+  final service = ref.read(fortuneServiceProvider);
+  final fortune = await service.getCareerFortune(date);
+  
+  // 緩存數據
+  await cacheManager.set(cacheKey, fortune, const Duration(hours: 24));
+  
+  return fortune;
 });
 
 /// 愛情運勢 Provider
-final loveFortuneProvider = Provider<AsyncValue<LoveFortune?>>((ref) {
-  final fortunes = ref.watch(fortuneProvider);
-  return fortunes.whenData((data) => data['love'] as LoveFortune?);
+final loveFortuneProvider = FutureProvider.family<LoveFortune, DateTime>((ref, date) async {
+  final cacheManager = ref.read(fortuneCacheManagerProvider);
+  final cacheKey = 'love_fortune_${date.toIso8601String()}';
+  
+  // 嘗試從緩存獲取
+  final cachedData = await cacheManager.get<LoveFortune>(cacheKey);
+  if (cachedData != null) {
+    return cachedData;
+  }
+
+  // 從服務獲取新數據
+  final service = ref.read(fortuneServiceProvider);
+  final fortune = await service.getLoveFortune(date);
+  
+  // 緩存數據
+  await cacheManager.set(cacheKey, fortune, const Duration(hours: 24));
+  
+  return fortune;
 });
 
 /// 學業運勢通知設置提供者
@@ -105,4 +154,45 @@ class NotificationNotifier extends StateNotifier<bool> {
 /// 基礎運勢 Provider
 final basicFortuneProvider = Provider.family<AsyncValue<Map<String, dynamic>>, DateTime>((ref, date) {
   return ref.watch(fortuneProvider).whenData((data) => data['basic'] as Map<String, dynamic>);
-}); 
+});
+
+final fortuneServiceProvider = Provider<FortuneService>((ref) {
+  return FortuneService();
+});
+
+final fortuneCacheManagerProvider = Provider<CacheManager>((ref) {
+  return CacheManager();
+});
+
+// 預加載下一天的運勢數據
+final fortunePreloader = Provider((ref) {
+  return FortunePreloader(ref);
+});
+
+class FortunePreloader {
+  final Ref _ref;
+
+  FortunePreloader(this._ref);
+
+  Future<void> preloadNextDay() async {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    
+    await Future.wait([
+      _ref.read(studyFortuneProvider(tomorrow).future),
+      _ref.read(careerFortuneProvider(tomorrow).future),
+      _ref.read(loveFortuneProvider(tomorrow).future),
+    ]);
+  }
+
+  Future<void> preloadRange(DateTime startDate, DateTime endDate) async {
+    for (var date = startDate;
+         date.isBefore(endDate);
+         date = date.add(const Duration(days: 1))) {
+      await Future.wait([
+        _ref.read(studyFortuneProvider(date).future),
+        _ref.read(careerFortuneProvider(date).future),
+        _ref.read(loveFortuneProvider(date).future),
+      ]);
+    }
+  }
+} 
