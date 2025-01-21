@@ -1,81 +1,69 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/services/notification_service.dart';
-import '../../../core/utils/logger.dart';
+import 'package:all_lucky/core/services/notification_service.dart';
+import 'package:all_lucky/core/utils/logger.dart';
 
-final notificationProvider = StateNotifierProvider<NotificationNotifier, bool>(
-  (ref) => NotificationNotifier(),
-);
+final notificationProvider = StateNotifierProvider<NotificationNotifier, bool>((ref) {
+  return NotificationNotifier();
+});
 
 class NotificationNotifier extends StateNotifier<bool> {
-  final _notificationService = NotificationService();
-  final _logger = AppLogger();
+  final NotificationService _notificationService;
 
-  NotificationNotifier() : super(false);
+  NotificationNotifier({NotificationService? service})
+      : _notificationService = service ?? NotificationService(),
+        super(false);
 
   Future<void> initialize() async {
     try {
-      await _notificationService.initialize();
-      state = true;
-      _logger.i('通知提供者初始化成功');
-    } catch (e) {
-      _logger.e('通知提供者初始化失敗', e);
+      final result = await _notificationService.initialize();
+      state = result;
+      if (state) {
+        AppLogger.i('通知提供者初始化成功');
+      } else {
+        AppLogger.e('通知提供者初始化失敗');
+      }
+    } catch (e, stackTrace) {
       state = false;
+      AppLogger.e('通知提供者初始化失敗', e, stackTrace);
     }
   }
 
-  Future<void> scheduleFortuneNotification({
-    required String title,
-    required String body,
-    required DateTime scheduledDate,
-  }) async {
+  Future<void> scheduleFortuneNotification(DateTime scheduledTime) async {
     if (!state) {
-      _logger.w('通知服務未初始化');
+      AppLogger.w('通知服務未初始化');
       return;
     }
 
     try {
-      await _notificationService.scheduleFortuneNotification(
-        title: title,
-        body: body,
-        scheduledDate: scheduledDate,
-      );
-    } catch (e) {
-      _logger.e('排程運勢通知失敗', e);
-      rethrow;
+      await _notificationService.scheduleFortuneNotification(scheduledTime);
+    } catch (e, stackTrace) {
+      AppLogger.e('排程運勢通知失敗', e, stackTrace);
     }
   }
 
-  Future<void> showFortuneNotification({
-    required String title,
-    required String body,
-  }) async {
+  Future<void> showFortuneNotification(String message) async {
     if (!state) {
-      _logger.w('通知服務未初始化');
+      AppLogger.w('通知服務未初始化');
       return;
     }
 
     try {
-      await _notificationService.showFortuneNotification(
-        title: title,
-        body: body,
-      );
-    } catch (e) {
-      _logger.e('發送運勢通知失敗', e);
-      rethrow;
+      await _notificationService.showFortuneNotification(message);
+    } catch (e, stackTrace) {
+      AppLogger.e('發送運勢通知失敗', e, stackTrace);
     }
   }
 
   Future<void> cancelAllNotifications() async {
     if (!state) {
-      _logger.w('通知服務未初始化');
+      AppLogger.w('通知服務未初始化');
       return;
     }
 
     try {
       await _notificationService.cancelAllNotifications();
-    } catch (e) {
-      _logger.e('取消所有通知失敗', e);
-      rethrow;
+    } catch (e, stackTrace) {
+      AppLogger.e('取消所有通知失敗', e, stackTrace);
     }
   }
 } 

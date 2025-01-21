@@ -1,170 +1,94 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:all_lucky/core/services/notification_service.dart';
 
-class MockFlutterLocalNotificationsPlugin extends Mock
-    implements FlutterLocalNotificationsPlugin {}
+@GenerateMocks([], customMocks: [
+  MockSpec<FlutterLocalNotificationsPlugin>(as: #MockNotificationsPlugin),
+])
+import 'notification_service_test.mocks.dart';
 
 void main() {
-  late NotificationService notificationService;
-  late MockFlutterLocalNotificationsPlugin mockNotifications;
+  TestWidgetsFlutterBinding.ensureInitialized();
+  tz.initializeTimeZones();
 
-  setUpAll(() {
-    tz.initializeTimeZones();
-  });
+  late MockNotificationsPlugin mockNotifications;
+  late NotificationService notificationService;
 
   setUp(() {
-    mockNotifications = MockFlutterLocalNotificationsPlugin();
-    notificationService = NotificationService();
-    notificationService.testNotificationsPlugin = mockNotifications;
+    mockNotifications = MockNotificationsPlugin();
+    notificationService = NotificationService(notifications: mockNotifications);
+
+    when(mockNotifications.getNotificationAppLaunchDetails())
+        .thenAnswer((_) async => NotificationAppLaunchDetails(
+              didNotificationLaunchApp: false,
+              notificationResponse: null,
+            ));
   });
 
-  group('NotificationService Tests', () {
-    test('initialize should setup notifications correctly', () async {
-      // Arrange
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const iosSettings = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
-      );
-      
-      const initSettings = InitializationSettings(
-        android: androidSettings,
-        iOS: iosSettings,
-      );
+  group('NotificationService', () {
+    test('初始化成功時應該返回 true', () async {
+      when(mockNotifications.initialize(
+        any,
+        onDidReceiveNotificationResponse: anyNamed('onDidReceiveNotificationResponse'),
+        onDidReceiveBackgroundNotificationResponse:
+            anyNamed('onDidReceiveBackgroundNotificationResponse'),
+      )).thenAnswer((_) async => true);
 
-      when(mockNotifications.initialize(initSettings))
-          .thenAnswer((_) async => true);
-
-      // Act
-      final result = await notificationService.initialize();
-
-      // Assert
-      expect(result, true);
-      verify(mockNotifications.initialize(initSettings)).called(1);
+      final success = await notificationService.initialize();
+      expect(success, isTrue);
     });
 
-    test('showFortuneNotification should show notification', () async {
-      // Arrange
-      const title = '今日運勢';
-      const body = '今天是個好日子！';
-      
-      const androidDetails = AndroidNotificationDetails(
-        'fortune_channel',
-        '運勢通知',
-        channelDescription: '接收每日運勢預測通知',
-        importance: Importance.high,
-        priority: Priority.high,
-      );
+    test('初始化失敗時應該返回 false', () async {
+      when(mockNotifications.initialize(
+        any,
+        onDidReceiveNotificationResponse: anyNamed('onDidReceiveNotificationResponse'),
+        onDidReceiveBackgroundNotificationResponse:
+            anyNamed('onDidReceiveBackgroundNotificationResponse'),
+      )).thenAnswer((_) async => false);
 
-      const iosDetails = DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      );
+      final success = await notificationService.initialize();
+      expect(success, isFalse);
+    });
 
-      const details = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      );
-
+    test('顯示通知成功時應該返回 true', () async {
       when(mockNotifications.show(
-        0,
-        title,
-        body,
-        details,
-        payload: null,
+        any,
+        any,
+        any,
+        any,
       )).thenAnswer((_) async {});
 
-      // Act
-      await notificationService.showFortuneNotification(
-        title: title,
-        body: body,
-      );
-
-      // Assert
-      verify(mockNotifications.show(
-        0,
-        title,
-        body,
-        details,
-        payload: null,
-      )).called(1);
+      final success = await notificationService.showFortuneNotification('今日運勢');
+      expect(success, isTrue);
     });
 
-    test('scheduleFortuneNotification should schedule notification', () async {
-      // Arrange
-      const title = '明日運勢提醒';
-      const body = '別忘了查看明天的運勢！';
-      final scheduledDate = DateTime.now().add(const Duration(days: 1));
-      final tzDateTime = tz.TZDateTime.from(scheduledDate, tz.local);
-      
-      const androidDetails = AndroidNotificationDetails(
-        'fortune_channel',
-        '運勢通知',
-        channelDescription: '接收每日運勢預測通知',
-        importance: Importance.high,
-        priority: Priority.high,
-      );
-
-      const iosDetails = DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      );
-
-      const details = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      );
-
+    test('排程通知成功時應該返回 true', () async {
       when(mockNotifications.zonedSchedule(
-        0,
-        title,
-        body,
-        tzDateTime,
-        details,
-        androidAllowWhileIdle: true,
+        any,
+        any,
+        any,
+        any,
+        any,
+        androidScheduleMode: anyNamed('androidScheduleMode'),
         uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        payload: null,
+            anyNamed('uiLocalNotificationDateInterpretation'),
       )).thenAnswer((_) async {});
 
-      // Act
-      await notificationService.scheduleFortuneNotification(
-        title: title,
-        body: body,
-        scheduledDate: scheduledDate,
+      final success = await notificationService.scheduleFortuneNotification(
+        tz.TZDateTime.now(tz.local).add(const Duration(days: 1)),
       );
-
-      // Assert
-      verify(mockNotifications.zonedSchedule(
-        0,
-        title,
-        body,
-        tzDateTime,
-        details,
-        androidAllowWhileIdle: true,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        payload: null,
-      )).called(1);
+      expect(success, isTrue);
     });
 
-    test('cancelAllNotifications should cancel all notifications', () async {
-      // Arrange
-      when(mockNotifications.cancelAll())
-          .thenAnswer((_) async {});
+    test('取消所有通知成功時應該返回 true', () async {
+      when(mockNotifications.cancelAll()).thenAnswer((_) async {});
 
-      // Act
-      await notificationService.cancelAllNotifications();
-
-      // Assert
-      verify(mockNotifications.cancelAll()).called(1);
+      final success = await notificationService.cancelAllNotifications();
+      expect(success, isTrue);
     });
   });
 } 

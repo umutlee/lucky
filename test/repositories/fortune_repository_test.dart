@@ -7,7 +7,9 @@ import 'package:all_lucky/core/services/database_service.dart';
 import 'package:all_lucky/core/repositories/fortune_repository.dart';
 import 'package:all_lucky/core/models/daily_fortune.dart';
 
-@GenerateMocks([Dio, DatabaseService])
+class MockDio extends Mock implements Dio {}
+class MockDatabaseService extends Mock implements DatabaseService {}
+
 void main() {
   late MockDio mockDio;
   late MockDatabaseService mockDatabase;

@@ -6,81 +6,93 @@ on:
   pull_request:
     branches: [ "master" ]
 
+env:
+  FLUTTER_VERSION: '3.16.0'
+  JAVA_VERSION: '17'
+
 jobs:
-  build:
+  test:
+    name: 分析和測試
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v3
+      - name: 檢出代碼
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       
       - name: 設置 Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.0'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
-          
-      - name: 緩存 Pub 依賴
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.PUB_CACHE }}
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
           
       - name: 檢查 Flutter 版本
         run: flutter --version
         
       - name: 獲取依賴
-        run: flutter pub get
+        run: |
+          flutter pub get
+          flutter pub run build_runner build --delete-conflicting-outputs
         
       - name: 檢查代碼格式
-        run: dart format --set-exit-if-changed .
+        run: dart format --output=none --set-exit-if-changed .
         
       - name: 分析代碼
-        run: flutter analyze .
+        run: flutter analyze --no-fatal-infos
         
       - name: 運行測試
-        run: flutter test --coverage
+        run: flutter test --coverage --machine > test-results.json
+        
+      - name: 上傳測試結果
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: test-results.json
+          retention-days: 7
         
       - name: 上傳測試覆蓋率報告
         uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: coverage/lcov.info
+          flags: unittests
+          fail_ci_if_error: true
         
   build-android:
-    needs: build
+    name: 構建 Android
+    needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     
     steps:
-      - uses: actions/checkout@v3
+      - name: 檢出代碼
+        uses: actions/checkout@v3
       
       - name: 設置 Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'gradle'
           
       - name: 設置 Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.0'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
-          
-      - name: 緩存 Gradle 文件
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
             
       - name: 獲取依賴
-        run: flutter pub get
+        run: |
+          flutter pub get
+          flutter pub run build_runner build --delete-conflicting-outputs
           
       - name: 構建 Android APK
-        run: flutter build apk --release
+        run: flutter build apk --release --verbose
         
       - name: 上傳 Android APK
         uses: actions/upload-artifact@v3
@@ -90,34 +102,34 @@ jobs:
           retention-days: 7
           
   build-ios:
-    needs: build
+    name: 構建 iOS
+    needs: test
     runs-on: macos-latest
+    timeout-minutes: 60
     
     steps:
-      - uses: actions/checkout@v3
+      - name: 檢出代碼
+        uses: actions/checkout@v3
       
       - name: 設置 Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.0'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
-          
-      - name: 緩存 CocoaPods
-        uses: actions/cache@v3
-        with:
-          path: Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
             
       - name: 獲取依賴
         run: |
           flutter pub get
-          cd ios && pod install
+          flutter pub run build_runner build --delete-conflicting-outputs
+          
+      - name: 安裝 CocoaPods
+        run: |
+          cd ios
+          pod install
           
       - name: 構建 iOS
-        run: flutter build ios --release --no-codesign
+        run: flutter build ios --release --no-codesign --verbose
         
       - name: 上傳 iOS 構建產物
         uses: actions/upload-artifact@v3

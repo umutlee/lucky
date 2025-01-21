@@ -8,7 +8,9 @@ import 'package:all_lucky/core/repositories/almanac_repository.dart';
 import 'package:all_lucky/core/models/lunar_date.dart';
 import 'package:all_lucky/core/models/almanac.dart';
 
-@GenerateMocks([Dio, DatabaseService])
+class MockDio extends Mock implements Dio {}
+class MockDatabaseService extends Mock implements DatabaseService {}
+
 void main() {
   late MockDio mockDio;
   late MockDatabaseService mockDatabase;

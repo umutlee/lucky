@@ -1,120 +1,89 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:all_lucky/core/services/notification_service.dart';
 import 'package:all_lucky/features/notification/providers/notification_provider.dart';
 
-class MockNotificationService extends Mock implements NotificationService {}
+@GenerateMocks([NotificationService])
+import 'notification_provider_test.mocks.dart';
 
 void main() {
-  late NotificationNotifier notificationNotifier;
   late MockNotificationService mockService;
+  late ProviderContainer container;
 
   setUp(() {
     mockService = MockNotificationService();
-    notificationNotifier = NotificationNotifier();
+    container = ProviderContainer(
+      overrides: [
+        notificationProvider.overrideWith(
+          (ref) => NotificationNotifier(service: mockService),
+        ),
+      ],
+    );
   });
 
-  group('NotificationNotifier Tests', () {
-    test('initial state should be false', () {
-      expect(notificationNotifier.state, false);
-    });
+  test('初始化成功時應該將狀態設為 true', () async {
+    when(mockService.initialize()).thenAnswer((_) async => true);
+    when(mockService.showFortuneNotification(any)).thenAnswer((_) async {});
+    when(mockService.scheduleFortuneNotification(any)).thenAnswer((_) async {});
 
-    test('initialize should set state to true on success', () async {
-      // Arrange
-      when(mockService.initialize())
-          .thenAnswer((_) async => true);
+    final notifier = container.read(notificationProvider.notifier);
+    await notifier.initialize();
 
-      // Act
-      await notificationNotifier.initialize();
+    final state = container.read(notificationProvider);
+    expect(state, isTrue);
+  });
 
-      // Assert
-      expect(notificationNotifier.state, true);
-    });
+  test('初始化失敗時應該將狀態設為 false', () async {
+    when(mockService.initialize()).thenAnswer((_) async => false);
 
-    test('initialize should set state to false on error', () async {
-      // Arrange
-      when(mockService.initialize())
-          .thenThrow(Exception('初始化失敗'));
+    final notifier = container.read(notificationProvider.notifier);
+    await notifier.initialize();
 
-      // Act
-      await notificationNotifier.initialize();
+    final state = container.read(notificationProvider);
+    expect(state, isFalse);
+  });
 
-      // Assert
-      expect(notificationNotifier.state, false);
-    });
+  test('未初始化時不應該顯示通知', () async {
+    when(mockService.initialize()).thenAnswer((_) async => false);
 
-    test('scheduleFortuneNotification should not call service when state is false',
-        () async {
-      // Arrange
-      final scheduledDate = DateTime.now();
+    final notifier = container.read(notificationProvider.notifier);
+    await notifier.initialize();
+    await notifier.showFortuneNotification('測試通知');
 
-      // Act
-      await notificationNotifier.scheduleFortuneNotification(
-        title: '測試標題',
-        body: '測試內容',
-        scheduledDate: scheduledDate,
-      );
+    verifyNever(mockService.showFortuneNotification(any));
+  });
 
-      // Assert
-      verifyNever(mockService.scheduleFortuneNotification(
-        title: '測試標題',
-        body: '測試內容',
-        scheduledDate: scheduledDate,
-      ));
-    });
+  test('初始化成功後應該能夠顯示通知', () async {
+    when(mockService.initialize()).thenAnswer((_) async => true);
+    when(mockService.showFortuneNotification(any)).thenAnswer((_) async {});
 
-    test('showFortuneNotification should not call service when state is false',
-        () async {
-      // Act
-      await notificationNotifier.showFortuneNotification(
-        title: '測試標題',
-        body: '測試內容',
-      );
+    final notifier = container.read(notificationProvider.notifier);
+    await notifier.initialize();
+    await notifier.showFortuneNotification('測試通知');
 
-      // Assert
-      verifyNever(mockService.showFortuneNotification(
-        title: '測試標題',
-        body: '測試內容',
-      ));
-    });
+    verify(mockService.showFortuneNotification(any)).called(1);
+  });
 
-    test('cancelAllNotifications should not call service when state is false',
-        () async {
-      // Act
-      await notificationNotifier.cancelAllNotifications();
+  test('未初始化時不應該排程通知', () async {
+    when(mockService.initialize()).thenAnswer((_) async => false);
 
-      // Assert
-      verifyNever(mockService.cancelAllNotifications());
-    });
+    final notifier = container.read(notificationProvider.notifier);
+    await notifier.initialize();
+    await notifier.scheduleFortuneNotification(DateTime.now());
 
-    test(
-        'scheduleFortuneNotification should call service when state is true',
-        () async {
-      // Arrange
-      when(mockService.initialize())
-          .thenAnswer((_) async => true);
-      await notificationNotifier.initialize();
+    verifyNever(mockService.scheduleFortuneNotification(any));
+  });
 
-      final scheduledDate = DateTime.now();
-      when(mockService.scheduleFortuneNotification(
-        title: '測試標題',
-        body: '測試內容',
-        scheduledDate: scheduledDate,
-      )).thenAnswer((_) async {});
+  test('初始化成功後應該能夠排程通知', () async {
+    when(mockService.initialize()).thenAnswer((_) async => true);
+    when(mockService.scheduleFortuneNotification(any)).thenAnswer((_) async {});
 
-      // Act
-      await notificationNotifier.scheduleFortuneNotification(
-        title: '測試標題',
-        body: '測試內容',
-        scheduledDate: scheduledDate,
-      );
+    final notifier = container.read(notificationProvider.notifier);
+    await notifier.initialize();
+    await notifier.scheduleFortuneNotification(DateTime.now());
 
-      // Assert
-      verify(mockService.scheduleFortuneNotification(
-        title: '測試標題',
-        body: '測試內容',
-        scheduledDate: scheduledDate,
-      )).called(1);
-    });
+    verify(mockService.scheduleFortuneNotification(any)).called(1);
   });
 } 

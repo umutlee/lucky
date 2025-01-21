@@ -7,7 +7,6 @@ import 'dart:async' as _i4;
 
 import 'package:all_lucky/core/models/api_response.dart' as _i2;
 import 'package:all_lucky/core/services/api_client.dart' as _i3;
-import 'package:dio/dio.dart' as _i5;
 import 'package:mockito/mockito.dart' as _i1;
 
 // ignore_for_file: type=lint
@@ -47,7 +46,7 @@ class MockApiClient extends _i1.Mock implements _i3.ApiClient {
   _i4.Future<_i2.ApiResponse<T>> get<T>(
     String? path, {
     Map<String, dynamic>? queryParameters,
-    _i5.Options? options,
+    dynamic options,
     bool? forceRefresh = false,
     T Function(Map<String, dynamic>)? fromJson,
   }) =>
@@ -82,7 +81,7 @@ class MockApiClient extends _i1.Mock implements _i3.ApiClient {
     String? path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
-    _i5.Options? options,
+    dynamic options,
     T Function(Map<String, dynamic>)? fromJson,
   }) =>
       (super.noSuchMethod(
