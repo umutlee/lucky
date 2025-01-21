@@ -11,43 +11,19 @@ import 'package:all_lucky/core/services/cache_service.dart';
 import 'package:all_lucky/core/utils/logger.dart';
 import 'package:all_lucky/ui/app.dart';
 import 'core/services/cache_cleanup_service.dart';
+import 'core/initialization/app_initializer.dart';
 
 final _logger = Logger('Main');
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  final container = ProviderContainer();
+
   try {
-    // 確保 Flutter 綁定初始化
-    WidgetsFlutterBinding.ensureInitialized();
-
-    // 並行初始化所有必要服務
-    final futures = await Future.wait([
-      // 初始化時區數據
-      Future(() => tz.initializeTimeZones()),
-      // 初始化用戶資料服務
-      _initUserProfileService(),
-      // 初始化偏好設置服務
-      _initPreferencesService(),
-      // 初始化數據庫服務
-      _initDatabaseService(),
-      // 預加載資源
-      _preloadResources(),
-      // 預加載系統字體（僅在非測試環境）
-      if (!kIsWeb && !kDebugMode) _loadSystemFonts(),
-      // 優化圖片緩存
-      _optimizeImageCache(),
-    ]);
-
-    final userProfileService = futures[1] as UserProfileService;
-    final preferencesService = futures[2] as PreferencesService;
-    final databaseService = futures[3] as DatabaseService;
-    final cacheService = CacheService(databaseService);
-
-    // 啟動緩存清理服務
-    final container = ProviderContainer();
-    await container.read(databaseServiceProvider).init();
-    container.read(cacheCleanupServiceProvider).startPeriodicCleanup();
-
-    // 運行應用
+    // 初始化應用
+    await container.read(appInitializerProvider).initialize();
+    
     runApp(
       UncontrolledProviderScope(
         container: container,
@@ -55,8 +31,9 @@ Future<void> main() async {
       ),
     );
   } catch (e, stack) {
-    _logger.error('應用程序啟動失敗', e, stack);
-    rethrow;
+    _logger.error('應用初始化失敗', e, stack);
+    // 在這裡可以顯示錯誤界面或者重試選項
+    runApp(const ErrorApp());
   }
 }
 
@@ -131,5 +108,50 @@ Future<void> _optimizeImageCache() async {
     PaintingBinding.instance.imageCache.maximumSizeBytes = 50 << 20; // 50 MB
   } catch (e, stack) {
     _logger.warning('圖片緩存優化失敗', e, stack);
+  }
+}
+
+class ErrorApp extends StatelessWidget {
+  const ErrorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'All Lucky',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '應用初始化失敗',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () {
+                  // 重新啟動應用
+                  main();
+                },
+                child: const Text('重試'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 } 
