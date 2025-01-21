@@ -1,61 +1,43 @@
-import 'package:logger/logger.dart';
+import 'package:flutter/foundation.dart';
 
-class AppLogger {
-  static final AppLogger _instance = AppLogger._internal();
-  final Logger _logger = Logger(
-    printer: PrettyPrinter(
-      methodCount: 0,
-      errorMethodCount: 8,
-      lineLength: 120,
-      colors: true,
-      printEmojis: true,
-      printTime: true,
-    ),
-  );
+class Logger {
+  final String _tag;
 
-  factory AppLogger() {
-    return _instance;
+  Logger(this._tag);
+
+  void info(String message) {
+    _log('INFO', message);
   }
 
-  AppLogger._internal();
-
-  static void v(String message) {
-    _instance._logger.v(message);
-  }
-
-  static void d(String message) {
-    _instance._logger.d(message);
-  }
-
-  static void i(String message) {
-    _instance._logger.i(message);
-  }
-
-  static void w(String message) {
-    _instance._logger.w(message);
-  }
-
-  static void e(String message, [dynamic error, StackTrace? stackTrace]) {
+  void error(String message, [dynamic error, StackTrace? stackTrace]) {
+    _log('ERROR', message);
     if (error != null) {
-      _instance._logger.e(message, error: error, stackTrace: stackTrace);
-    } else {
-      _instance._logger.e(message);
+      _log('ERROR', '錯誤詳情: $error');
+    }
+    if (stackTrace != null) {
+      _log('ERROR', '堆棧跟蹤: $stackTrace');
     }
   }
 
-  static void wtf(String message, [dynamic error, StackTrace? stackTrace]) {
+  void warning(String message, [dynamic error, StackTrace? stackTrace]) {
+    _log('WARNING', message);
     if (error != null) {
-      _instance._logger.wtf(message, error: error, stackTrace: stackTrace);
-    } else {
-      _instance._logger.wtf(message);
+      _log('WARNING', '警告詳情: $error');
+    }
+    if (stackTrace != null) {
+      _log('WARNING', '堆棧跟蹤: $stackTrace');
     }
   }
 
-  static void log(Level level, String message, [dynamic error, StackTrace? stackTrace]) {
-    if (error != null) {
-      _instance._logger.log(level, message, error: error, stackTrace: stackTrace);
-    } else {
-      _instance._logger.log(level, message);
+  void debug(String message) {
+    if (kDebugMode) {
+      _log('DEBUG', message);
+    }
+  }
+
+  void _log(String level, String message) {
+    if (kDebugMode) {
+      print('[$level] $_tag: $message');
     }
   }
 } 

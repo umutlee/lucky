@@ -1,31 +1,102 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../utils/logger.dart';
 
 final sqlitePreferencesServiceProvider = Provider<SQLitePreferencesService>((ref) {
-  return SQLitePreferencesService(ref.read(databaseHelperProvider));
+  return SQLitePreferencesService(
+    ref.read(databaseHelperProvider),
+  );
 });
 
 class SQLitePreferencesService {
-  static const String _tableName = 'preferences';
-  static const String _keyDailyNotification = 'daily_notification';
-  static const String _keyNotificationTime = 'notification_time';
-  
   final DatabaseHelper _db;
   final _logger = Logger('SQLitePreferencesService');
+  static const _tableName = 'preferences';
 
   SQLitePreferencesService(this._db);
 
   Future<void> init() async {
     try {
-      // 檢查是否需要初始化默認值
-      final hasDefaultValues = await _hasAnyPreference();
-      if (!hasDefaultValues) {
-        await _initializeDefaultValues();
-      }
-      _logger.info('偏好設置服務初始化成功');
+      await _db.init();
     } catch (e, stack) {
-      _logger.error('偏好設置服務初始化失敗', e, stack);
+      _logger.error('初始化 SQLite 偏好設置服務失敗', e, stack);
+      rethrow;
+    }
+  }
+
+  Future<bool?> getDailyNotification() async {
+    try {
+      final db = await _db.database;
+      final result = await db.query(
+        _tableName,
+        columns: ['value'],
+        where: 'key = ?',
+        whereArgs: ['notification_enabled'],
+      );
+
+      if (result.isEmpty) {
+        return null;
+      }
+
+      return result.first['value'] == '1';
+    } catch (e, stack) {
+      _logger.error('獲取每日通知設置失敗', e, stack);
+      return null;
+    }
+  }
+
+  Future<String?> getNotificationTime() async {
+    try {
+      final db = await _db.database;
+      final result = await db.query(
+        _tableName,
+        columns: ['value'],
+        where: 'key = ?',
+        whereArgs: ['notification_time'],
+      );
+
+      if (result.isEmpty) {
+        return null;
+      }
+
+      return result.first['value'] as String?;
+    } catch (e, stack) {
+      _logger.error('獲取通知時間設置失敗', e, stack);
+      return null;
+    }
+  }
+
+  Future<void> setDailyNotification(bool enabled) async {
+    try {
+      final db = await _db.database;
+      await db.insert(
+        _tableName,
+        {
+          'key': 'notification_enabled',
+          'value': enabled ? '1' : '0',
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (e, stack) {
+      _logger.error('設置每日通知失敗', e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> setNotificationTime(String time) async {
+    try {
+      final db = await _db.database;
+      await db.insert(
+        _tableName,
+        {
+          'key': 'notification_time',
+          'value': time,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (e, stack) {
+      _logger.error('設置通知時間失敗', e, stack);
       rethrow;
     }
   }
@@ -45,80 +116,6 @@ class SQLitePreferencesService {
     } catch (e, stack) {
       _logger.error('初始化默認偏好設置失敗', e, stack);
       rethrow;
-    }
-  }
-
-  Future<void> setDailyNotification(bool enabled) async {
-    try {
-      await _db.insert(
-        _tableName,
-        {
-          'key': _keyDailyNotification,
-          'value': enabled.toString(),
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      _logger.info('每日通知設置已更新: $enabled');
-    } catch (e, stack) {
-      _logger.error('設置每日通知失敗', e, stack);
-      rethrow;
-    }
-  }
-
-  Future<void> setNotificationTime(String time) async {
-    try {
-      await _db.insert(
-        _tableName,
-        {
-          'key': _keyNotificationTime,
-          'value': time,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      _logger.info('通知時間已更新: $time');
-    } catch (e, stack) {
-      _logger.error('設置通知時間失敗', e, stack);
-      rethrow;
-    }
-  }
-
-  Future<bool> getDailyNotification() async {
-    try {
-      final result = await _db.query(
-        _tableName,
-        where: 'key = ?',
-        whereArgs: [_keyDailyNotification],
-      );
-      
-      if (result.isEmpty) {
-        return true; // 默認值
-      }
-      
-      return result.first['value'] == 'true';
-    } catch (e, stack) {
-      _logger.error('獲取每日通知設置失敗', e, stack);
-      return true; // 發生錯誤時返回默認值
-    }
-  }
-
-  Future<String> getNotificationTime() async {
-    try {
-      final result = await _db.query(
-        _tableName,
-        where: 'key = ?',
-        whereArgs: [_keyNotificationTime],
-      );
-      
-      if (result.isEmpty) {
-        return '08:00'; // 默認值
-      }
-      
-      return result.first['value'] as String;
-    } catch (e, stack) {
-      _logger.error('獲取通知時間失敗', e, stack);
-      return '08:00'; // 發生錯誤時返回默認值
     }
   }
 

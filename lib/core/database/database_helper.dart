@@ -21,11 +21,14 @@ class DatabaseHelper {
   }
 
   // 初始化數據庫
+  Future<void> init() async {
+    await database;
+  }
+
+  // 初始化數據庫
   Future<Database> _initDatabase() async {
     try {
-      final dbPath = await getDatabasesPath();
-      final path = join(dbPath, _databaseName);
-      
+      final path = await _getDatabasePath();
       _logger.info('初始化數據庫: $path');
       
       return await openDatabase(
@@ -40,38 +43,41 @@ class DatabaseHelper {
     }
   }
 
+  Future<String> _getDatabasePath() async {
+    return join(await getDatabasesPath(), _databaseName);
+  }
+
   // 創建數據庫表
   Future<void> _onCreate(Database db, int version) async {
     try {
       _logger.info('創建數據庫表');
       
-      // 創建 preferences 表
+      // 創建偏好設置表
       await db.execute('''
         CREATE TABLE preferences (
           key TEXT PRIMARY KEY,
           value TEXT NOT NULL,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
       ''');
 
-      // 創建 user_settings 表
+      // 創建用戶設置表
       await db.execute('''
         CREATE TABLE user_settings (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          zodiac TEXT NOT NULL,
-          birth_year INTEGER NOT NULL,
-          has_enabled_notifications BOOLEAN DEFAULT TRUE,
-          has_location_permission BOOLEAN DEFAULT FALSE,
-          has_completed_onboarding BOOLEAN DEFAULT FALSE,
-          has_accepted_terms BOOLEAN DEFAULT FALSE,
-          has_accepted_privacy BOOLEAN DEFAULT FALSE,
-          is_first_launch BOOLEAN DEFAULT TRUE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          zodiac TEXT,
+          birth_year INTEGER,
+          location_permission INTEGER DEFAULT 0,
+          onboarding_completed INTEGER DEFAULT 0,
+          terms_accepted INTEGER DEFAULT 0,
+          privacy_accepted INTEGER DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
       ''');
 
-      _logger.info('數據庫表創建成功');
+      _logger.info('數據庫表創建完成');
     } catch (e, stack) {
       _logger.error('創建數據庫表失敗', e, stack);
       rethrow;
@@ -81,14 +87,13 @@ class DatabaseHelper {
   // 數據庫升級
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     try {
-      _logger.info('數據庫升級: $oldVersion -> $newVersion');
+      _logger.info('升級數據庫從 v$oldVersion 到 v$newVersion');
       
       // 在這裡添加數據庫升級邏輯
-      if (oldVersion < 2) {
-        // 未來版本升級時添加相應的遷移邏輯
-      }
+      
+      _logger.info('數據庫升級完成');
     } catch (e, stack) {
-      _logger.error('數據庫升級失敗', e, stack);
+      _logger.error('升級數據庫失敗', e, stack);
       rethrow;
     }
   }
@@ -196,7 +201,7 @@ class DatabaseHelper {
         _logger.info('數據庫連接已關閉');
       }
     } catch (e, stack) {
-      _logger.error('關閉數據庫連接失敗', e, stack);
+      _logger.error('關閉數據庫失敗', e, stack);
       rethrow;
     }
   }
