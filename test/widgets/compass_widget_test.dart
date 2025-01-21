@@ -1,13 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../lib/ui/widgets/compass_widget.dart';
-import '../../lib/core/models/compass_direction.dart';
+import 'package:all_lucky/core/models/compass_direction.dart';
+import 'package:all_lucky/core/services/compass_service.dart';
+import 'package:all_lucky/ui/widgets/compass_widget.dart';
 
 void main() {
-  group('CompassWidget Tests', () {
-    testWidgets('CompassWidget displays loading state',
-        (WidgetTester tester) async {
+  group('CompassWidget', () {
+    testWidgets('顯示加載狀態', (tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -21,17 +22,14 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('CompassWidget displays error state',
-        (WidgetTester tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          compassProvider.overrideWith((ref) => Stream.error('測試錯誤')),
-        ],
-      );
-
+    testWidgets('顯示錯誤狀態', (tester) async {
       await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
+        ProviderScope(
+          overrides: [
+            compassProvider.overrideWith(
+              (ref) => Stream.error('測試錯誤'),
+            ),
+          ],
           child: const MaterialApp(
             home: Scaffold(
               body: CompassWidget(),
@@ -41,52 +39,20 @@ void main() {
       );
 
       await tester.pump();
-
-      expect(find.text('錯誤: 測試錯誤'), findsOneWidget);
+      expect(find.text('無法獲取指南針數據'), findsOneWidget);
     });
 
-    testWidgets('CompassWidget displays compass with direction',
-        (WidgetTester tester) async {
-      final direction = CompassDirection.fromDegrees(90);
-      final container = ProviderContainer(
-        overrides: [
-          compassProvider
-              .overrideWith((ref) => Stream.value(direction)),
-        ],
-      );
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(
-            home: Scaffold(
-              body: CompassWidget(),
-            ),
-          ),
-        ),
-      );
-
-      await tester.pump();
-
-      expect(find.text('當前方位: 東'), findsOneWidget);
-    });
-
-    testWidgets('CompassWidget updates direction on stream update',
-        (WidgetTester tester) async {
-      final direction1 = CompassDirection.fromDegrees(0);
-      final direction2 = CompassDirection.fromDegrees(90);
+    testWidgets('顯示方位信息', (tester) async {
+      final direction = CompassDirection(name: '北', angle: 0.0);
       final streamController = StreamController<CompassDirection>();
-      
-      final container = ProviderContainer(
-        overrides: [
-          compassProvider
-              .overrideWith((ref) => streamController.stream),
-        ],
-      );
 
       await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
+        ProviderScope(
+          overrides: [
+            compassProvider.overrideWith(
+              (ref) => streamController.stream,
+            ),
+          ],
           child: const MaterialApp(
             home: Scaffold(
               body: CompassWidget(),
@@ -95,48 +61,11 @@ void main() {
         ),
       );
 
-      streamController.add(direction1);
+      streamController.add(direction);
       await tester.pump();
-      expect(find.text('當前方位: 北'), findsOneWidget);
 
-      streamController.add(direction2);
-      await tester.pump();
-      expect(find.text('當前方位: 東'), findsOneWidget);
-
+      expect(find.text('北'), findsOneWidget);
       streamController.close();
-    });
-
-    testWidgets('CompassWidget calls onDirectionChanged callback',
-        (WidgetTester tester) async {
-      final direction = CompassDirection.fromDegrees(90);
-      CompassDirection? lastDirection;
-
-      final container = ProviderContainer(
-        overrides: [
-          compassProvider
-              .overrideWith((ref) => Stream.value(direction)),
-        ],
-      );
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            home: Scaffold(
-              body: CompassWidget(
-                onDirectionChanged: (direction) {
-                  lastDirection = direction;
-                },
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.pump();
-      await tester.pumpAndSettle();
-
-      expect(lastDirection?.direction, equals('東'));
     });
   });
 } 

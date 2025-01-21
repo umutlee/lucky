@@ -1,87 +1,56 @@
 import 'package:flutter/foundation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-@immutable
-class CompassDirection {
-  final double degrees;      // 角度（0-360）
-  final String direction;    // 方位名稱（如：東、南、西、北）
-  final bool isLucky;        // 是否為吉利方位
-  final String? description; // 方位描述
+part 'compass_direction.freezed.dart';
+part 'compass_direction.g.dart';
 
-  const CompassDirection({
-    required this.degrees,
-    required this.direction,
-    this.isLucky = false,
-    this.description,
-  });
+@freezed
+class CompassDirection with _$CompassDirection {
+  const factory CompassDirection({
+    required String name,
+    required double angle,
+  }) = _CompassDirection;
 
-  // 根據角度獲取基本方位
-  static String getBaseDirection(double degrees) {
-    const directions = ['北', '東北', '東', '東南', '南', '西南', '西', '西北'];
-    final index = ((degrees + 22.5) % 360) ~/ 45;
-    return directions[index];
+  const CompassDirection._();
+
+  factory CompassDirection.fromJson(Map<String, dynamic> json) =>
+      _$CompassDirectionFromJson(json);
+
+  static const north = CompassDirection(name: '北', angle: 0.0);
+  static const northeast = CompassDirection(name: '東北', angle: 45.0);
+  static const east = CompassDirection(name: '東', angle: 90.0);
+  static const southeast = CompassDirection(name: '東南', angle: 135.0);
+  static const south = CompassDirection(name: '南', angle: 180.0);
+  static const southwest = CompassDirection(name: '西南', angle: 225.0);
+  static const west = CompassDirection(name: '西', angle: 270.0);
+  static const northwest = CompassDirection(name: '西北', angle: 315.0);
+
+  static const allDirections = [
+    north,
+    northeast,
+    east,
+    southeast,
+    south,
+    southwest,
+    west,
+    northwest,
+  ];
+
+  bool isNear(double targetAngle, {double tolerance = 10.0}) {
+    return calculateAngleDifference(angle, targetAngle) <= tolerance;
   }
 
-  // 從角度創建方位對象
-  factory CompassDirection.fromDegrees(double degrees, {
-    bool isLucky = false,
-    String? description,
-  }) {
-    final direction = getBaseDirection(degrees);
-    return CompassDirection(
-      degrees: degrees,
-      direction: direction,
-      isLucky: isLucky,
-      description: description,
-    );
+  static double calculateAngleDifference(double angle1, double angle2) {
+    final diff = (angle1 - angle2).abs() % 360;
+    return diff > 180 ? 360 - diff : diff;
   }
 
-  // 檢查兩個方位是否相近（誤差在指定範圍內）
-  bool isNear(CompassDirection other, {double tolerance = 22.5}) {
-    final diff = (degrees - other.degrees).abs() % 360;
-    return diff <= tolerance || diff >= 360 - tolerance;
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CompassDirection &&
-          runtimeType == other.runtimeType &&
-          degrees == other.degrees &&
-          direction == other.direction &&
-          isLucky == other.isLucky &&
-          description == other.description;
-
-  @override
-  int get hashCode =>
-      degrees.hashCode ^
-      direction.hashCode ^
-      isLucky.hashCode ^
-      description.hashCode;
-
-  @override
-  String toString() {
-    return 'CompassDirection('
-        'degrees: $degrees, '
-        'direction: $direction, '
-        'isLucky: $isLucky, '
-        'description: $description)';
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'degrees': degrees,
-      'direction': direction,
-      'isLucky': isLucky,
-      'description': description,
-    };
-  }
-
-  factory CompassDirection.fromJson(Map<String, dynamic> json) {
-    return CompassDirection(
-      degrees: json['degrees'] as double,
-      direction: json['direction'] as String,
-      isLucky: json['isLucky'] as bool? ?? false,
-      description: json['description'] as String?,
-    );
+  static CompassDirection getDirection(double heading) {
+    final normalizedHeading = heading % 360;
+    return allDirections.reduce((a, b) {
+      final diffA = calculateAngleDifference(normalizedHeading, a.angle);
+      final diffB = calculateAngleDifference(normalizedHeading, b.angle);
+      return diffA < diffB ? a : b;
+    });
   }
 } 

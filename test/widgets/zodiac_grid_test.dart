@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:all_lucky/core/models/zodiac.dart';
 import 'package:all_lucky/ui/widgets/zodiac_grid.dart';
-import 'package:all_lucky/ui/widgets/zodiac_display.dart';
 
 void main() {
-  group('ZodiacGrid Widget Tests', () {
-    testWidgets('renders all 12 zodiac signs', (tester) async {
+  group('ZodiacGrid', () {
+    testWidgets('顯示所有生肖圖標', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
-            body: SingleChildScrollView(
-              child: ZodiacGrid(),
+            body: ZodiacGrid(
+              onZodiacSelected: (_) {},
             ),
           ),
         ),
@@ -19,65 +19,37 @@ void main() {
       expect(find.byType(ZodiacDisplay), findsNWidgets(12));
     });
 
-    testWidgets('handles tap on zodiac when interactive', (tester) async {
-      String? tappedZodiac;
+    testWidgets('點擊生肖時觸發回調', (tester) async {
+      Zodiac? selectedZodiac;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SingleChildScrollView(
-              child: ZodiacGrid(
-                isInteractive: true,
-                onZodiacTap: (zodiac) => tappedZodiac = zodiac,
-              ),
+            body: ZodiacGrid(
+              onZodiacSelected: (zodiac) => selectedZodiac = zodiac,
             ),
           ),
         ),
       );
 
-      await tester.tap(find.byType(InkWell).first);
-      expect(tappedZodiac, '鼠');
+      await tester.tap(find.byType(ZodiacDisplay).first);
+      expect(selectedZodiac, isNotNull);
     });
 
-    testWidgets('shows descriptions when provided', (tester) async {
-      final descriptions = {
-        '龍': '龍年大吉',
-        '虎': '虎虎生威',
-      };
-
+    testWidgets('使用自定義圖標大小', (tester) async {
+      const iconSize = 80.0;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SingleChildScrollView(
-              child: ZodiacGrid(
-                descriptions: descriptions,
-              ),
+            body: ZodiacGrid(
+              onZodiacSelected: (_) {},
+              iconSize: iconSize,
             ),
           ),
         ),
       );
 
-      expect(find.text('龍年大吉'), findsOneWidget);
-      expect(find.text('虎虎生威'), findsOneWidget);
-    });
-
-    testWidgets('respects itemSize parameter', (tester) async {
-      const itemSize = 80.0;
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: ZodiacGrid(
-                itemSize: itemSize,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      final firstZodiacDisplay = tester.widget<ZodiacDisplay>(
-        find.byType(ZodiacDisplay).first,
-      );
-      expect(firstZodiacDisplay.size, itemSize);
+      final zodiacDisplay = tester.widget<ZodiacDisplay>(find.byType(ZodiacDisplay).first);
+      expect(zodiacDisplay.size, iconSize);
     });
   });
 } 

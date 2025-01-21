@@ -1,130 +1,73 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:all_lucky/core/models/user_preferences.dart';
-import 'package:all_lucky/core/utils/logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/logger.dart';
 
 final preferencesServiceProvider = Provider<PreferencesService>((ref) {
   return PreferencesService();
 });
 
 class PreferencesService {
-  static const String _boxName = 'preferences';
-  static const String _preferencesKey = 'user_preferences';
-  late Box<UserPreferences> _box;
-  UserPreferences? _preferences;
+  static const String _keyDailyNotification = 'daily_notification';
+  static const String _keyNotificationTime = 'notification_time';
+  
+  late final SharedPreferences _prefs;
   final _logger = Logger('PreferencesService');
 
   Future<void> init() async {
     try {
-      Hive.registerAdapter(UserPreferencesAdapter());
-      _box = await Hive.openBox<UserPreferences>(_boxName);
-      _loadPreferences();
+      _prefs = await SharedPreferences.getInstance();
+      _logger.info('偏好設置服務初始化成功');
     } catch (e, stack) {
-      _logger.error('初始化偏好設置失敗', e, stack);
+      _logger.error('偏好設置服務初始化失敗', e, stack);
       rethrow;
     }
   }
 
-  void _loadPreferences() {
+  Future<void> setDailyNotification(bool enabled) async {
     try {
-      _preferences = _box.get(_preferencesKey) ?? UserPreferences();
+      await _prefs.setBool(_keyDailyNotification, enabled);
+      _logger.info('每日通知設置已更新: $enabled');
     } catch (e, stack) {
-      _logger.error('加載偏好設置失敗', e, stack);
-      _preferences = UserPreferences();
-    }
-  }
-
-  UserPreferences get preferences => _preferences ?? UserPreferences();
-
-  Future<void> updatePreferences(UserPreferences preferences) async {
-    try {
-      await _box.put(_preferencesKey, preferences);
-      _preferences = preferences;
-    } catch (e, stack) {
-      _logger.error('更新偏好設置失敗', e, stack);
+      _logger.error('設置每日通知失敗', e, stack);
       rethrow;
     }
   }
 
-  Future<void> updateNotificationSettings({
-    bool? enableDailyNotification,
-    bool? enableSolarTermNotification,
-    bool? enableLuckyDayNotification,
-    String? notificationTime,
-  }) async {
+  Future<void> setNotificationTime(String time) async {
     try {
-      final updatedPreferences = preferences.copyWith(
-        enableDailyNotification: enableDailyNotification,
-        enableSolarTermNotification: enableSolarTermNotification,
-        enableLuckyDayNotification: enableLuckyDayNotification,
-        notificationTime: notificationTime,
-      );
-      await updatePreferences(updatedPreferences);
+      await _prefs.setString(_keyNotificationTime, time);
+      _logger.info('通知時間已更新: $time');
     } catch (e, stack) {
-      _logger.error('更新通知設置失敗', e, stack);
+      _logger.error('設置通知時間失敗', e, stack);
       rethrow;
     }
   }
 
-  Future<void> updateFortuneTypes(List<String> fortuneTypes) async {
+  bool getDailyNotification() {
     try {
-      final updatedPreferences = preferences.copyWith(
-        preferredFortuneTypes: fortuneTypes,
-      );
-      await updatePreferences(updatedPreferences);
+      return _prefs.getBool(_keyDailyNotification) ?? true;
     } catch (e, stack) {
-      _logger.error('更新運勢類型失敗', e, stack);
-      rethrow;
+      _logger.error('獲取每日通知設置失敗', e, stack);
+      return true;
     }
   }
 
-  Future<void> updateLanguageStyle(String style) async {
+  String getNotificationTime() {
     try {
-      final updatedPreferences = preferences.copyWith(
-        languageStyle: style,
-      );
-      await updatePreferences(updatedPreferences);
+      return _prefs.getString(_keyNotificationTime) ?? '08:00';
     } catch (e, stack) {
-      _logger.error('更新語言風格失敗', e, stack);
-      rethrow;
+      _logger.error('獲取通知時間失敗', e, stack);
+      return '08:00';
     }
   }
 
-  Future<void> updateDarkMode(bool enableDarkMode) async {
+  Future<void> clear() async {
     try {
-      final updatedPreferences = preferences.copyWith(
-        enableDarkMode: enableDarkMode,
-      );
-      await updatePreferences(updatedPreferences);
+      await _prefs.clear();
+      _logger.info('偏好設置已清空');
     } catch (e, stack) {
-      _logger.error('更新深色模式設置失敗', e, stack);
+      _logger.error('清空偏好設置失敗', e, stack);
       rethrow;
     }
-  }
-
-  Future<void> updateCustomSettings(Map<String, dynamic> settings) async {
-    try {
-      final updatedPreferences = preferences.copyWith(
-        customSettings: settings,
-      );
-      await updatePreferences(updatedPreferences);
-    } catch (e, stack) {
-      _logger.error('更新自定義設置失敗', e, stack);
-      rethrow;
-    }
-  }
-
-  Future<void> resetPreferences() async {
-    try {
-      await _box.delete(_preferencesKey);
-      _preferences = UserPreferences();
-    } catch (e, stack) {
-      _logger.error('重置偏好設置失敗', e, stack);
-      rethrow;
-    }
-  }
-
-  Future<void> dispose() async {
-    await _box.close();
   }
 } 

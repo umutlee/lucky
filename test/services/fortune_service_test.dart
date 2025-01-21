@@ -6,17 +6,25 @@ import 'package:all_lucky/core/services/zodiac_fortune_service.dart';
 import 'package:all_lucky/core/services/user_settings_service.dart';
 import 'package:all_lucky/core/models/fortune.dart';
 import 'package:all_lucky/core/models/user_settings.dart';
+import 'package:all_lucky/core/models/zodiac.dart';
+import 'package:all_lucky/core/services/storage_service.dart';
 
 @GenerateMocks([ZodiacFortuneService, UserSettingsService])
 void main() {
   late FortuneService fortuneService;
   late MockZodiacFortuneService mockZodiacFortuneService;
   late MockUserSettingsService mockUserSettingsService;
+  late MockStorageService mockStorageService;
 
   setUp(() {
     mockZodiacFortuneService = MockZodiacFortuneService();
     mockUserSettingsService = MockUserSettingsService();
-    fortuneService = FortuneService(mockZodiacFortuneService, mockUserSettingsService);
+    mockStorageService = MockStorageService();
+    fortuneService = FortuneService(
+      mockZodiacFortuneService,
+      mockUserSettingsService,
+      mockStorageService,
+    );
   });
 
   group('FortuneService Tests', () {
@@ -127,6 +135,60 @@ void main() {
       expect(careerFortune.recommendations.any((r) => r.contains('工作')), isTrue);
       expect(wealthFortune.recommendations.any((r) => r.contains('財務')), isTrue);
       expect(socialFortune.recommendations.any((r) => r.contains('社交') || r.contains('關係')), isTrue);
+    });
+
+    test('獲取每日運勢', () async {
+      final settings = UserSettings.defaultSettings();
+      when(mockUserSettingsService.getUserSettings())
+          .thenAnswer((_) async => settings);
+
+      final fortune = Fortune(
+        id: '1',
+        type: '事業',
+        title: '今日事業運勢',
+        description: '今天的事業運勢非常好',
+        score: 85,
+        date: DateTime.now(),
+        isLuckyDay: true,
+        zodiacAffinity: {'鼠': 90, '猴': 85},
+        recommendations: ['屬龍的你今天適合...'],
+      );
+
+      when(mockZodiacFortuneService.getDailyFortune(any, any))
+          .thenAnswer((_) async => fortune);
+
+      final result = await fortuneService.getDailyFortune();
+      expect(result, isNotNull);
+      expect(result.score, inInclusiveRange(30, 100));
+      expect(result.recommendations, isNotEmpty);
+    });
+
+    test('獲取運勢歷史', () async {
+      final settings = UserSettings.defaultSettings();
+      when(mockUserSettingsService.getUserSettings())
+          .thenAnswer((_) async => settings);
+
+      final fortunes = [
+        Fortune(
+          id: '1',
+          type: '事業',
+          title: '昨日事業運勢',
+          description: '昨天的事業運勢不錯',
+          score: 75,
+          date: DateTime.now().subtract(const Duration(days: 1)),
+          isLuckyDay: false,
+          zodiacAffinity: {'鼠': 80, '猴': 75},
+          recommendations: ['屬龍的你昨天...'],
+        ),
+      ];
+
+      when(mockZodiacFortuneService.getFortuneHistory(any, any, limit: anyNamed('limit')))
+          .thenAnswer((_) async => fortunes);
+
+      final result = await fortuneService.getFortuneHistory();
+      expect(result, isNotNull);
+      expect(result, isNotEmpty);
+      expect(result.first.score, inInclusiveRange(30, 100));
     });
   });
 } 

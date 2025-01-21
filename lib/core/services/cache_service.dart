@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sqflite/sqflite.dart';
 import '../utils/logger.dart';
 import 'package:all_lucky/core/services/database_service.dart';
 
@@ -21,9 +22,6 @@ class CacheService {
 
   // LRU 緩存，用於存儲最近使用的數據
   final _lruCache = _LruCache<String, dynamic>(maxSize: 100);
-  
-  // 弱引用緩存，用於存儲不常用的數據
-  final _weakCache = WeakCache<String, dynamic>();
 
   // 緩存統計
   int _hits = 0;
@@ -258,14 +256,47 @@ class CacheService {
   }
 }
 
-// LRU 緩存實現
-class _LruCache<K, V> {
-  _LruCache({required this.maxSize}) : assert(maxSize > 0);
+class _CacheStats {
+  int memoryHits = 0;
+  int diskHits = 0;
+  int misses = 0;
+  int writes = 0;
 
+  void incrementMemoryHits([int count = 1]) => memoryHits += count;
+  void incrementDiskHits([int count = 1]) => diskHits += count;
+  void incrementMisses([int count = 1]) => misses += count;
+  void incrementWrites([int count = 1]) => writes += count;
+
+  void reset() {
+    memoryHits = 0;
+    diskHits = 0;
+    misses = 0;
+    writes = 0;
+  }
+
+  Map<String, int> toMap() {
+    return {
+      'memoryHits': memoryHits,
+      'diskHits': diskHits,
+      'misses': misses,
+      'writes': writes,
+      'totalHits': memoryHits + diskHits,
+      'hitRatio': _calculateHitRatio(),
+    };
+  }
+
+  int _calculateHitRatio() {
+    final totalOperations = memoryHits + diskHits + misses;
+    if (totalOperations == 0) return 0;
+    return ((memoryHits + diskHits) * 100 ~/ totalOperations);
+  }
+}
+
+class _LruCache<K, V> {
   final int maxSize;
   final _cache = LinkedHashMap<K, V>();
 
-  int get size => _cache.length;
+  _LruCache({required this.maxSize});
 
   V? get(K key) {
     final value = _cache.remove(key);
@@ -283,77 +314,7 @@ class _LruCache<K, V> {
     }
   }
 
-  void remove(K key) {
-    _cache.remove(key);
-  }
-
-  void clear() {
-    _cache.clear();
-  }
-}
-
-// 弱引用緩存實現
-class WeakCache<K, V> {
-  final _cache = <K, WeakReference<V>>{};
-
-  int get size => _cache.length;
-
-  V? get(K key) {
-    final weakRef = _cache[key];
-    if (weakRef == null) return null;
-
-    final value = weakRef.target;
-    if (value == null) {
-      _cache.remove(key);
-    }
-    return value;
-  }
-
-  void put(K key, V value) {
-    _cache[key] = WeakReference(value);
-  }
-
-  void remove(K key) {
-    _cache.remove(key);
-  }
-
-  void clear() {
-    _cache.clear();
-  }
-}
-
-class _CacheStats {
-  int _memoryHits = 0;
-  int _diskHits = 0;
-  int _misses = 0;
-  int _writes = 0;
-
-  void incrementMemoryHits([int count = 1]) => _memoryHits += count;
-  void incrementDiskHits([int count = 1]) => _diskHits += count;
-  void incrementMisses([int count = 1]) => _misses += count;
-  void incrementWrites([int count = 1]) => _writes += count;
-
-  void reset() {
-    _memoryHits = 0;
-    _diskHits = 0;
-    _misses = 0;
-    _writes = 0;
-  }
-
-  Map<String, int> toMap() {
-    return {
-      'memoryHits': _memoryHits,
-      'diskHits': _diskHits,
-      'misses': _misses,
-      'writes': _writes,
-      'totalHits': _memoryHits + _diskHits,
-      'hitRatio': _calculateHitRatio(),
-    };
-  }
-
-  int _calculateHitRatio() {
-    final totalOperations = _memoryHits + _diskHits + _misses;
-    if (totalOperations == 0) return 0;
-    return ((_memoryHits + _diskHits) * 100 ~/ totalOperations);
-  }
+  void remove(K key) => _cache.remove(key);
+  void clear() => _cache.clear();
+  bool containsKey(K key) => _cache.containsKey(key);
 } 

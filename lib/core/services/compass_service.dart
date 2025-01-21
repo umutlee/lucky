@@ -4,6 +4,14 @@ import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/compass_direction.dart';
 import '../utils/logger.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final compassProvider = StreamProvider<CompassDirection>((ref) {
+  return FlutterCompass.events?.map((event) {
+    final heading = event.heading ?? 0.0;
+    return CompassDirection.getDirection(heading);
+  }) ?? Stream.value(CompassDirection.north);
+});
 
 class CompassService {
   static final CompassService _instance = CompassService._internal();
@@ -13,6 +21,17 @@ class CompassService {
   final _logger = Logger('CompassService');
   StreamSubscription<CompassEvent>? _compassSubscription;
   StreamController<CompassDirection>? _directionController;
+
+  static const Map<int, String> _directions = {
+    0: '北',
+    45: '東北',
+    90: '東',
+    135: '東南',
+    180: '南',
+    225: '西南',
+    270: '西',
+    315: '西北',
+  };
 
   // 獲取方位流
   Stream<CompassDirection> get directionStream {
@@ -45,7 +64,7 @@ class CompassService {
       _compassSubscription = FlutterCompass.events?.listen(
         (event) {
           if (event.heading != null) {
-            final direction = CompassDirection.fromDegrees(event.heading!);
+            final direction = getDirection(event.heading!);
             _directionController?.add(direction);
           }
         },
@@ -106,7 +125,7 @@ class CompassService {
 
   // 檢查方位是否吉利
   bool isLuckyDirection(CompassDirection direction, List<String> luckyDirections) {
-    return luckyDirections.contains(direction.direction);
+    return luckyDirections.contains(direction.name);
   }
 
   // 獲取最近的吉利方位
@@ -121,7 +140,7 @@ class CompassService {
 
     for (final direction in luckyDirections) {
       final degrees = _directionToDegrees(direction);
-      final diff = (current.degrees - degrees).abs() % 360;
+      final diff = (current.angle - degrees).abs() % 360;
       if (diff < minDiff) {
         minDiff = diff;
         nearest = CompassDirection.fromDegrees(
@@ -155,5 +174,43 @@ class CompassService {
     _stopListening();
     _directionController?.close();
     _directionController = null;
+  }
+
+  CompassDirection getDirection(double heading) {
+    // 標準化角度到 0-360 範圍
+    heading = (heading + 360) % 360;
+    
+    // 定義所有方向
+    final directions = [
+      CompassDirection.north,     // 0°
+      CompassDirection.northeast, // 45°
+      CompassDirection.east,      // 90°
+      CompassDirection.southeast, // 135°
+      CompassDirection.south,     // 180°
+      CompassDirection.southwest, // 225°
+      CompassDirection.west,      // 270°
+      CompassDirection.northwest, // 315°
+    ];
+    
+    // 找到最接近的方向
+    return directions.reduce((a, b) {
+      final diffA = calculateAngleDifference(heading, a.angle);
+      final diffB = calculateAngleDifference(heading, b.angle);
+      return diffA < diffB ? a : b;
+    });
+  }
+
+  double calculateAngleDifference(double angle1, double angle2) {
+    final diff = (angle1 - angle2).abs() % 360;
+    return math.min(diff, 360 - diff);
+  }
+
+  static double normalizeHeading(double heading) {
+    return (heading + 360) % 360;
+  }
+
+  static double calculateAngleDifference(double angle1, double angle2) {
+    final diff = (angle1 - angle2).abs() % 360;
+    return diff > 180 ? 360 - diff : diff;
   }
 } 

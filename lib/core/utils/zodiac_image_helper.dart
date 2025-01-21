@@ -1,21 +1,39 @@
-class ZodiacImageHelper {
-  static const _basePath = 'assets/images/zodiac/Chinese 12 Zodiacs - ';
+import '../models/zodiac.dart';
 
-  static String getZodiacImage(String zodiac) {
-    if (!_zodiacNameMap.containsKey(zodiac)) {
-      throw ArgumentError('Invalid zodiac name: $zodiac');
+class ZodiacImageHelper {
+  static const _basePath = 'assets/images/zodiac/';
+
+  static const _zodiacNameMap = {
+    Zodiac.rat: 'Chinese 12 Zodiacs - Rat',
+    Zodiac.ox: 'Chinese 12 Zodiacs - Ox',
+    Zodiac.tiger: 'Chinese 12 Zodiacs - Tiger',
+    Zodiac.rabbit: 'Chinese 12 Zodiacs - Rabbit',
+    Zodiac.dragon: 'Chinese 12 Zodiacs - Dragon',
+    Zodiac.snake: 'Chinese 12 Zodiacs - Snake',
+    Zodiac.horse: 'Chinese 12 Zodiacs - Horse',
+    Zodiac.goat: 'Chinese 12 Zodiacs - Goat',
+    Zodiac.monkey: 'Chinese 12 Zodiacs - Monkey',
+    Zodiac.rooster: 'Chinese 12 Zodiacs - Rooster',
+    Zodiac.dog: 'Chinese 12 Zodiacs - Dog',
+    Zodiac.pig: 'Chinese 12 Zodiacs - Pig',
+  };
+
+  static String getZodiacImage(Zodiac zodiac) {
+    final name = _zodiacNameMap[zodiac];
+    if (name == null) {
+      throw ArgumentError('無效的生肖: $zodiac');
     }
-    return '$_basePath${_zodiacNameMap[zodiac]}.jpg';
+    return 'assets/images/zodiac/$name.jpg';
   }
 
   static String getZodiacImageByYear(int year) {
-    final zodiacOrder = ['鼠', '牛', '虎', '兔', '龍', '蛇', '馬', '羊', '猴', '雞', '狗', '豬'];
-    final index = (year - 4) % 12; // 以4年為鼠年起始
-    return getZodiacImage(zodiacOrder[index]);
+    final zodiac = Zodiac.fromYear(year);
+    return getZodiacImage(zodiac);
   }
 
-  // 獲取所有生肖圖片路徑
   static List<String> getAllZodiacImages() {
-    return _zodiacNameMap.values.map((name) => '$_basePath$name.jpg').toList();
+    return _zodiacNameMap.values
+        .map((name) => 'assets/images/zodiac/$name.jpg')
+        .toList();
   }
 } 

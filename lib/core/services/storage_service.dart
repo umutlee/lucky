@@ -1,15 +1,18 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:all_lucky/core/models/fortune.dart';
 
-final storageServiceProvider = Provider<StorageService>((ref) => StorageService());
+final storageServiceProvider = Provider<StorageService>((ref) => StorageService(ref.read(sharedPreferencesProvider)));
 
 class StorageService {
   static const String _keyPrefix = 'all_lucky_';
-  late SharedPreferences _prefs;
+  final SharedPreferences _prefs;
   
+  StorageService(this._prefs);
+
   Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
+    // This method is now empty as the SharedPreferences instance is passed in the constructor
   }
 
   Future<bool> saveData(String key, dynamic value) async {
@@ -74,5 +77,40 @@ class StorageService {
   bool hasKey(String key) {
     final String fullKey = _keyPrefix + key;
     return _prefs.containsKey(fullKey);
+  }
+
+  Future<T?> getCachedFortune<T>(String key) async {
+    final jsonString = _prefs.getString(key);
+    if (jsonString == null) return null;
+    
+    try {
+      final json = jsonDecode(jsonString);
+      if (T == Fortune) {
+        return Fortune.fromJson(json) as T;
+      }
+      return json as T;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> cacheFortune<T>(String key, T data) async {
+    if (data == null) return;
+    
+    try {
+      final jsonString = data is Fortune 
+          ? jsonEncode(data.toJson())
+          : jsonEncode(data);
+      await _prefs.setString(key, jsonString);
+    } catch (e) {
+      // 忽略序列化錯誤
+    }
+  }
+
+  Future<void> clearAllCache() async {
+    final keys = _prefs.getKeys().where((key) => key.startsWith('fortune_'));
+    for (final key in keys) {
+      await _prefs.remove(key);
+    }
   }
 } 

@@ -19,14 +19,21 @@
 ## 技術架構
 
 ### 前端（Flutter）
-- 狀態管理：Riverpod
-- 本地存儲：SharedPreferences
-- 通知系統：flutter_local_notifications
-- 方位服務：flutter_compass, geolocator
+- Flutter SDK: 3.27.2
+- 狀態管理：flutter_riverpod ^2.5.1
+- 路由管理：go_router ^13.2.1
+- 本地存儲：
+  - shared_preferences ^2.2.2
+  - hive ^2.2.3
+  - sqflite ^2.3.2
+- 通知系統：flutter_local_notifications ^16.3.2
+- 方位服務：
+  - flutter_compass ^0.8.0
+  - geolocator ^11.0.0
 
 ## 安裝要求
-- Flutter 3.0.0 或更高版本
-- Dart 3.0.0 或更高版本
+- Flutter 3.27.2 或更高版本
+- Dart 3.3.0 或更高版本
 - Android SDK 21 或更高版本
 - iOS 11.0 或更高版本
 
@@ -42,7 +49,12 @@ git clone https://github.com/yourusername/all-lucky.git
 flutter pub get
 ```
 
-3. 運行應用
+3. 生成必要的代碼文件
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+4. 運行應用
 ```bash
 flutter run
 ```
@@ -55,6 +67,8 @@ flutter run
 - [x] 運勢預測系統
 - [x] 通知提醒系統
 - [x] 方位指南系統
+- [x] 路由系統優化
+- [x] 代碼質量檢查工具
 
 ## 貢獻指南
 歡迎提交 Issue 和 Pull Request 來幫助改進項目。

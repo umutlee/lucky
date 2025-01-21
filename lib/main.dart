@@ -103,16 +103,10 @@ Future<void> _preloadResources() async {
 
 Future<void> _loadResources(void _) async {
   try {
-    // 預加載圖片
-    final imageFutures = [
-      if (!kIsWeb && !kDebugMode) ...[
-        precacheImage(const AssetImage('assets/images/logo.png'), null),
-        precacheImage(const AssetImage('assets/images/background.png'), null),
-      ],
-    ];
-    await Future.wait(imageFutures);
+    // 暫時移除圖片預加載
+    await Future.delayed(Duration.zero);
   } catch (e, stack) {
-    _logger.warning('圖片預加載失敗', e, stack);
+    _logger.warning('資源加載失敗', e, stack);
   }
 }
 

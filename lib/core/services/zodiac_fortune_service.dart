@@ -1,10 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/fortune.dart';
 import '../utils/zodiac_image_helper.dart';
+import 'package:all_lucky/core/models/zodiac.dart';
+import 'package:all_lucky/core/services/api_client.dart';
 
-final zodiacFortuneServiceProvider = Provider((ref) => ZodiacFortuneService());
+final zodiacFortuneServiceProvider = Provider<ZodiacFortuneService>(
+  (ref) => ZodiacFortuneService(ref.read(apiClientProvider)),
+);
 
 class ZodiacFortuneService {
+  final ApiClient _apiClient;
+
+  ZodiacFortuneService(this._apiClient);
+
   // 生肖相性表（基礎分數）
   final Map<String, Map<String, int>> _baseAffinityScores = {
     '鼠': {'龍': 90, '猴': 85, '牛': 60, '虎': 40},
@@ -116,5 +124,55 @@ class ZodiacFortuneService {
       zodiacAffinity: zodiacAffinity,
       recommendations: allRecommendations,
     );
+  }
+
+  Future<Fortune> getDailyFortune(Zodiac zodiac, DateTime date) async {
+    try {
+      final response = await _apiClient.get(
+        '/fortune/daily',
+        queryParameters: {
+          'zodiac': zodiac.name,
+          'date': date.toIso8601String(),
+        },
+      );
+      
+      if (response.data == null) {
+        throw Exception('獲取每日運勢失敗：伺服器返回空數據');
+      }
+
+      return Fortune.fromJson(response.data);
+    } catch (e) {
+      print('獲取每日運勢失敗: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Fortune>> getFortuneHistory(
+    Zodiac zodiac,
+    DateTime startDate,
+    DateTime endDate, {
+    int limit = 7,
+  }) async {
+    try {
+      final response = await _apiClient.get(
+        '/fortune/history',
+        queryParameters: {
+          'zodiac': zodiac.name,
+          'startDate': startDate.toIso8601String(),
+          'endDate': endDate.toIso8601String(),
+          'limit': limit,
+        },
+      );
+
+      if (response.data == null) {
+        throw Exception('獲取運勢歷史失敗：伺服器返回空數據');
+      }
+
+      final List<dynamic> historyData = response.data;
+      return historyData.map((data) => Fortune.fromJson(data)).toList();
+    } catch (e) {
+      print('獲取運勢歷史失敗: $e');
+      rethrow;
+    }
   }
 } 

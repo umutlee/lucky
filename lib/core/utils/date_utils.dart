@@ -32,56 +32,52 @@ class DateUtils {
   }
 
   static int calculateAge(DateTime birthDate) {
-    final now = DateTime.now();
-    int age = now.year - birthDate.year;
-    
-    if (now.month < birthDate.month || 
-        (now.month == birthDate.month && now.day < birthDate.day)) {
+    final today = DateTime.now();
+    var age = today.year - birthDate.year;
+    if (today.month < birthDate.month ||
+        (today.month == birthDate.month && today.day < birthDate.day)) {
       age--;
     }
-    
     return age;
   }
 
   static String getChineseZodiac(DateTime birthDate) {
-    final List<String> zodiacSigns = [
-      '鼠', '牛', '虎', '兔', '龍', '蛇',
-      '馬', '羊', '猴', '雞', '狗', '豬'
-    ];
-    
     final year = birthDate.year;
-    final index = (year - 1900) % 12;
-    return zodiacSigns[index];
+    final animals = ['鼠', '牛', '虎', '兔', '龍', '蛇', '馬', '羊', '猴', '雞', '狗', '豬'];
+    return animals[(year - 4) % 12];
   }
 
   static String getZodiacSign(DateTime birthDate) {
     final month = birthDate.month;
     final day = birthDate.day;
-    
-    if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) {
-      return '白羊座';
-    } else if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) {
-      return '金牛座';
-    } else if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) {
-      return '雙子座';
-    } else if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) {
-      return '巨蟹座';
-    } else if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) {
-      return '獅子座';
-    } else if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) {
-      return '處女座';
-    } else if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) {
-      return '天秤座';
-    } else if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) {
-      return '天蠍座';
-    } else if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) {
-      return '射手座';
-    } else if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) {
-      return '摩羯座';
-    } else if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) {
-      return '水瓶座';
-    } else {
-      return '雙魚座';
+
+    switch (month) {
+      case 1:
+        return day <= 19 ? '摩羯座' : '水瓶座';
+      case 2:
+        return day <= 18 ? '水瓶座' : '雙魚座';
+      case 3:
+        return day <= 20 ? '雙魚座' : '白羊座';
+      case 4:
+        return day <= 19 ? '白羊座' : '金牛座';
+      case 5:
+        return day <= 20 ? '金牛座' : '雙子座';
+      case 6:
+        return day <= 21 ? '雙子座' : '巨蟹座';
+      case 7:
+        return day <= 22 ? '巨蟹座' : '獅子座';
+      case 8:
+        return day <= 22 ? '獅子座' : '處女座';
+      case 9:
+        return day <= 22 ? '處女座' : '天秤座';
+      case 10:
+        return day <= 23 ? '天秤座' : '天蠍座';
+      case 11:
+        return day <= 21 ? '天蠍座' : '射手座';
+      case 12:
+        return day <= 21 ? '射手座' : '摩羯座';
+      default:
+        return '';
     }
   }
 } 

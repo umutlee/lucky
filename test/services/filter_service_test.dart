@@ -1,13 +1,97 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:all_lucky/core/models/fortune.dart';
 import 'package:all_lucky/core/services/filter_service.dart';
+import 'package:all_lucky/core/models/compass_direction.dart';
 
 void main() {
   late FilterService filterService;
-  final today = DateTime.now();
+  late List<Fortune> testFortunes;
 
   setUp(() {
     filterService = FilterService();
+    testFortunes = [
+      Fortune(
+        id: '1',
+        type: '事業',
+        title: '事業運勢',
+        description: '今天的事業運勢不錯',
+        score: 85,
+        date: DateTime.now(),
+        isLuckyDay: true,
+      ),
+      Fortune(
+        id: '2',
+        type: '學習',
+        title: '學習運勢',
+        description: '今天的學習運勢普通',
+        score: 65,
+        date: DateTime.now(),
+        isLuckyDay: false,
+      ),
+      Fortune(
+        id: '3',
+        type: '財運',
+        title: '財運運勢',
+        description: '今天的財運運勢很好',
+        score: 90,
+        date: DateTime.now(),
+        isLuckyDay: true,
+      ),
+    ];
+  });
+
+  group('過濾服務測試', () {
+    test('按運勢類型過濾', () {
+      final criteria = FilterCriteria(fortuneType: '事業');
+      final filtered = filterService.filterFortunes(testFortunes, criteria);
+      expect(filtered.length, 1);
+      expect(filtered.first.type, '事業');
+    });
+
+    test('按分數範圍過濾', () {
+      final criteria = FilterCriteria(minScore: 80, maxScore: 95);
+      final filtered = filterService.filterFortunes(testFortunes, criteria);
+      expect(filtered.length, 2);
+      for (final fortune in filtered) {
+        expect(fortune.score, inInclusiveRange(80, 95));
+      }
+    });
+
+    test('按吉日過濾', () {
+      final criteria = FilterCriteria(isLuckyDay: true);
+      final filtered = filterService.filterFortunes(testFortunes, criteria);
+      expect(filtered.length, 2);
+      for (final fortune in filtered) {
+        expect(fortune.isLuckyDay, isTrue);
+      }
+    });
+
+    test('按方位過濾', () {
+      final criteria = FilterCriteria(
+        currentDirection: CompassDirection.north,
+      );
+      final filtered = filterService.filterFortunes(testFortunes, criteria);
+      expect(filtered, isNotEmpty);
+    });
+
+    test('按分數排序', () {
+      final criteria = FilterCriteria(
+        sortField: SortField.score,
+        sortOrder: SortOrder.descending,
+      );
+      final filtered = filterService.filterFortunes(testFortunes, criteria);
+      expect(filtered.first.score, greaterThanOrEqualTo(filtered.last.score));
+    });
+
+    test('按日期排序', () {
+      final criteria = FilterCriteria(
+        sortField: SortField.date,
+        sortOrder: SortOrder.ascending,
+      );
+      final filtered = filterService.filterFortunes(testFortunes, criteria);
+      expect(filtered.first.date.isBefore(filtered.last.date) || 
+             filtered.first.date.isAtSameMomentAs(filtered.last.date), isTrue);
+    });
   });
 
   group('推薦算法測試', () {
@@ -16,7 +100,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 80,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -25,7 +109,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 90,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: false,
           luckyDirections: ['西', '北'],
           suitableActivities: ['工作', '旅行'],
@@ -43,7 +127,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 85,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -52,7 +136,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 75,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['西', '北'],
           suitableActivities: ['工作', '旅行'],
@@ -64,7 +148,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 90,
-          date: today.subtract(Duration(days: 1)),
+          date: DateTime.now().subtract(Duration(days: 1)),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -88,7 +172,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 85,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -108,7 +192,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 85,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -120,7 +204,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 75,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: false,
           luckyDirections: ['西', '北'],
           suitableActivities: ['工作', '旅行'],
@@ -139,7 +223,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 85,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -151,7 +235,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 90,
-          date: today.subtract(Duration(days: 1)),
+          date: DateTime.now().subtract(Duration(days: 1)),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -163,7 +247,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 80,
-          date: today.subtract(Duration(days: 1)),
+          date: DateTime.now().subtract(Duration(days: 1)),
           isLuckyDay: true,
           luckyDirections: ['西', '北'],
           suitableActivities: ['工作', '旅行'],
@@ -190,7 +274,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 85,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -199,7 +283,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 75,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: false,
           luckyDirections: ['西', '北'],
           suitableActivities: ['工作', '旅行'],
@@ -217,7 +301,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 85,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -226,7 +310,7 @@ void main() {
         Fortune(
           type: FortuneType.career,
           score: 75,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: false,
           luckyDirections: ['西', '北'],
           suitableActivities: ['工作', '旅行'],
@@ -245,7 +329,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 85,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -254,7 +338,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 65,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: false,
           luckyDirections: ['西', '北'],
           suitableActivities: ['工作', '旅行'],
@@ -275,7 +359,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 85,
-          date: today.add(Duration(days: 1)),
+          date: DateTime.now().add(Duration(days: 1)),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -284,7 +368,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 75,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: false,
           luckyDirections: ['西', '北'],
           suitableActivities: ['工作', '旅行'],
@@ -294,8 +378,8 @@ void main() {
 
       final criteria = FilterCriteria(sortField: SortField.date, sortOrder: SortOrder.ascending);
       final sorted = filterService.sortFortunes(fortunes, criteria);
-      expect(sorted.first.date, equals(today));
-      expect(sorted.last.date, equals(today.add(Duration(days: 1))));
+      expect(sorted.first.date, equals(DateTime.now()));
+      expect(sorted.last.date, equals(DateTime.now().add(Duration(days: 1))));
     });
 
     test('按分數排序應正確', () {
@@ -303,7 +387,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 85,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東', '南'],
           suitableActivities: ['讀書', '運動'],
@@ -312,7 +396,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 75,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: false,
           luckyDirections: ['西', '北'],
           suitableActivities: ['工作', '旅行'],
@@ -347,7 +431,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 0,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東'],
           suitableActivities: ['讀書'],
@@ -356,7 +440,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 100,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['南'],
           suitableActivities: ['運動'],
@@ -384,7 +468,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 80,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東'],
           suitableActivities: ['讀書'],
@@ -393,8 +477,8 @@ void main() {
       ];
 
       final criteria = FilterCriteria(
-        startDate: today.add(const Duration(days: 1)),
-        endDate: today,
+        startDate: DateTime.now().add(const Duration(days: 1)),
+        endDate: DateTime.now(),
       );
 
       final filtered = filterService.filterFortunes(fortunes, criteria);
@@ -406,7 +490,7 @@ void main() {
         Fortune(
           type: FortuneType.daily,
           score: 80,
-          date: today,
+          date: DateTime.now(),
           isLuckyDay: true,
           luckyDirections: ['東'],
           suitableActivities: ['讀書'],
@@ -421,8 +505,8 @@ void main() {
         isLuckyDay: false,
         luckyDirections: ['西'],
         activities: ['運動'],
-        startDate: today.add(const Duration(days: 1)),
-        endDate: today.add(const Duration(days: 2)),
+        startDate: DateTime.now().add(const Duration(days: 1)),
+        endDate: DateTime.now().add(const Duration(days: 2)),
       );
 
       final filtered = filterService.filterFortunes(fortunes, criteria);
@@ -436,7 +520,7 @@ void main() {
         return Fortune(
           type: index % 2 == 0 ? FortuneType.daily : FortuneType.career,
           score: (index % 100).toDouble(),
-          date: today.add(Duration(days: index % 30)),
+          date: DateTime.now().add(Duration(days: index % 30)),
           isLuckyDay: index % 2 == 0,
           luckyDirections: ['東', '南', '西', '北'][index % 4],
           suitableActivities: ['讀書', '運動', '工作', '旅行'][index % 4],
@@ -466,7 +550,7 @@ void main() {
         return Fortune(
           type: FortuneType.daily,
           score: (index % 100).toDouble(),
-          date: today.add(Duration(days: index % 30)),
+          date: DateTime.now().add(Duration(days: index % 30)),
           isLuckyDay: index % 2 == 0,
           luckyDirections: ['東'],
           suitableActivities: ['讀書'],
@@ -495,7 +579,7 @@ void main() {
         return Fortune(
           type: FortuneType.daily,
           score: (index % 100).toDouble(),
-          date: today.add(Duration(days: index % 30)),
+          date: DateTime.now().add(Duration(days: index % 30)),
           isLuckyDay: index % 2 == 0,
           luckyDirections: ['東'],
           suitableActivities: ['讀書'],

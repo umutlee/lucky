@@ -5,8 +5,7 @@ import 'fortune_direction_service.dart';
 import '../utils/logger.dart';
 
 final filterServiceProvider = Provider<FilterService>((ref) {
-  final fortuneDirectionService = ref.watch(fortuneDirectionProvider);
-  return FilterService(fortuneDirectionService);
+  return FilterService(ref.read(fortuneDirectionProvider));
 });
 
 class FilterService {
@@ -19,91 +18,54 @@ class FilterService {
 
   FilterService(this._fortuneDirectionService);
 
-  // 根據條件過濾運勢
   List<Fortune> filterFortunes(
     List<Fortune> fortunes,
+    FilterCriteria criteria,
     CompassDirection? currentDirection,
-    DateTime currentTime, {
-    int? minScore,
-    List<String>? types,
-    bool considerDirection = true,
-    bool considerTime = true,
-  }) {
-    try {
-      // 生成緩存鍵
-      final cacheKey = _generateCacheKey(
-        fortunes,
-        currentDirection,
-        currentTime,
-        minScore,
-        types,
-        considerDirection,
-        considerTime,
-      );
+  ) {
+    if (fortunes.isEmpty) return [];
 
-      // 檢查緩存
-      if (_filterCache.containsKey(cacheKey)) {
-        _logger.info('使用緩存的過濾結果');
-        return _filterCache[cacheKey]!;
-      }
+    var filtered = List<Fortune>.from(fortunes);
 
-      // 應用過濾條件
-      final filtered = fortunes.where((fortune) {
-        // 檢查分數
-        if (minScore != null && fortune.score < minScore) {
-          return false;
-        }
+    // 根據運勢類型過濾
+    if (criteria.fortuneType != null) {
+      filtered = filtered.where((f) => f.type == criteria.fortuneType).toList();
+    }
 
-        // 檢查類型
-        if (types != null && types.isNotEmpty && !types.contains(fortune.type)) {
-          return false;
-        }
-
-        // 檢查方位
-        if (considerDirection && currentDirection != null) {
-          final luckyDirections = _fortuneDirectionService.getLuckyDirections(fortune);
-          if (!luckyDirections.contains(currentDirection.direction)) {
-            return false;
-          }
-        }
-
-        // 檢查時間
-        if (considerTime) {
-          if (!_fortuneDirectionService.isGoodTimeForActivity(fortune, currentTime)) {
-            return false;
-          }
-        }
-
+    // 根據分數範圍過濾
+    if (criteria.minScore != null || criteria.maxScore != null) {
+      filtered = filtered.where((f) {
+        final score = f.score;
+        if (score == null) return false;
+        if (criteria.minScore != null && score < criteria.minScore!) return false;
+        if (criteria.maxScore != null && score > criteria.maxScore!) return false;
         return true;
       }).toList();
-
-      // 根據分數和時間排序
-      filtered.sort((a, b) {
-        // 首先按分數排序
-        final scoreCompare = b.score.compareTo(a.score);
-        if (scoreCompare != 0) return scoreCompare;
-
-        // 分數相同時，考慮時間適合度
-        if (considerTime) {
-          final aTimeGood = _fortuneDirectionService.isGoodTimeForActivity(a, currentTime);
-          final bTimeGood = _fortuneDirectionService.isGoodTimeForActivity(b, currentTime);
-          if (aTimeGood != bTimeGood) {
-            return bTimeGood ? 1 : -1;
-          }
-        }
-
-        // 最後按 ID 排序確保穩定性
-        return a.id.compareTo(b.id);
-      });
-
-      // 更新緩存
-      _updateCache(cacheKey, filtered);
-
-      return filtered;
-    } catch (e) {
-      _logger.error('過濾運勢時發生錯誤: $e');
-      return [];
     }
+
+    // 根據方位過濾
+    if (currentDirection != null) {
+      final luckyDirections = _fortuneDirectionService.getLuckyDirections();
+      filtered = filtered.where((f) {
+        if (!luckyDirections.contains(currentDirection)) {
+          return !f.isLuckyDay;
+        }
+        return f.isLuckyDay;
+      }).toList();
+    }
+
+    return filtered;
+  }
+
+  List<Fortune> generateRecommendations(List<Fortune> fortunes) {
+    if (fortunes.isEmpty) return [];
+
+    // 按分數排序
+    final sorted = List<Fortune>.from(fortunes)
+      ..sort((a, b) => (b.score ?? 0).compareTo(a.score ?? 0));
+
+    // 只返回前3個最高分的運勢
+    return sorted.take(3).toList();
   }
 
   // 生成緩存鍵
@@ -141,4 +103,29 @@ class FilterService {
   void clearCache() {
     _filterCache.clear();
   }
-} 
+}
+
+class FilterCriteria {
+  final FortuneType? fortuneType;
+  final double? minScore;
+  final double? maxScore;
+  final bool? isLuckyDay;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final SortField? sortField;
+  final SortOrder? sortOrder;
+
+  FilterCriteria({
+    this.fortuneType,
+    this.minScore,
+    this.maxScore,
+    this.isLuckyDay,
+    this.startDate,
+    this.endDate,
+    this.sortField,
+    this.sortOrder,
+  });
+}
+
+enum SortField { score, date }
+enum SortOrder { ascending, descending } 
