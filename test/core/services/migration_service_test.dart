@@ -3,124 +3,140 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../lib/core/services/migration_service.dart';
-import '../../../lib/core/services/sqlite_preferences_service.dart';
-import '../../../lib/core/services/sqlite_user_settings_service.dart';
-import '../../../lib/core/models/user_settings.dart';
-import '../../../lib/core/models/zodiac.dart';
+import 'package:all_lucky/core/services/migration_service.dart';
+import 'package:all_lucky/core/services/sqlite_preferences_service.dart';
+import 'package:all_lucky/core/services/sqlite_user_settings_service.dart';
+import 'package:all_lucky/core/models/user_settings.dart';
+import 'package:all_lucky/core/models/zodiac.dart';
+import 'package:all_lucky/core/services/backup_service.dart';
+
+import 'migration_service_test.mocks.dart';
 
 @GenerateMocks([
+  BackupService,
   SQLitePreferencesService,
   SQLiteUserSettingsService,
 ])
 void main() {
-  late SQLitePreferencesService mockPreferencesService;
-  late SQLiteUserSettingsService mockUserSettingsService;
   late MigrationService migrationService;
-  late Map<String, Object> fakeSharedPrefs;
+  late MockBackupService mockBackupService;
+  late MockSQLitePreferencesService mockSqlitePrefs;
+  late MockSQLiteUserSettingsService mockSqliteUserSettings;
+  late Map<String, Object> testData;
 
   setUp(() async {
-    mockPreferencesService = MockSQLitePreferencesService();
-    mockUserSettingsService = MockSQLiteUserSettingsService();
-    migrationService = MigrationService(
-      mockPreferencesService,
-      mockUserSettingsService,
-    );
-
-    // 設置假的 SharedPreferences 數據
-    fakeSharedPrefs = {
-      'daily_notification': true,
-      'notification_time': '09:00',
-      'user_settings': jsonEncode({
-        'zodiac': 'Zodiac.dragon',
-        'birthYear': 1988,
-        'hasEnabledNotifications': true,
-        'hasLocationPermission': true,
-        'hasCompletedOnboarding': true,
-        'hasAcceptedTerms': true,
-        'hasAcceptedPrivacy': true,
-        'isFirstLaunch': false,
-      }),
-      'sqlite_migration_complete': false,
+    // 初始化 mock 服務
+    mockBackupService = MockBackupService();
+    mockSqlitePrefs = MockSQLitePreferencesService();
+    mockSqliteUserSettings = MockSQLiteUserSettingsService();
+    
+    // 準備測試數據
+    testData = {
+      'test_key': 'test_value',
+      'test_bool': true,
+      'test_int': 42,
+      'migration_complete': false,
+      'zodiac': 0,
+      'birth_year': 1990,
+      'notifications_enabled': true,
+      'location_permission_granted': true,
+      'onboarding_completed': true,
+      'terms_accepted': true,
+      'privacy_accepted': true,
     };
-
-    SharedPreferences.setMockInitialValues(fakeSharedPrefs);
+    
+    // 設置 SharedPreferences mock
+    SharedPreferences.setMockInitialValues(testData);
+    
+    // 設置基本的 mock 行為
+    when(mockBackupService.createBackup()).thenAnswer((_) async => true);
+    when(mockBackupService.hasBackup()).thenAnswer((_) async => true);
+    when(mockBackupService.restoreFromBackup()).thenAnswer((_) async => true);
+    when(mockBackupService.deleteBackup()).thenAnswer((_) async => true);
+    
+    when(mockSqlitePrefs.init()).thenAnswer((_) async => true);
+    when(mockSqlitePrefs.getValue<String>('test_key')).thenAnswer((_) async => 'test_value');
+    when(mockSqlitePrefs.getValue<bool>('migration_complete')).thenAnswer((_) async => false);
+    when(mockSqlitePrefs.setValue('migration_complete', true)).thenAnswer((_) async => true);
+    when(mockSqlitePrefs.clear()).thenAnswer((_) async => true);
+    when(mockSqlitePrefs.migrateFromSharedPreferences(any)).thenAnswer((_) async => true);
+    
+    when(mockSqliteUserSettings.init()).thenAnswer((_) async => true);
+    when(mockSqliteUserSettings.clear()).thenAnswer((_) async => true);
+    when(mockSqliteUserSettings.getUserSettings()).thenAnswer((_) async => UserSettings(
+      zodiac: Zodiac.values[0],
+      birthYear: 1990,
+      notificationsEnabled: true,
+      locationPermissionGranted: true,
+      onboardingCompleted: true,
+      termsAccepted: true,
+      privacyAccepted: true,
+    ));
+    when(mockSqliteUserSettings.migrateFromSharedPreferences(any)).thenAnswer((_) async => true);
+    
+    // 初始化 MigrationService
+    migrationService = MigrationService(
+      backupService: mockBackupService,
+      sqlitePrefs: mockSqlitePrefs,
+      sqliteUserSettings: mockSqliteUserSettings,
+    );
   });
 
-  group('MigrationService', () {
-    test('needsMigration 應該正確檢查遷移狀態', () async {
-      expect(await migrationService.needsMigration(), true);
-
-      // 設置遷移完成標記
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('sqlite_migration_complete', true);
-
-      expect(await migrationService.needsMigration(), false);
+  group('MigrationService 測試', () {
+    test('當遷移未完成時應返回需要遷移', () async {
+      final needsMigration = await migrationService.needsMigration();
+      expect(needsMigration, true);
     });
 
-    test('migrateToSQLite 應該正確遷移所有數據', () async {
-      // 設置 mock 行為
-      when(mockPreferencesService.migrateFromSharedPreferences(any))
-          .thenAnswer((_) async {});
-      when(mockUserSettingsService.migrateFromSharedPreferences(any))
-          .thenAnswer((_) async {});
-
-      // 執行遷移
-      await migrationService.migrateToSQLite();
-
-      // 驗證偏好設置遷移
-      verify(mockPreferencesService.migrateFromSharedPreferences({
-        'daily_notification': true,
-        'notification_time': '09:00',
-      })).called(1);
-
-      // 驗證用戶設置遷移
-      verify(mockUserSettingsService.migrateFromSharedPreferences(
-        fakeSharedPrefs['user_settings'] as String,
-      )).called(1);
-
-      // 驗證遷移完成標記
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('sqlite_migration_complete'), true);
+    test('當遷移已完成時應返回不需要遷移', () async {
+      when(mockSqlitePrefs.getValue<bool>('migration_complete')).thenAnswer((_) async => true);
+      final needsMigration = await migrationService.needsMigration();
+      expect(needsMigration, false);
     });
 
-    test('rollbackMigration 應該正確回滾遷移狀態', () async {
-      // 先標記遷移為完成
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('sqlite_migration_complete', true);
-
-      // 執行回滾
-      await migrationService.rollbackMigration();
-
-      // 驗證遷移標記已被移除
-      expect(prefs.getBool('sqlite_migration_complete'), null);
+    test('遷移過程應該按順序執行所有步驟', () async {
+      final success = await migrationService.migrateToSQLite();
+      expect(success, true);
+      
+      verifyInOrder([
+        mockBackupService.createBackup(),
+        mockSqlitePrefs.init(),
+        mockSqliteUserSettings.init(),
+        mockSqlitePrefs.migrateFromSharedPreferences(any),
+        mockSqliteUserSettings.migrateFromSharedPreferences(any),
+        mockSqlitePrefs.getValue<String>('test_key'),
+        mockSqliteUserSettings.getUserSettings(),
+        mockSqlitePrefs.setValue('migration_complete', true),
+      ]);
     });
 
-    test('cleanupOldData 應該正確清理舊數據', () async {
-      // 執行清理
-      await migrationService.cleanupOldData();
-
-      // 驗證舊數據已被清理
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('daily_notification'), null);
-      expect(prefs.getString('notification_time'), null);
-      expect(prefs.getString('user_settings'), null);
+    test('當備份創建失敗時應中止遷移', () async {
+      when(mockBackupService.createBackup()).thenAnswer((_) async => false);
+      final success = await migrationService.migrateToSQLite();
+      expect(success, false);
+      
+      verifyNever(mockSqlitePrefs.migrateFromSharedPreferences(any));
+      verifyNever(mockSqliteUserSettings.migrateFromSharedPreferences(any));
     });
 
-    test('遷移過程中出現錯誤時應該拋出異常', () async {
-      // 模擬遷移錯誤
-      when(mockPreferencesService.migrateFromSharedPreferences(any))
-          .thenThrow(Exception('遷移失敗'));
+    test('當 SQLite 服務初始化失敗時應回滾遷移', () async {
+      when(mockSqlitePrefs.init()).thenAnswer((_) async => false);
+      final success = await migrationService.migrateToSQLite();
+      expect(success, false);
+      
+      verify(mockSqlitePrefs.clear()).called(1);
+      verify(mockSqliteUserSettings.clear()).called(1);
+      verify(mockBackupService.restoreFromBackup()).called(1);
+    });
 
-      // 驗證錯誤處理
-      expect(
-        () => migrationService.migrateToSQLite(),
-        throwsException,
-      );
-
-      // 驗證遷移未標記為完成
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('sqlite_migration_complete'), false);
+    test('當數據驗證失敗時應回滾遷移', () async {
+      when(mockSqlitePrefs.getValue<String>('test_key')).thenAnswer((_) async => 'wrong_value');
+      final success = await migrationService.migrateToSQLite();
+      expect(success, false);
+      
+      verify(mockSqlitePrefs.clear()).called(1);
+      verify(mockSqliteUserSettings.clear()).called(1);
+      verify(mockBackupService.restoreFromBackup()).called(1);
     });
   });
 } 

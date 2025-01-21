@@ -1,18 +1,16 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../utils/logger.dart';
+import 'package:all_lucky/core/utils/logger.dart';
 
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
   return DatabaseHelper();
 });
 
 class DatabaseHelper {
-  static const _databaseName = "all_lucky.db";
-  static const _databaseVersion = 1;
-  
-  final _logger = Logger('DatabaseHelper');
-  Database? _database;
+  static const String _tag = 'DatabaseHelper';
+  final _logger = Logger(_tag);
+  static Database? _database;
 
   // 獲取數據庫實例
   Future<Database> get database async {
@@ -21,30 +19,29 @@ class DatabaseHelper {
   }
 
   // 初始化數據庫
-  Future<void> init() async {
-    await database;
+  Future<bool> init() async {
+    try {
+      await database;
+      return true;
+    } catch (e, stack) {
+      _logger.error('數據庫初始化失敗', e, stack);
+      return false;
+    }
   }
 
   // 初始化數據庫
   Future<Database> _initDatabase() async {
-    try {
-      final path = await _getDatabasePath();
-      _logger.info('初始化數據庫: $path');
-      
-      return await openDatabase(
-        path,
-        version: _databaseVersion,
-        onCreate: _onCreate,
-        onUpgrade: _onUpgrade,
-      );
-    } catch (e, stack) {
-      _logger.error('數據庫初始化失敗', e, stack);
-      rethrow;
-    }
+    final path = await _getDatabasePath();
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   Future<String> _getDatabasePath() async {
-    return join(await getDatabasesPath(), _databaseName);
+    return join(await getDatabasesPath(), 'all_lucky.db');
   }
 
   // 創建數據庫表
@@ -55,10 +52,10 @@ class DatabaseHelper {
       // 創建偏好設置表
       await db.execute('''
         CREATE TABLE preferences (
-          key TEXT PRIMARY KEY,
-          value TEXT NOT NULL,
-          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          key TEXT NOT NULL UNIQUE,
+          value TEXT,
+          type TEXT
         )
       ''');
 
@@ -66,14 +63,13 @@ class DatabaseHelper {
       await db.execute('''
         CREATE TABLE user_settings (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          zodiac TEXT,
+          zodiac INTEGER,
           birth_year INTEGER,
-          location_permission INTEGER DEFAULT 0,
+          notifications_enabled INTEGER DEFAULT 0,
+          location_permission_granted INTEGER DEFAULT 0,
           onboarding_completed INTEGER DEFAULT 0,
           terms_accepted INTEGER DEFAULT 0,
-          privacy_accepted INTEGER DEFAULT 0,
-          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          privacy_accepted INTEGER DEFAULT 0
         )
       ''');
 
@@ -101,10 +97,14 @@ class DatabaseHelper {
   // 基本的 CRUD 操作方法
 
   // 插入數據
-  Future<int> insert(String table, Map<String, dynamic> row) async {
+  Future<int> insert(String table, Map<String, dynamic> data) async {
     try {
       final db = await database;
-      return await db.insert(table, row);
+      return await db.insert(
+        table,
+        data,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     } catch (e, stack) {
       _logger.error('插入數據失敗: $table', e, stack);
       rethrow;
@@ -114,9 +114,12 @@ class DatabaseHelper {
   // 查詢數據
   Future<List<Map<String, dynamic>>> query(
     String table, {
+    bool distinct = false,
     List<String>? columns,
     String? where,
-    List<dynamic>? whereArgs,
+    List<Object?>? whereArgs,
+    String? groupBy,
+    String? having,
     String? orderBy,
     int? limit,
     int? offset,
@@ -125,9 +128,12 @@ class DatabaseHelper {
       final db = await database;
       return await db.query(
         table,
+        distinct: distinct,
         columns: columns,
         where: where,
         whereArgs: whereArgs,
+        groupBy: groupBy,
+        having: having,
         orderBy: orderBy,
         limit: limit,
         offset: offset,
@@ -141,17 +147,18 @@ class DatabaseHelper {
   // 更新數據
   Future<int> update(
     String table,
-    Map<String, dynamic> row, {
+    Map<String, dynamic> data, {
     String? where,
-    List<dynamic>? whereArgs,
+    List<Object?>? whereArgs,
   }) async {
     try {
       final db = await database;
       return await db.update(
         table,
-        row,
+        data,
         where: where,
         whereArgs: whereArgs,
+        conflictAlgorithm: ConflictAlgorithm.replace,
       );
     } catch (e, stack) {
       _logger.error('更新數據失敗: $table', e, stack);
@@ -160,11 +167,7 @@ class DatabaseHelper {
   }
 
   // 刪除數據
-  Future<int> delete(
-    String table, {
-    String? where,
-    List<dynamic>? whereArgs,
-  }) async {
+  Future<int> delete(String table, {String? where, List<Object?>? whereArgs}) async {
     try {
       final db = await database;
       return await db.delete(
@@ -179,10 +182,7 @@ class DatabaseHelper {
   }
 
   // 執行原始 SQL 查詢
-  Future<List<Map<String, dynamic>>> rawQuery(
-    String sql, [
-    List<dynamic>? arguments,
-  ]) async {
+  Future<List<Map<String, dynamic>>> rawQuery(String sql, [List<Object?>? arguments]) async {
     try {
       final db = await database;
       return await db.rawQuery(sql, arguments);
