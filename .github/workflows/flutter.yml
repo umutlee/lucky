@@ -1,0 +1,127 @@
+name: Flutter CI/CD
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: 設置 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+          cache: true
+          
+      - name: 緩存 Pub 依賴
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+          
+      - name: 檢查 Flutter 版本
+        run: flutter --version
+        
+      - name: 獲取依賴
+        run: flutter pub get
+        
+      - name: 檢查代碼格式
+        run: dart format --set-exit-if-changed .
+        
+      - name: 分析代碼
+        run: flutter analyze .
+        
+      - name: 運行測試
+        run: flutter test --coverage
+        
+      - name: 上傳測試覆蓋率報告
+        uses: codecov/codecov-action@v3
+        
+  build-android:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: 設置 Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          
+      - name: 設置 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+          cache: true
+          
+      - name: 緩存 Gradle 文件
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+            
+      - name: 獲取依賴
+        run: flutter pub get
+          
+      - name: 構建 Android APK
+        run: flutter build apk --release
+        
+      - name: 上傳 Android APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
+          
+  build-ios:
+    needs: build
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: 設置 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+          cache: true
+          
+      - name: 緩存 CocoaPods
+        uses: actions/cache@v3
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+            
+      - name: 獲取依賴
+        run: |
+          flutter pub get
+          cd ios && pod install
+          
+      - name: 構建 iOS
+        run: flutter build ios --release --no-codesign
+        
+      - name: 上傳 iOS 構建產物
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-release
+          path: build/ios/iphoneos
+          retention-days: 7 
