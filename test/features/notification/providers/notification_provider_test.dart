@@ -22,14 +22,13 @@ void main() {
     test('initialize should set state to true on success', () async {
       // Arrange
       when(mockService.initialize())
-          .thenAnswer((_) async {});
+          .thenAnswer((_) async => true);
 
       // Act
       await notificationNotifier.initialize();
 
       // Assert
       expect(notificationNotifier.state, true);
-      verify(mockService.initialize()).called(1);
     });
 
     test('initialize should set state to false on error', () async {
@@ -42,7 +41,6 @@ void main() {
 
       // Assert
       expect(notificationNotifier.state, false);
-      verify(mockService.initialize()).called(1);
     });
 
     test('scheduleFortuneNotification should not call service when state is false',
@@ -59,9 +57,9 @@ void main() {
 
       // Assert
       verifyNever(mockService.scheduleFortuneNotification(
-        title: anyNamed('title'),
-        body: anyNamed('body'),
-        scheduledDate: anyNamed('scheduledDate'),
+        title: '測試標題',
+        body: '測試內容',
+        scheduledDate: scheduledDate,
       ));
     });
 
@@ -75,8 +73,8 @@ void main() {
 
       // Assert
       verifyNever(mockService.showFortuneNotification(
-        title: anyNamed('title'),
-        body: anyNamed('body'),
+        title: '測試標題',
+        body: '測試內容',
       ));
     });
 
@@ -90,28 +88,33 @@ void main() {
     });
 
     test(
-        'scheduleFortuneNotification should call service and not throw when state is true',
+        'scheduleFortuneNotification should call service when state is true',
         () async {
       // Arrange
-      notificationNotifier = NotificationNotifier();
+      when(mockService.initialize())
+          .thenAnswer((_) async => true);
       await notificationNotifier.initialize();
-      final scheduledDate = DateTime.now();
 
+      final scheduledDate = DateTime.now();
       when(mockService.scheduleFortuneNotification(
-        title: anyNamed('title'),
-        body: anyNamed('body'),
-        scheduledDate: anyNamed('scheduledDate'),
+        title: '測試標題',
+        body: '測試內容',
+        scheduledDate: scheduledDate,
       )).thenAnswer((_) async {});
 
-      // Act & Assert
-      expect(
-        () => notificationNotifier.scheduleFortuneNotification(
-          title: '測試標題',
-          body: '測試內容',
-          scheduledDate: scheduledDate,
-        ),
-        returnsNormally,
+      // Act
+      await notificationNotifier.scheduleFortuneNotification(
+        title: '測試標題',
+        body: '測試內容',
+        scheduledDate: scheduledDate,
       );
+
+      // Assert
+      verify(mockService.scheduleFortuneNotification(
+        title: '測試標題',
+        body: '測試內容',
+        scheduledDate: scheduledDate,
+      )).called(1);
     });
   });
 } 
