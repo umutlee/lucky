@@ -41,8 +41,8 @@ void main() {
 
     test('當沒有舊數據時應返回未準備好狀態', () async {
       // 設置 mock
-      when(mockPreferencesService.init()).thenAnswer((_) async {});
-      when(mockUserSettingsService.init()).thenAnswer((_) async {});
+      when(mockPreferencesService.init()).thenAnswer((_) async => true);
+      when(mockUserSettingsService.init()).thenAnswer((_) async => true);
       
       // 設置空的 SharedPreferences
       SharedPreferences.setMockInitialValues({});
@@ -57,8 +57,8 @@ void main() {
 
     test('當數據完整性檢查失敗時應返回未準備好狀態', () async {
       // 設置 mock
-      when(mockPreferencesService.init()).thenAnswer((_) async {});
-      when(mockUserSettingsService.init()).thenAnswer((_) async {});
+      when(mockPreferencesService.init()).thenAnswer((_) async => true);
+      when(mockUserSettingsService.init()).thenAnswer((_) async => true);
       
       // 設置無效的數據
       SharedPreferences.setMockInitialValues({
@@ -75,8 +75,8 @@ void main() {
 
     test('當所有檢查都通過時應返回準備好狀態', () async {
       // 設置 mock
-      when(mockPreferencesService.init()).thenAnswer((_) async {});
-      when(mockUserSettingsService.init()).thenAnswer((_) async {});
+      when(mockPreferencesService.init()).thenAnswer((_) async => true);
+      when(mockUserSettingsService.init()).thenAnswer((_) async => true);
       
       // 設置有效的測試數據
       SharedPreferences.setMockInitialValues({
@@ -94,7 +94,7 @@ void main() {
 
     test('當發生意外錯誤時應返回未準備好狀態', () async {
       // 設置 mock 拋出意外錯誤
-      when(mockPreferencesService.init()).thenAnswer((_) async {});
+      when(mockPreferencesService.init()).thenAnswer((_) async => true);
       when(mockUserSettingsService.init())
           .thenThrow(Exception('意外錯誤'));
 

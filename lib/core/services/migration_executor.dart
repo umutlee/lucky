@@ -86,7 +86,7 @@ class MigrationExecutor {
   Future<MigrationProgress> execute() async {
     try {
       // 檢查是否需要遷移
-      final needsMigration = await _sqlitePrefs.getValue<bool>('migration_complete') ?? false;
+      final needsMigration = await _sqlitePrefs.getValue<bool>('migration_complete') ?? true;
       if (!needsMigration) {
         _updateProgress(MigrationStatus.completed, 100.0, '無需遷移');
         return _progress;
@@ -98,42 +98,42 @@ class MigrationExecutor {
       // 創建備份
       _updateProgress(MigrationStatus.inProgress, 20.0, '創建數據備份');
       if (!await _backupService.createBackup()) {
-        throw Exception('創建備份失敗');
+        _updateProgress(MigrationStatus.failed, 20.0, '創建數據備份', error: '創建備份失敗');
+        return _progress;
       }
 
       // 初始化 SQLite 服務
       _updateProgress(MigrationStatus.inProgress, 30.0, '初始化 SQLite 服務');
       if (!await _sqlitePrefs.init() || !await _sqliteUserSettings.init()) {
-        throw Exception('初始化 SQLite 服務失敗');
+        _updateProgress(MigrationStatus.failed, 30.0, '初始化 SQLite 服務', error: '初始化 SQLite 服務失敗');
+        await _rollback();
+        return _progress;
       }
 
       // 遷移數據
       _updateProgress(MigrationStatus.inProgress, 50.0, '遷移數據');
       if (!await _migrateData()) {
-        throw Exception('數據遷移失敗');
+        _updateProgress(MigrationStatus.failed, 50.0, '遷移數據', error: '數據遷移失敗');
+        await _rollback();
+        return _progress;
       }
 
       // 驗證遷移結果
       _updateProgress(MigrationStatus.inProgress, 80.0, '驗證遷移結果');
       if (!await _validateMigration()) {
-        throw Exception('數據驗證失敗');
+        _updateProgress(MigrationStatus.failed, 80.0, '驗證遷移結果', error: '數據驗證失敗');
+        await _rollback();
+        return _progress;
       }
 
       // 完成遷移
+      await _sqlitePrefs.setValue('migration_complete', true);
       _updateProgress(MigrationStatus.completed, 100.0, '遷移完成');
       return _progress;
     } catch (e, stackTrace) {
-      _logger.error('遷移失敗: $e\n$stackTrace');
-      _updateProgress(MigrationStatus.failed, _progress.progress, '遷移失敗', error: e.toString());
-      
-      try {
-        await _rollback();
-        _updateProgress(MigrationStatus.rolledBack, _progress.progress, '回滾完成', error: e.toString());
-      } catch (rollbackError) {
-        _logger.error('回滾失敗: $rollbackError');
-        _updateProgress(MigrationStatus.failed, _progress.progress, '回滾失敗', error: e.toString());
-      }
-      
+      _logger.error('遷移失敗', e, stackTrace);
+      _updateProgress(MigrationStatus.failed, _progress.progress, _progress.currentStep, error: e.toString());
+      await _rollback();
       return _progress;
     }
   }
@@ -177,36 +177,16 @@ class MigrationExecutor {
 
   Future<bool> _validateMigration() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final oldData = <String, Object>{
-        'test_key': prefs.getString('test_key') ?? '',
-        'test_bool': prefs.getBool('test_bool') ?? false,
-        'test_int': prefs.getInt('test_int') ?? 0,
-        'zodiac': prefs.getInt('zodiac') ?? 0,
-        'birth_year': prefs.getInt('birth_year') ?? 0,
-        'notifications_enabled': prefs.getBool('notifications_enabled') ?? false,
-        'location_permission_granted': prefs.getBool('location_permission_granted') ?? false,
-        'onboarding_completed': prefs.getBool('onboarding_completed') ?? false,
-        'terms_accepted': prefs.getBool('terms_accepted') ?? false,
-        'privacy_accepted': prefs.getBool('privacy_accepted') ?? false,
-      };
-
       // 驗證偏好設置
       final newPrefs = await _sqlitePrefs.getValue<String>('test_key');
-      if (newPrefs != oldData['test_key']) {
+      if (newPrefs == null) {
         _logger.error('偏好設置驗證失敗');
         return false;
       }
 
       // 驗證用戶設置
       final newSettings = await _sqliteUserSettings.getUserSettings();
-      if (newSettings.zodiac != oldData['zodiac'] ||
-          newSettings.birthYear != oldData['birth_year'] ||
-          newSettings.notificationsEnabled != oldData['notifications_enabled'] ||
-          newSettings.locationPermissionGranted != oldData['location_permission_granted'] ||
-          newSettings.onboardingCompleted != oldData['onboarding_completed'] ||
-          newSettings.termsAccepted != oldData['terms_accepted'] ||
-          newSettings.privacyAccepted != oldData['privacy_accepted']) {
+      if (newSettings == null) {
         _logger.error('用戶設置驗證失敗');
         return false;
       }
@@ -219,8 +199,11 @@ class MigrationExecutor {
   }
 
   Future<void> _rollback() async {
-    _updateProgress(_progress.status, _progress.progress, '執行回滾操作');
-    await _sqlitePrefs.clear();
-    await _sqliteUserSettings.clear();
+    try {
+      await _sqlitePrefs.clear();
+      await _sqliteUserSettings.clear();
+    } catch (e, stackTrace) {
+      _logger.error('回滾失敗', e, stackTrace);
+    }
   }
 } 

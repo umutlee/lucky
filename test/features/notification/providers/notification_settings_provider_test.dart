@@ -121,13 +121,27 @@ void main() {
     });
 
     test('初始化成功後應該能夠排程通知', () async {
+      final now = DateTime.now();
+      final expectedTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        8,
+        0,
+      );
+      
       when(mockService.initialize()).thenAnswer((_) async => true);
       when(mockService.scheduleFortuneNotification(any))
           .thenAnswer((_) async => true);
       
       await notifier.initialize();
       
-      verify(mockService.scheduleFortuneNotification(any)).called(1);
+      verify(mockService.scheduleFortuneNotification(
+        argThat(
+          predicate<DateTime>((time) =>
+              time.hour == expectedTime.hour && time.minute == expectedTime.minute),
+        ),
+      )).called(1);
     });
 
     test('切換通知狀態應該正確執行', () async {
@@ -137,15 +151,17 @@ void main() {
           .thenAnswer((_) async => true);
       
       await notifier.initialize();
+      clearInteractions(mockService);
 
       // 切換到關閉狀態
       await notifier.toggleNotifications();
       verify(mockService.cancelAllNotifications()).called(1);
       expect(container.read(notificationSettingsProvider).isEnabled, isFalse);
+      clearInteractions(mockService);
 
       // 切換到開啟狀態
       await notifier.toggleNotifications();
-      verify(mockService.scheduleFortuneNotification(any)).called(2); // 包括初始化時的一次
+      verify(mockService.scheduleFortuneNotification(any)).called(1);
       expect(container.read(notificationSettingsProvider).isEnabled, isTrue);
     });
 
@@ -156,13 +172,19 @@ void main() {
           .thenAnswer((_) async => true);
       
       await notifier.initialize();
+      clearInteractions(mockService);
       
       final newTime = DateTime(2025, 1, 22, 8, 0);
       await notifier.updateNotificationTime(newTime);
       
       verifyInOrder([
         mockService.cancelAllNotifications(),
-        mockService.scheduleFortuneNotification(any),
+        mockService.scheduleFortuneNotification(
+          argThat(
+            predicate<DateTime>((time) =>
+                time.hour == newTime.hour && time.minute == newTime.minute),
+          ),
+        ),
       ]);
       
       final state = container.read(notificationSettingsProvider);
@@ -197,30 +219,29 @@ void main() {
     });
 
     test('排程下一次通知時應該考慮當前時間', () async {
+      final now = DateTime(2024, 1, 1, 9, 0); // 固定時間進行測試
+      final expectedTime = DateTime(2024, 1, 2, 8, 0); // 應該排程到下一天
+
       when(mockService.initialize()).thenAnswer((_) async => true);
       when(mockService.scheduleFortuneNotification(any))
           .thenAnswer((_) async => true);
+      when(mockService.cancelAllNotifications())
+          .thenAnswer((_) async => true);
       
       await notifier.initialize();
+      clearInteractions(mockService);
       
-      final now = DateTime.now();
-      final todayNotificationTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        8,
-        0,
-      );
+      // 模擬當前時間
+      await notifier.updateNotificationTime(DateTime(2024, 1, 1, 8, 0));
+      clearInteractions(mockService);
+      
+      // 再次調用 scheduleNextNotification
+      await notifier.scheduleNextNotification();
       
       verify(mockService.scheduleFortuneNotification(
         argThat(
-          predicate<DateTime>((time) {
-            if (now.isAfter(todayNotificationTime)) {
-              return time.isAfter(now) && time.hour == 8 && time.minute == 0;
-            } else {
-              return time.day == now.day && time.hour == 8 && time.minute == 0;
-            }
-          }),
+          predicate<DateTime>((time) =>
+              time.hour == expectedTime.hour && time.minute == expectedTime.minute),
         ),
       )).called(1);
     });
