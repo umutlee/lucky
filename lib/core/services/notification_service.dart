@@ -6,170 +6,193 @@ import 'package:permission_handler/permission_handler.dart';
 import '../utils/logger.dart';
 
 class NotificationService {
-  final FlutterLocalNotificationsPlugin notifications;
-
-  NotificationService({FlutterLocalNotificationsPlugin? notifications})
-      : notifications = notifications ?? FlutterLocalNotificationsPlugin();
+  static const String _tag = 'NotificationService';
+  final _logger = Logger(_tag);
+  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  bool _isInitialized = false;
 
   Future<bool> initialize() async {
     try {
-      tz.initializeTimeZones();
-      
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const iosSettings = DarwinInitializationSettings();
-      
-      final initializationSettings = InitializationSettings(
-        android: androidSettings,
-        iOS: iosSettings,
+      final initializationSettingsAndroid = AndroidInitializationSettings('app_icon');
+      final initializationSettingsIOS = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+        onDidReceiveLocalNotification: (id, title, body, payload) async {
+          // Handle iOS foreground notification
+        },
       );
       
-      final result = await notifications.initialize(initializationSettings);
-      if (result == true) {
-        AppLogger.i('通知服務初始化成功');
+      final initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsIOS,
+      );
+      
+      final success = await _notifications.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: _handleNotificationResponse,
+      );
+      
+      if (success ?? false) {
+        _isInitialized = true;
+        _logger.info('通知服務初始化成功');
         return true;
       } else {
-        AppLogger.e('通知服務初始化失敗');
+        _logger.error('通知服務初始化失敗');
         return false;
       }
     } catch (e, stackTrace) {
-      AppLogger.e('通知服務初始化失敗', e, stackTrace);
+      _logger.error('通知服務初始化失敗', e, stackTrace);
       return false;
     }
   }
 
-  Future<bool> checkPermission() async {
-    if (!await _isInitialized()) return false;
-
+  Future<bool> _requestPermission() async {
     try {
-      final status = await Permission.notification.request();
-      return status.isGranted;
-    } catch (e) {
-      AppLogger.e('檢查通知權限失敗', e);
-      return false;
-    }
-  }
-
-  Future<void> showFortuneNotification(String message) async {
-    try {
-      if (!await _isInitialized()) {
-        AppLogger.w('通知服務未初始化');
-        return;
+      final platform = _notifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (platform != null) {
+        final granted = await platform.requestNotificationsPermission();
+        return granted ?? false;
       }
+      return true;
+    } catch (e) {
+      _logger.error('檢查通知權限失敗', e);
+      return false;
+    }
+  }
 
+  Future<bool> showFortuneNotification(String message) async {
+    if (!_isInitialized) {
+      _logger.warning('通知服務未初始化');
+      return false;
+    }
+
+    try {
       const androidDetails = AndroidNotificationDetails(
         'fortune_channel',
         '運勢通知',
-        channelDescription: '顯示每日運勢預測的通知',
+        channelDescription: '每日運勢提醒',
         importance: Importance.high,
         priority: Priority.high,
+        showWhen: true,
       );
 
-      const iosDetails = DarwinNotificationDetails();
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
 
       const details = NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
       );
 
-      await notifications.show(
+      await _notifications.show(
         0,
         '今日運勢',
         message,
         details,
+        payload: 'fortune_notification',
       );
 
-      AppLogger.i('運勢通知發送成功');
+      _logger.info('運勢通知發送成功');
+      return true;
     } catch (e, stackTrace) {
-      AppLogger.e('發送運勢通知失敗', e, stackTrace);
+      _logger.error('發送運勢通知失敗', e, stackTrace);
+      return false;
     }
   }
 
-  Future<void> scheduleFortuneNotification(DateTime scheduledDate) async {
-    try {
-      if (!await _isInitialized()) {
-        AppLogger.w('通知服務未初始化');
-        return;
-      }
+  Future<bool> scheduleFortuneNotification(DateTime scheduledDate) async {
+    if (!_isInitialized) {
+      _logger.warning('通知服務未初始化');
+      return false;
+    }
 
+    try {
       const androidDetails = AndroidNotificationDetails(
         'fortune_channel',
         '運勢通知',
-        channelDescription: '顯示每日運勢預測的通知',
+        channelDescription: '每日運勢提醒',
         importance: Importance.high,
         priority: Priority.high,
+        showWhen: true,
       );
 
-      const iosDetails = DarwinNotificationDetails();
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
 
       const details = NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
       );
 
-      final scheduledTime = tz.TZDateTime.from(scheduledDate, tz.local);
-
-      await notifications.zonedSchedule(
+      await _notifications.zonedSchedule(
         0,
         '今日運勢',
         '點擊查看今日運勢預測',
-        scheduledTime,
+        tz.TZDateTime.from(scheduledDate, tz.local),
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'fortune_notification',
       );
 
-      AppLogger.i('運勢通知排程成功: ${scheduledDate.toString()}');
+      _logger.info('運勢通知排程成功: ${scheduledDate.toString()}');
+      return true;
     } catch (e, stackTrace) {
-      AppLogger.e('排程運勢通知失敗', e, stackTrace);
+      _logger.error('排程運勢通知失敗', e, stackTrace);
+      return false;
     }
   }
 
   Future<List<PendingNotificationRequest>> getPendingNotifications() async {
-    if (!await _isInitialized()) return [];
     try {
-      AppLogger.i('獲取待處理通知列表...');
-      final pendingNotifications = await notifications.pendingNotificationRequests();
-      AppLogger.i('找到 ${pendingNotifications.length} 個待處理通知');
+      _logger.info('獲取待處理通知列表...');
+      final pendingNotifications = await _notifications.pendingNotificationRequests();
+      _logger.info('找到 ${pendingNotifications.length} 個待處理通知');
       return pendingNotifications;
     } catch (e, stackTrace) {
-      AppLogger.e('獲取待處理通知失敗', e, stackTrace);
+      _logger.error('獲取待處理通知失敗', e, stackTrace);
       return [];
     }
   }
 
-  Future<void> cancelAllNotifications() async {
+  Future<bool> cancelAllNotifications() async {
     try {
-      await notifications.cancelAll();
-      AppLogger.i('已取消所有通知');
+      await _notifications.cancelAll();
+      _logger.info('已取消所有通知');
+      return true;
     } catch (e, stackTrace) {
-      AppLogger.e('取消通知失敗', e, stackTrace);
+      _logger.error('取消通知失敗', e, stackTrace);
+      return false;
     }
   }
 
-  Future<void> cancelNotification(int id) async {
-    if (!await _isInitialized()) return;
+  Future<bool> cancelNotification(int id) async {
     try {
-      await notifications.cancel(id);
-      AppLogger.i('已取消通知 $id');
+      await _notifications.cancel(id);
+      _logger.info('已取消通知 $id');
+      return true;
     } catch (e, stack) {
-      AppLogger.e('取消通知失敗', e, stack);
-      rethrow;
+      _logger.error('取消通知失敗', e, stack);
+      return false;
     }
   }
 
-  void _onNotificationTapped(NotificationResponse response) {
-    AppLogger.i('通知被點擊: ${response.payload}');
+  void _handleNotificationResponse(NotificationResponse response) {
+    _logger.info('通知被點擊: ${response.payload}');
     // TODO: 處理通知點擊事件
   }
 
   @pragma('vm:entry-point')
   static void _onBackgroundNotificationTap(NotificationResponse response) {
     // 處理背景通知點擊事件
-  }
-
-  Future<bool> _isInitialized() async {
-    final platform = await notifications.getNotificationAppLaunchDetails();
-    return platform != null;
   }
 } 

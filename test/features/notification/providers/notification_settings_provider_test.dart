@@ -123,19 +123,18 @@ void main() {
     test('初始化成功後應該能夠排程通知', () async {
       when(mockService.initialize()).thenAnswer((_) async => true);
       when(mockService.scheduleFortuneNotification(any))
-          .thenAnswer((_) async {});
+          .thenAnswer((_) async => true);
       
       await notifier.initialize();
-      await notifier.scheduleNextNotification();
       
       verify(mockService.scheduleFortuneNotification(any)).called(1);
     });
 
     test('切換通知狀態應該正確執行', () async {
       when(mockService.initialize()).thenAnswer((_) async => true);
-      when(mockService.cancelAllNotifications()).thenAnswer((_) async {});
+      when(mockService.cancelAllNotifications()).thenAnswer((_) async => true);
       when(mockService.scheduleFortuneNotification(any))
-          .thenAnswer((_) async {});
+          .thenAnswer((_) async => true);
       
       await notifier.initialize();
 
@@ -146,15 +145,15 @@ void main() {
 
       // 切換到開啟狀態
       await notifier.toggleNotifications();
-      verify(mockService.scheduleFortuneNotification(any)).called(1);
+      verify(mockService.scheduleFortuneNotification(any)).called(2); // 包括初始化時的一次
       expect(container.read(notificationSettingsProvider).isEnabled, isTrue);
     });
 
     test('更新通知時間應該重新排程通知', () async {
       when(mockService.initialize()).thenAnswer((_) async => true);
-      when(mockService.cancelAllNotifications()).thenAnswer((_) async {});
+      when(mockService.cancelAllNotifications()).thenAnswer((_) async => true);
       when(mockService.scheduleFortuneNotification(any))
-          .thenAnswer((_) async {});
+          .thenAnswer((_) async => true);
       
       await notifier.initialize();
       
@@ -174,7 +173,9 @@ void main() {
     test('更新通知時間失敗時不應該更新狀態', () async {
       when(mockService.initialize()).thenAnswer((_) async => true);
       when(mockService.cancelAllNotifications())
-          .thenThrow(Exception('取消通知失敗'));
+          .thenAnswer((_) async => false);
+      when(mockService.scheduleFortuneNotification(any))
+          .thenAnswer((_) async => true);
       
       await notifier.initialize();
       
@@ -198,7 +199,7 @@ void main() {
     test('排程下一次通知時應該考慮當前時間', () async {
       when(mockService.initialize()).thenAnswer((_) async => true);
       when(mockService.scheduleFortuneNotification(any))
-          .thenAnswer((_) async {});
+          .thenAnswer((_) async => true);
       
       await notifier.initialize();
       
@@ -210,8 +211,6 @@ void main() {
         8,
         0,
       );
-      
-      await notifier.scheduleNextNotification();
       
       verify(mockService.scheduleFortuneNotification(
         argThat(
