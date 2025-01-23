@@ -1,14 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/study_fortune.dart';
 import '../repositories/study_fortune_repository.dart';
-import 'settings_provider.dart';
+import '../services/sqlite_preferences_service.dart';
+import '../notifiers/notification_notifier.dart';
 
 /// 學業運勢倉庫提供者
 final studyFortuneRepositoryProvider = Provider<StudyFortuneRepository>((ref) {
   final dio = Dio();
-  final prefs = ref.watch(sharedPreferencesProvider);
+  final prefs = ref.watch(sqlitePreferencesServiceProvider);
   return StudyFortuneRepository(dio, prefs);
 });
 
@@ -26,19 +26,6 @@ final monthStudyFortunesProvider = FutureProvider.family<Map<DateTime, StudyFort
 
 /// 學業運勢通知開關提供者
 final studyFortuneNotificationProvider = StateNotifierProvider<NotificationNotifier, bool>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
+  final prefs = ref.watch(sqlitePreferencesServiceProvider);
   return NotificationNotifier(prefs, 'study_fortune_notifications');
-});
-
-/// 通知設置管理器
-class NotificationNotifier extends StateNotifier<bool> {
-  final SharedPreferences _prefs;
-  final String _key;
-
-  NotificationNotifier(this._prefs, this._key) : super(_prefs.getBool(_key) ?? true);
-
-  void toggle() {
-    state = !state;
-    _prefs.setBool(_key, state);
-  }
-} 
+}); 

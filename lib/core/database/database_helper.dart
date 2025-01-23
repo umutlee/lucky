@@ -3,118 +3,112 @@ import 'package:sqflite/sqflite.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:all_lucky/core/utils/logger.dart';
 
+/// 數據庫幫助類提供者
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
   return DatabaseHelper();
 });
 
+/// 數據庫幫助類
 class DatabaseHelper {
   static const String _tag = 'DatabaseHelper';
   final _logger = Logger(_tag);
-  static Database? _database;
+  Database? _database;
 
-  // 獲取數據庫實例
+  /// 獲取數據庫實例
   Future<Database> get database async {
     _database ??= await _initDatabase();
     return _database!;
   }
 
-  // 初始化數據庫
+  /// 初始化數據庫
   Future<bool> init() async {
     try {
       await database;
       return true;
-    } catch (e, stack) {
-      _logger.error('數據庫初始化失敗', e, stack);
+    } catch (e, stackTrace) {
+      _logger.error('初始化數據庫失敗', e, stackTrace);
       return false;
     }
   }
 
-  // 初始化數據庫
+  /// 初始化數據庫
   Future<Database> _initDatabase() async {
-    final path = await _getDatabasePath();
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
-    );
-  }
-
-  Future<String> _getDatabasePath() async {
-    return join(await getDatabasesPath(), 'all_lucky.db');
-  }
-
-  // 創建數據庫表
-  Future<void> _onCreate(Database db, int version) async {
     try {
-      _logger.info('創建數據庫表');
+      final databasesPath = await getDatabasesPath();
+      final path = join(databasesPath, 'all_lucky.db');
       
-      // 創建偏好設置表
-      await db.execute('''
-        CREATE TABLE preferences (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          key TEXT NOT NULL UNIQUE,
-          value TEXT,
-          type TEXT
-        )
-      ''');
+      _logger.info('初始化數據庫: $path');
+      
+      return await openDatabase(
+        path,
+        version: 1,
+        onCreate: (db, version) async {
+          _logger.info('創建數據庫表');
+          
+          // 創建偏好設置表
+          await db.execute('''
+            CREATE TABLE preferences (
+              key TEXT PRIMARY KEY,
+              value TEXT NOT NULL,
+              type TEXT NOT NULL,
+              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+          ''');
 
-      // 創建用戶設置表
-      await db.execute('''
-        CREATE TABLE user_settings (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          zodiac INTEGER,
-          birth_year INTEGER,
-          notifications_enabled INTEGER DEFAULT 0,
-          location_permission_granted INTEGER DEFAULT 0,
-          onboarding_completed INTEGER DEFAULT 0,
-          terms_accepted INTEGER DEFAULT 0,
-          privacy_accepted INTEGER DEFAULT 0
-        )
-      ''');
+          // 創建用戶設置表
+          await db.execute('''
+            CREATE TABLE user_settings (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              zodiac TEXT,
+              birth_year INTEGER,
+              notifications_enabled INTEGER NOT NULL DEFAULT 1,
+              location_permission_granted INTEGER NOT NULL DEFAULT 0,
+              onboarding_completed INTEGER NOT NULL DEFAULT 0,
+              terms_accepted INTEGER NOT NULL DEFAULT 0,
+              privacy_accepted INTEGER NOT NULL DEFAULT 0,
+              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+          ''');
 
-      _logger.info('數據庫表創建完成');
-    } catch (e, stack) {
-      _logger.error('創建數據庫表失敗', e, stack);
+          // 創建運勢歷史記錄表
+          await db.execute('''
+            CREATE TABLE fortune_history (
+              id TEXT PRIMARY KEY,
+              type TEXT NOT NULL,
+              date TEXT NOT NULL,
+              score INTEGER NOT NULL,
+              description TEXT NOT NULL,
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+          ''');
+        },
+      );
+    } catch (e, stackTrace) {
+      _logger.error('初始化數據庫失敗', e, stackTrace);
       rethrow;
     }
   }
 
-  // 數據庫升級
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    try {
-      _logger.info('升級數據庫從 v$oldVersion 到 v$newVersion');
-      
-      // 在這裡添加數據庫升級邏輯
-      
-      _logger.info('數據庫升級完成');
-    } catch (e, stack) {
-      _logger.error('升級數據庫失敗', e, stack);
-      rethrow;
-    }
-  }
-
-  // 基本的 CRUD 操作方法
-
-  // 插入數據
-  Future<int> insert(String table, Map<String, dynamic> data) async {
+  /// 插入數據
+  Future<int> insert(String table, Map<String, dynamic> values) async {
     try {
       final db = await database;
+      values['updated_at'] = DateTime.now().toIso8601String();
       return await db.insert(
         table,
-        data,
+        values,
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-    } catch (e, stack) {
-      _logger.error('插入數據失敗: $table', e, stack);
+    } catch (e, stackTrace) {
+      _logger.error('插入數據失敗: $table', e, stackTrace);
       rethrow;
     }
   }
 
-  // 查詢數據
+  /// 查詢數據
   Future<List<Map<String, dynamic>>> query(
     String table, {
-    bool distinct = false,
+    bool? distinct,
     List<String>? columns,
     String? where,
     List<Object?>? whereArgs,
@@ -138,36 +132,40 @@ class DatabaseHelper {
         limit: limit,
         offset: offset,
       );
-    } catch (e, stack) {
-      _logger.error('查詢數據失敗: $table', e, stack);
+    } catch (e, stackTrace) {
+      _logger.error('查詢數據失敗: $table', e, stackTrace);
       rethrow;
     }
   }
 
-  // 更新數據
+  /// 更新數據
   Future<int> update(
     String table,
-    Map<String, dynamic> data, {
+    Map<String, dynamic> values, {
     String? where,
     List<Object?>? whereArgs,
   }) async {
     try {
       final db = await database;
+      values['updated_at'] = DateTime.now().toIso8601String();
       return await db.update(
         table,
-        data,
+        values,
         where: where,
         whereArgs: whereArgs,
-        conflictAlgorithm: ConflictAlgorithm.replace,
       );
-    } catch (e, stack) {
-      _logger.error('更新數據失敗: $table', e, stack);
+    } catch (e, stackTrace) {
+      _logger.error('更新數據失敗: $table', e, stackTrace);
       rethrow;
     }
   }
 
-  // 刪除數據
-  Future<int> delete(String table, {String? where, List<Object?>? whereArgs}) async {
+  /// 刪除數據
+  Future<int> delete(
+    String table, {
+    String? where,
+    List<Object?>? whereArgs,
+  }) async {
     try {
       final db = await database;
       return await db.delete(
@@ -175,33 +173,22 @@ class DatabaseHelper {
         where: where,
         whereArgs: whereArgs,
       );
-    } catch (e, stack) {
-      _logger.error('刪除數據失敗: $table', e, stack);
+    } catch (e, stackTrace) {
+      _logger.error('刪除數據失敗: $table', e, stackTrace);
       rethrow;
     }
   }
 
-  // 執行原始 SQL 查詢
-  Future<List<Map<String, dynamic>>> rawQuery(String sql, [List<Object?>? arguments]) async {
-    try {
-      final db = await database;
-      return await db.rawQuery(sql, arguments);
-    } catch (e, stack) {
-      _logger.error('執行原始 SQL 查詢失敗', e, stack);
-      rethrow;
-    }
-  }
-
-  // 關閉數據庫連接
+  /// 關閉數據庫
   Future<void> close() async {
     try {
       if (_database != null) {
         await _database!.close();
         _database = null;
-        _logger.info('數據庫連接已關閉');
+        _logger.info('數據庫已關閉');
       }
-    } catch (e, stack) {
-      _logger.error('關閉數據庫失敗', e, stack);
+    } catch (e, stackTrace) {
+      _logger.error('關閉數據庫失敗', e, stackTrace);
       rethrow;
     }
   }

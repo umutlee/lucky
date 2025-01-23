@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:all_lucky/core/routes/app_routes.dart';
-import 'package:all_lucky/core/services/user_profile_service.dart';
-import 'package:all_lucky/ui/theme/app_theme.dart';
+import '../core/router/router.dart';
+import '../core/theme/app_theme.dart';
+import '../core/providers/settings_provider.dart';
 
+/// 應用程序主類
 class App extends ConsumerWidget {
+  /// 構造函數
   const App({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDarkMode = ref.watch(themeModeProvider);
+    final router = ref.watch(routerProvider);
+
     return MaterialApp.router(
       title: '運勢預測',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      routerConfig: goRouter,
-      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      routerConfig: router,
     );
   }
 } 

@@ -60,6 +60,20 @@ class SQLitePreferencesService {
     }
   }
 
+  Future<bool> remove(String key) async {
+    try {
+      final count = await _databaseHelper.delete(
+        'preferences',
+        where: 'key = ?',
+        whereArgs: [key],
+      );
+      return count > 0;
+    } catch (e, stackTrace) {
+      _logger.error('刪除設置失敗: $key', e, stackTrace);
+      return false;
+    }
+  }
+
   Future<bool> clear() async {
     try {
       await _databaseHelper.delete('preferences');

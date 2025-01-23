@@ -1,6 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/sqlite_preferences_service.dart';
 
+/// 主題模式提供者
+final themeModeProvider = StateProvider<bool>((ref) {
+  final prefs = ref.watch(sqlitePreferencesServiceProvider);
+  return false; // 默認值，實際值會在初始化時加載
+});
+
 final themeProvider = StateNotifierProvider<ThemeNotifier, bool>((ref) {
   final prefsService = ref.watch(sqlitePreferencesServiceProvider);
   return ThemeNotifier(prefsService);

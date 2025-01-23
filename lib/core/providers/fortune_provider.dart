@@ -1,32 +1,46 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/fortune.dart';
 import '../models/daily_fortune.dart';
 import '../models/study_fortune.dart';
 import '../models/career_fortune.dart';
 import '../models/love_fortune.dart';
 import '../models/api_response.dart';
-import 'api_provider.dart';
 import '../services/fortune_service.dart';
+import '../services/storage_service.dart';
 import '../utils/cache_manager.dart';
+import '../services/sqlite_preferences_service.dart';
+import '../network/api_client.dart';
 
 /// 運勢數據 Provider
 class FortuneNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
   final ApiClient _apiClient;
+  final StorageService _storage;
 
-  FortuneNotifier(this._apiClient) : super(const AsyncValue.loading()) {
+  FortuneNotifier(this._apiClient, this._storage) : super(const AsyncValue.loading()) {
     _fetchAllFortunes(DateTime.now());
   }
 
   Future<void> _fetchAllFortunes(DateTime date) async {
     state = const AsyncValue.loading();
     try {
-      final basicResponse = await _apiClient.getBasicFortune(date);
-      final studyResponse = await _apiClient.getStudyFortune(date);
-      final careerResponse = await _apiClient.getCareerFortune(date);
-
-      if (!basicResponse.success || !studyResponse.success || !careerResponse.success) {
-        state = AsyncValue.error('獲取運勢數據失敗', StackTrace.current);
-        return;
-      }
+      final basicResponse = await _apiClient.get<Map<String, dynamic>>(
+        '/fortune/daily',
+        queryParameters: {
+          'date': date.toIso8601String(),
+        },
+      );
+      final studyResponse = await _apiClient.get<Map<String, dynamic>>(
+        '/fortune/study',
+        queryParameters: {
+          'date': date.toIso8601String(),
+        },
+      );
+      final careerResponse = await _apiClient.get<Map<String, dynamic>>(
+        '/fortune/career',
+        queryParameters: {
+          'date': date.toIso8601String(),
+        },
+      );
 
       final Map<String, dynamic> allFortunes = {
         'basic': basicResponse.data,
@@ -48,13 +62,14 @@ class FortuneNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
 /// 運勢數據 Provider
 final fortuneProvider = StateNotifierProvider<FortuneNotifier, AsyncValue<Map<String, dynamic>>>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return FortuneNotifier(apiClient);
+  final storage = ref.watch(storageServiceProvider);
+  return FortuneNotifier(apiClient, storage);
 });
 
 /// 每日運勢 Provider
-final dailyFortuneProvider = Provider<AsyncValue<DailyFortune?>>((ref) {
-  final fortunes = ref.watch(fortuneProvider);
-  return fortunes.whenData((data) => data['daily'] as DailyFortune?);
+final dailyFortuneProvider = FutureProvider.family<Fortune, DateTime>((ref, date) async {
+  final repository = ref.watch(fortuneRepositoryProvider);
+  return repository.getDailyFortune(date);
 });
 
 /// 學業運勢 Provider
@@ -195,4 +210,56 @@ class FortunePreloader {
       ]);
     }
   }
-} 
+}
+
+/// 運勢倉庫提供者
+final fortuneRepositoryProvider = Provider<FortuneRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  final prefs = ref.watch(sqlitePreferencesServiceProvider);
+  final storage = ref.watch(storageServiceProvider);
+  return FortuneRepository(apiClient, prefs, storage);
+});
+
+/// 運勢倉庫
+class FortuneRepository {
+  final ApiClient _apiClient;
+  final SQLitePreferencesService _prefs;
+  final StorageService _storage;
+
+  FortuneRepository(this._apiClient, this._prefs, this._storage);
+
+  /// 獲取每日運勢
+  Future<Fortune> getDailyFortune(DateTime date) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      '/fortune/daily',
+      queryParameters: {
+        'date': date.toIso8601String(),
+      },
+    );
+    return Fortune.fromJson(response.data!);
+  }
+
+  /// 獲取月度運勢
+  Future<Map<DateTime, Fortune>> getMonthFortunes(DateTime date) async {
+    final response = await _apiClient.get<List<dynamic>>(
+      '/fortune/month',
+      queryParameters: {
+        'year': date.year,
+        'month': date.month,
+      },
+    );
+
+    final Map<DateTime, Fortune> result = {};
+    for (final item in response.data!) {
+      final fortune = Fortune.fromJson(item as Map<String, dynamic>);
+      result[DateTime.parse(item['date'] as String)] = fortune;
+    }
+    return result;
+  }
+}
+
+/// 月度運勢提供者
+final monthFortunesProvider = FutureProvider.family<Map<DateTime, Fortune>, DateTime>((ref, date) async {
+  final repository = ref.watch(fortuneRepositoryProvider);
+  return repository.getMonthFortunes(date);
+}); 

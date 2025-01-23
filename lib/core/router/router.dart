@@ -8,14 +8,14 @@ import '../../features/onboarding/screens/birth_info_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/calendar/screens/calendar_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
-import '../../features/settings/screens/identity_selection_screen.dart';
+import '../../features/settings/screens/identity_settings_screen.dart';
 
 /// 路由提供者
 final routerProvider = Provider<GoRouter>((ref) {
   final prefsService = ref.watch(sqlitePreferencesServiceProvider);
   
   return GoRouter(
-    initialLocation: _getInitialLocation(prefsService),
+    initialLocation: '/identity',
     routes: [
       GoRoute(
         path: '/identity',
@@ -23,10 +23,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/birth-info',
-        builder: (context, state) {
-          final identity = state.extra as UserIdentity;
-          return BirthInfoScreen(selectedIdentity: identity);
-        },
+        builder: (context, state) => const BirthInfoScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -49,7 +46,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/settings/identity',
-        builder: (context, state) => const IdentitySelectionScreen(),
+        builder: (context, state) => const IdentitySettingsScreen(),
       ),
     ],
   );

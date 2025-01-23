@@ -295,3 +295,131 @@ class Logger {
    - ZodiacCalculator（生肖計算）
    - HoroscopeCalculator（星座計算）
    - ZodiacImageHelper（生肖圖片）
+
+## 服務依賴關係
+
+### 基礎設施層
+1. DatabaseHelper
+   - 職責：數據庫初始化和管理
+   - 依賴：無
+   - 初始化優先級：最高
+
+2. SQLitePreferencesService
+   - 職責：統一的數據存儲服務
+   - 依賴：DatabaseHelper
+   - 初始化優先級：高
+
+3. CacheManager
+   - 職責：緩存管理
+   - 依賴：SQLitePreferencesService
+   - 初始化優先級：高
+
+### 網絡層
+1. ApiClient
+   - 職責：處理網絡請求
+   - 依賴：CacheManager（用於請求緩存）
+   - 初始化優先級：中
+
+2. ApiInterceptor
+   - 職責：請求攔截和處理
+   - 依賴：SQLitePreferencesService（用於 token 管理）
+   - 初始化優先級：中
+
+### 業務服務層
+1. FortuneService
+   - 職責：運勢相關業務邏輯
+   - 依賴：
+     - ApiClient
+     - CacheManager
+   - 初始化優先級：低
+
+2. NotificationService
+   - 職責：通知管理
+   - 依賴：SQLitePreferencesService
+   - 初始化優先級：低
+
+3. UserService
+   - 職責：用戶相關業務邏輯
+   - 依賴：
+     - SQLitePreferencesService
+     - ApiClient
+   - 初始化優先級：低
+
+### Provider 初始化順序
+1. 基礎設施提供者
+   ```dart
+   final databaseProvider = Provider<DatabaseHelper>((ref) => DatabaseHelper());
+   final sqlitePrefsProvider = Provider<SQLitePreferencesService>((ref) {
+     final db = ref.watch(databaseProvider);
+     return SQLitePreferencesService(db);
+   });
+   final cacheManagerProvider = Provider<CacheManager>((ref) {
+     final prefs = ref.watch(sqlitePrefsProvider);
+     return CacheManager(prefs);
+   });
+   ```
+
+2. 網絡層提供者
+   ```dart
+   final apiClientProvider = Provider<ApiClient>((ref) {
+     final cache = ref.watch(cacheManagerProvider);
+     return ApiClient(cache);
+   });
+   ```
+
+3. 業務服務提供者
+   ```dart
+   final fortuneServiceProvider = Provider<FortuneService>((ref) {
+     final api = ref.watch(apiClientProvider);
+     final cache = ref.watch(cacheManagerProvider);
+     return FortuneService(api, cache);
+   });
+   ```
+
+## 數據流
+
+### 請求流程
+1. UI 層觸發請求
+2. Provider 層處理狀態
+3. Service 層執行業務邏輯
+4. ApiClient 發送網絡請求
+5. CacheManager 處理緩存
+6. SQLitePreferencesService 持久化數據
+
+### 錯誤處理
+1. ApiClient 層處理網絡錯誤
+2. Service 層處理業務邏輯錯誤
+3. Provider 層處理狀態錯誤
+4. UI 層展示錯誤信息
+
+## 性能優化
+
+### 緩存策略
+1. 內存緩存（CacheManager）
+   - 使用 LRU 算法
+   - 設置最大緩存大小
+   - 自動清理過期數據
+
+2. 本地存儲（SQLitePreferencesService）
+   - 批量操作優化
+   - 索引優化
+   - 定期清理
+
+### 初始化優化
+1. 延遲初始化非必要服務
+2. 並行初始化無依賴服務
+3. 預加載常用數據
+
+## 監控與日誌
+
+### 性能監控
+1. 請求響應時間
+2. 緩存命中率
+3. 數據庫操作時間
+4. UI 渲染性能
+
+### 日誌記錄
+1. 錯誤日誌
+2. 性能日誌
+3. 用戶操作日誌
+4. 崩潰報告

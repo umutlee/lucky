@@ -11,6 +11,7 @@ class FortuneConfig with _$FortuneConfig {
     required bool showLuckyColor,
     required bool showLuckyNumber,
     required bool showDetailedAnalysis,
+    @Default({'study': true, 'career': true, 'love': true}) Map<String, bool> visibleTypes,
   }) = _FortuneConfig;
 
   factory FortuneConfig.fromJson(Map<String, dynamic> json) => _$FortuneConfigFromJson(json);
@@ -21,5 +22,10 @@ class FortuneConfig with _$FortuneConfig {
     showLuckyColor: true,
     showLuckyNumber: true,
     showDetailedAnalysis: true,
+    visibleTypes: {'study': true, 'career': true, 'love': true},
   );
+}
+
+extension FortuneConfigX on FortuneConfig {
+  bool isVisible(String type) => visibleTypes[type] ?? true;
 } 

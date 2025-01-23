@@ -6,6 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:all_lucky/core/utils/logger.dart';
 import 'package:all_lucky/ui/app.dart';
 import 'core/initialization/app_initializer.dart';
+import 'core/services/sqlite_preferences_service.dart';
+import 'core/router/router.dart';
+import 'core/theme/app_theme.dart';
+import 'core/providers/settings_provider.dart';
 
 final _logger = Logger('Main');
 
@@ -27,6 +31,10 @@ Future<void> main() async {
     PaintingBinding.instance.imageCache.maximumSizeBytes = 50 << 20; // 50 MB
     
     final container = ProviderContainer();
+    
+    // 初始化 SQLite 服務
+    final sqlitePrefs = container.read(sqlitePreferencesServiceProvider);
+    await sqlitePrefs.init();
     
     // 初始化應用
     await container.read(appInitializerProvider).initialize();
@@ -79,6 +87,24 @@ class ErrorApp extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class MyApp extends ConsumerWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDarkMode = ref.watch(themeModeProvider);
+    final router = ref.watch(routerProvider);
+
+    return MaterialApp.router(
+      title: '運勢預測',
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      routerConfig: router,
     );
   }
 } 

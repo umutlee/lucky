@@ -4,6 +4,8 @@ import '../../../core/providers/fortune_config_provider.dart';
 import '../../../core/providers/study_fortune_provider.dart';
 import '../../../core/providers/career_fortune_provider.dart';
 import '../../../core/providers/love_fortune_provider.dart';
+import '../../../core/models/fortune_config.dart';
+import '../../../core/notifiers/notification_notifier.dart';
 
 class FortuneSettingsSection extends ConsumerWidget {
   const FortuneSettingsSection({super.key});

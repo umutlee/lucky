@@ -123,6 +123,66 @@ class IdentityTheme {
           textColor: Color(0xFF4527A0),       // 深紫
           accentColor: Color(0xFF00BCD4),     // 科技藍
         );
+
+      case UserIdentityType.elder:
+        return const IdentityTheme(
+          primaryColor: Color(0xFF607D8B),    // 沉穩灰
+          secondaryColor: Color(0xFF90A4AE),  // 淺灰
+          backgroundColor: Color(0xFFECEFF1), // 柔和白
+          cardColor: Color(0xFFFFFFFF),       // 白色
+          textColor: Color(0xFF455A64),       // 深灰
+          accentColor: Color(0xFF8D6E63),     // 溫暖棕
+        );
+
+      case UserIdentityType.fortune:
+        return const IdentityTheme(
+          primaryColor: Color(0xFF9C27B0),    // 神秘紫
+          secondaryColor: Color(0xFFBA68C8),  // 淺紫
+          backgroundColor: Color(0xFFF3E5F5), // 紫白
+          cardColor: Color(0xFFFFFFFF),       // 白色
+          textColor: Color(0xFF6A1B9A),       // 深紫
+          accentColor: Color(0xFFFFD700),     // 金色
+        );
+
+      case UserIdentityType.spiritual:
+        return const IdentityTheme(
+          primaryColor: Color(0xFF00BCD4),    // 靈性藍
+          secondaryColor: Color(0xFF4DD0E1),  // 淺藍
+          backgroundColor: Color(0xFFE0F7FA), // 天空白
+          cardColor: Color(0xFFFFFFFF),       // 白色
+          textColor: Color(0xFF006064),       // 深藍
+          accentColor: Color(0xFFFFEB3B),     // 光明黃
+        );
+
+      case UserIdentityType.teacher:
+        return const IdentityTheme(
+          primaryColor: Color(0xFF3F51B5),    // 知識藍
+          secondaryColor: Color(0xFF7986CB),  // 淺藍
+          backgroundColor: Color(0xFFE8EAF6), // 書頁白
+          cardColor: Color(0xFFFFFFFF),       // 白色
+          textColor: Color(0xFF1A237E),       // 深藍
+          accentColor: Color(0xFF4CAF50),     // 希望綠
+        );
+
+      case UserIdentityType.artist:
+        return const IdentityTheme(
+          primaryColor: Color(0xFF9C27B0),    // 藝術紫
+          secondaryColor: Color(0xFFBA68C8),  // 淺紫
+          backgroundColor: Color(0xFFF3E5F5), // 創意白
+          cardColor: Color(0xFFFFFFFF),       // 白色
+          textColor: Color(0xFF6A1B9A),       // 深紫
+          accentColor: Color(0xFFFF4081),     // 靈感粉
+        );
+
+      case UserIdentityType.guest:
+        return const IdentityTheme(
+          primaryColor: Color(0xFF9E9E9E),    // 中性灰
+          secondaryColor: Color(0xFFBDBDBD),  // 淺灰
+          backgroundColor: Color(0xFFFAFAFA), // 純白
+          cardColor: Color(0xFFFFFFFF),       // 白色
+          textColor: Color(0xFF616161),       // 深灰
+          accentColor: Color(0xFF2196F3),     // 基礎藍
+        );
     }
   }
 

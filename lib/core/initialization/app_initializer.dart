@@ -4,61 +4,38 @@ import '../services/sqlite_preferences_service.dart';
 import '../services/sqlite_user_settings_service.dart';
 import '../utils/logger.dart';
 
+/// 應用程序初始化器提供者
 final appInitializerProvider = Provider<AppInitializer>((ref) {
-  return AppInitializer(
-    ref.read(migrationServiceProvider),
-    ref.read(sqlitePreferencesServiceProvider),
-    ref.read(sqliteUserSettingsServiceProvider),
-  );
+  final prefsService = ref.watch(sqlitePreferencesServiceProvider);
+  final migrationService = ref.watch(migrationServiceProvider);
+  return AppInitializer(prefsService, migrationService);
 });
 
+/// 應用程序初始化器
 class AppInitializer {
+  final SQLitePreferencesService _prefsService;
   final MigrationService _migrationService;
-  final SQLitePreferencesService _preferencesService;
-  final SQLiteUserSettingsService _userSettingsService;
   final _logger = Logger('AppInitializer');
 
-  AppInitializer(
-    this._migrationService,
-    this._preferencesService,
-    this._userSettingsService,
-  );
+  AppInitializer(this._prefsService, this._migrationService);
 
+  /// 初始化應用程序
   Future<void> initialize() async {
     try {
-      _logger.info('開始初始化應用');
-      
+      _logger.info('開始初始化應用程序');
+
       // 初始化 SQLite 服務
-      await Future.wait([
-        _preferencesService.init(),
-        _userSettingsService.init(),
-      ]);
-      
-      // 檢查是否需要遷移
+      await _prefsService.init();
+
+      // 檢查是否需要遷移數據
       if (await _migrationService.needsMigration()) {
-        _logger.info('檢測到需要遷移數據');
-        
-        // 執行遷移
+        _logger.info('需要遷移數據');
         await _migrationService.migrateToSQLite();
-        
-        // 驗證遷移結果
-        await _validateMigration();
-        
-        // 清理舊數據
-        await _migrationService.cleanupOldData();
-        
-        _logger.info('數據遷移完成');
-      } else {
-        _logger.info('無需遷移數據');
       }
-      
-      _logger.info('應用初始化完成');
-    } catch (e, stack) {
-      _logger.error('應用初始化失敗', e, stack);
-      
-      // 如果遷移過程中出錯，執行回滾
-      await _migrationService.rollbackMigration();
-      
+
+      _logger.info('應用程序初始化完成');
+    } catch (e, stackTrace) {
+      _logger.error('應用程序初始化失敗', e, stackTrace);
       rethrow;
     }
   }
@@ -68,8 +45,8 @@ class AppInitializer {
       _logger.info('開始驗證遷移結果');
       
       // 驗證偏好設置
-      final hasNotification = await _preferencesService.getDailyNotification();
-      final notificationTime = await _preferencesService.getNotificationTime();
+      final hasNotification = await _prefsService.getDailyNotification();
+      final notificationTime = await _prefsService.getNotificationTime();
       
       if (hasNotification == null || notificationTime == null) {
         throw Exception('偏好設置遷移驗證失敗');

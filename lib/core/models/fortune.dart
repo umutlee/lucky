@@ -4,21 +4,43 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'fortune.freezed.dart';
 part 'fortune.g.dart';
 
+/// 運勢模型
 @freezed
 class Fortune with _$Fortune {
+  /// 構造函數
   const factory Fortune({
-    required String id,
+    /// 運勢類型
     required String type,
-    required String title,
+
+    /// 運勢分數
+    required int score,
+
+    /// 運勢描述
     required String description,
-    required double score,
-    required DateTime date,
-    required String zodiac,
-    @Default(false) bool isLuckyDay,
-    @Default({}) Map<String, int> zodiacAffinity,
-    @Default([]) List<String> recommendations,
+
+    /// 幸運時段
+    required List<String> luckyTimes,
+
+    /// 幸運方位
+    required List<String> luckyDirections,
+
+    /// 幸運顏色
+    required List<String> luckyColors,
+
+    /// 幸運數字
+    required List<int> luckyNumbers,
+
+    /// 建議
+    required List<String> suggestions,
+
+    /// 注意事項
+    required List<String> warnings,
+
+    /// 創建時間
+    required DateTime createdAt,
   }) = _Fortune;
 
+  /// 從 JSON 創建
   factory Fortune.fromJson(Map<String, dynamic> json) => _$FortuneFromJson(json);
 }
 
