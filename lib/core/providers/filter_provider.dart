@@ -2,9 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/filter_criteria.dart';
 import '../models/fortune.dart';
 import '../services/filter_service.dart';
+import '../services/fortune_direction_service.dart';
 import '../utils/logger.dart';
 
-final filterServiceProvider = Provider<FilterService>((ref) => FilterService());
+final filterServiceProvider = Provider<FilterService>((ref) {
+  final directionService = ref.watch(fortuneDirectionProvider);
+  return FilterService(directionService);
+});
 
 final filterCriteriaProvider = StateNotifierProvider<FilterCriteriaNotifier, FilterCriteria>((ref) {
   return FilterCriteriaNotifier();
@@ -39,9 +43,9 @@ class FilterCriteriaNotifier extends StateNotifier<FilterCriteria> {
     _logger.info('更新吉利方位: $directions');
   }
 
-  void updateActivities(List<String>? activities) {
-    state = state.copyWith(activities: activities);
-    _logger.info('更新活動列表: $activities');
+  void updateRecommendations(List<String>? recommendations) {
+    state = state.copyWith(recommendations: recommendations);
+    _logger.info('更新推薦活動: $recommendations');
   }
 
   void updateDateRange(DateTime? start, DateTime? end) {
@@ -73,15 +77,10 @@ final filteredFortunesProvider = Provider.family<List<Fortune>, List<Fortune>>((
   final filterService = ref.watch(filterServiceProvider);
   final criteria = ref.watch(filterCriteriaProvider);
   
-  // 先過濾
-  final filtered = filterService.filterFortunes(fortunes, criteria);
-  // 再排序
-  return filterService.sortFortunes(filtered, criteria);
+  return filterService.filterFortunes(fortunes, criteria, null);
 });
 
 final recommendedFortunesProvider = Provider.family<List<Fortune>, List<Fortune>>((ref, fortunes) {
   final filterService = ref.watch(filterServiceProvider);
-  final userHistory = []; // TODO: 從用戶歷史記錄中獲取
-  
-  return filterService.generateRecommendations(fortunes, userHistory);
+  return filterService.generateRecommendations(fortunes);
 }); 

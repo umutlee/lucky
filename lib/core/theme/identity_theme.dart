@@ -19,6 +19,18 @@ class IdentityTheme {
     required this.accentColor,
   });
 
+  /// 獲取默認主題配色
+  static IdentityTheme defaultTheme() {
+    return const IdentityTheme(
+      primaryColor: Color(0xFF1976D2),    // 專業藍
+      secondaryColor: Color(0xFF64B5F6),  // 淺藍
+      backgroundColor: Color(0xFFFAFAFA), // 淺灰白
+      cardColor: Color(0xFFFFFFFF),       // 白色
+      textColor: Color(0xFF0D47A1),       // 深藍
+      accentColor: Color(0xFFFF4081),     // 活力粉
+    );
+  }
+
   /// 獲取身份對應的主題配色
   static IdentityTheme getThemeForIdentity(UserIdentityType type) {
     switch (type) {

@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences.dart';
+import '../services/sqlite_preferences_service.dart';
 import '../models/study_fortune.dart';
 
 /// 學業運勢數據倉庫
@@ -9,8 +9,8 @@ class StudyFortuneRepository {
   /// HTTP 客戶端
   final Dio _dio;
   
-  /// SharedPreferences 實例
-  final SharedPreferences _prefs;
+  /// SQLitePreferencesService 實例
+  final SQLitePreferencesService _prefsService;
   
   /// API 基礎 URL
   static const String _baseUrl = 'https://api.example.com/v1';
@@ -19,20 +19,20 @@ class StudyFortuneRepository {
   static const String _cacheKeyPrefix = 'study_fortune_';
   
   /// 構造函數
-  StudyFortuneRepository(this._dio, this._prefs);
+  StudyFortuneRepository(this._dio, this._prefsService);
   
   /// 獲取指定日期的學業運勢
   Future<StudyFortune> getDailyStudyFortune(DateTime date) async {
     final cacheKey = _getCacheKey(date);
     
     // 嘗試從緩存獲取
-    final cached = _prefs.getString(cacheKey);
+    final cached = await _prefsService.getValue<String>(cacheKey);
     if (cached != null) {
       try {
         return StudyFortune.fromJson(json.decode(cached));
       } catch (e) {
         // 緩存數據無效，刪除它
-        await _prefs.remove(cacheKey);
+        await _prefsService.remove(cacheKey);
       }
     }
     
@@ -87,20 +87,21 @@ class StudyFortuneRepository {
   /// 清除過期緩存
   Future<void> clearExpiredCache() async {
     final now = DateTime.now();
-    final keys = _prefs.getKeys().where((key) => key.startsWith(_cacheKeyPrefix));
+    final keys = await _prefsService.getKeys();
+    final cacheKeys = keys.where((key) => key.startsWith(_cacheKeyPrefix));
     
-    for (final key in keys) {
+    for (final key in cacheKeys) {
       try {
         final dateStr = key.substring(_cacheKeyPrefix.length);
         final date = DateTime.parse(dateStr);
         
         // 如果緩存超過7天，刪除它
         if (now.difference(date).inDays > 7) {
-          await _prefs.remove(key);
+          await _prefsService.remove(key);
         }
       } catch (e) {
         // 無效的緩存鍵，刪除它
-        await _prefs.remove(key);
+        await _prefsService.remove(key);
       }
     }
   }
@@ -113,6 +114,6 @@ class StudyFortuneRepository {
   /// 緩存運勢數據
   Future<void> _cacheFortune(DateTime date, StudyFortune fortune) async {
     final cacheKey = _getCacheKey(date);
-    await _prefs.setString(cacheKey, json.encode(fortune.toJson()));
+    await _prefsService.setValue(cacheKey, json.encode(fortune.toJson()));
   }
 } 

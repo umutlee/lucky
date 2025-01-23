@@ -1,17 +1,16 @@
 import 'dart:convert';
-import 'package:shared_preferences.dart';
+import '../services/sqlite_preferences_service.dart';
 
 class CacheManager {
   static const String _prefix = 'fortune_cache_';
   static const String _expiryPrefix = 'fortune_cache_expiry_';
   
-  final SharedPreferences _prefs;
+  final SQLitePreferencesService _prefsService;
   
-  CacheManager._(this._prefs);
+  CacheManager(this._prefsService);
   
-  static Future<CacheManager> initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    return CacheManager._(prefs);
+  static Future<CacheManager> initialize(SQLitePreferencesService prefsService) async {
+    return CacheManager(prefsService);
   }
 
   Future<T?> get<T>(String key) async {
@@ -19,21 +18,21 @@ class CacheManager {
     final expiryKey = _expiryPrefix + key;
     
     // 檢查是否過期
-    final expiryTimestamp = _prefs.getInt(expiryKey);
+    final expiryTimestamp = await _prefsService.getValue<int>(expiryKey);
     if (expiryTimestamp != null) {
       final expiryTime = DateTime.fromMillisecondsSinceEpoch(expiryTimestamp);
       if (DateTime.now().isAfter(expiryTime)) {
         // 緩存已過期，清除數據
         await Future.wait([
-          _prefs.remove(fullKey),
-          _prefs.remove(expiryKey),
+          _prefsService.remove(fullKey),
+          _prefsService.remove(expiryKey),
         ]);
         return null;
       }
     }
     
     // 獲取緩存數據
-    final jsonString = _prefs.getString(fullKey);
+    final jsonString = await _prefsService.getValue<String>(fullKey);
     if (jsonString == null) return null;
     
     try {
@@ -42,8 +41,8 @@ class CacheManager {
     } catch (e) {
       // 數據格式錯誤，清除緩存
       await Future.wait([
-        _prefs.remove(fullKey),
-        _prefs.remove(expiryKey),
+        _prefsService.remove(fullKey),
+        _prefsService.remove(expiryKey),
       ]);
       return null;
     }
@@ -59,14 +58,14 @@ class CacheManager {
       final jsonString = jsonEncode(json);
       
       await Future.wait([
-        _prefs.setString(fullKey, jsonString),
-        _prefs.setInt(expiryKey, expiryTime.millisecondsSinceEpoch),
+        _prefsService.setValue(fullKey, jsonString),
+        _prefsService.setValue(expiryKey, expiryTime.millisecondsSinceEpoch),
       ]);
     } catch (e) {
       // 序列化失敗，清除緩存
       await Future.wait([
-        _prefs.remove(fullKey),
-        _prefs.remove(expiryKey),
+        _prefsService.remove(fullKey),
+        _prefsService.remove(expiryKey),
       ]);
     }
   }
@@ -76,18 +75,19 @@ class CacheManager {
     final expiryKey = _expiryPrefix + key;
     
     await Future.wait([
-      _prefs.remove(fullKey),
-      _prefs.remove(expiryKey),
+      _prefsService.remove(fullKey),
+      _prefsService.remove(expiryKey),
     ]);
   }
 
   Future<void> clear() async {
-    final keys = _prefs.getKeys().where((key) => 
+    final keys = await _prefsService.getKeys();
+    final cacheKeys = keys.where((key) => 
       key.startsWith(_prefix) || key.startsWith(_expiryPrefix)
     );
     
     await Future.wait(
-      keys.map((key) => _prefs.remove(key)),
+      cacheKeys.map((key) => _prefsService.remove(key)),
     );
   }
 
@@ -144,5 +144,20 @@ class CacheManager {
     }
     
     return json;
+  }
+
+  Future<void> saveToCache(String key, String value) async {
+    await _prefsService.setValue(key, value);
+  }
+
+  Future<String?> getFromCache(String key) async {
+    return await _prefsService.getValue<String>(key);
+  }
+
+  Future<void> clearCache() async {
+    final keys = await _prefsService.getKeys();
+    await Future.wait(
+      keys.map((key) => _prefsService.remove(key))
+    );
   }
 } 

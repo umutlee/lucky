@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences.dart';
+import '../services/sqlite_preferences_service.dart';
 import '../providers/fortune_config_provider.dart';
 import '../../features/onboarding/screens/identity_selection_screen.dart';
 import '../../features/onboarding/screens/birth_info_screen.dart';
@@ -12,10 +12,10 @@ import '../../features/settings/screens/identity_selection_screen.dart';
 
 /// 路由提供者
 final routerProvider = Provider<GoRouter>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
+  final prefsService = ref.watch(sqlitePreferencesServiceProvider);
   
   return GoRouter(
-    initialLocation: _getInitialLocation(prefs),
+    initialLocation: _getInitialLocation(prefsService),
     routes: [
       GoRoute(
         path: '/identity',
@@ -56,12 +56,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 });
 
 /// 獲取初始路由
-String _getInitialLocation(SharedPreferences prefs) {
+Future<String> _getInitialLocation(SQLitePreferencesService prefsService) async {
   // 檢查是否首次打開應用
-  final hasSelectedIdentity = prefs.containsKey('user_identity');
-  final hasBirthInfo = prefs.containsKey('birth_info');
+  final hasIdentity = await prefsService.getValue<bool>('has_identity') ?? false;
+  final hasBirthInfo = await prefsService.getValue<bool>('has_birth_info') ?? false;
   
-  if (!hasSelectedIdentity) {
+  if (!hasIdentity) {
     return '/identity';
   } else if (!hasBirthInfo) {
     return '/birth-info';

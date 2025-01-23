@@ -2,9 +2,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/history_record.dart';
 import '../../../core/services/history_service.dart';
 
-final historyProvider = StateNotifierProvider<HistoryNotifier, AsyncValue<List<HistoryRecord>>>((ref) {
-  final historyService = ref.watch(historyServiceProvider);
-  return HistoryNotifier(historyService);
+final historyProvider = Provider.autoDispose<AsyncValue<List<HistoryRecord>>>((ref) {
+  // 模擬一些測試數據
+  final records = [
+    HistoryRecord(
+      id: '1',
+      timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+      fortuneType: '今日運勢',
+      fortuneResult: '大吉',
+      notes: '今天心情特別好',
+      isFavorite: true,
+    ),
+    HistoryRecord(
+      id: '2',
+      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+      fortuneType: '方位指引',
+      fortuneResult: '東南方',
+      notes: '適合外出旅遊',
+      isFavorite: false,
+    ),
+    HistoryRecord(
+      id: '3',
+      timestamp: DateTime.now().subtract(const Duration(days: 1)),
+      fortuneType: '今日運勢',
+      fortuneResult: '中吉',
+      notes: '平靜的一天',
+      isFavorite: true,
+    ),
+  ];
+
+  return AsyncValue.data(records);
 });
 
 class HistoryNotifier extends StateNotifier<AsyncValue<List<HistoryRecord>>> {

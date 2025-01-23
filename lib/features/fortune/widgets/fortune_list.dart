@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/fortune.dart';
 import '../../../core/providers/filter_provider.dart';
+import '../../../core/providers/fortune_list_provider.dart';
 import '../../../core/services/cache_service.dart';
 import '../../../core/utils/logger.dart';
 
@@ -40,10 +41,13 @@ class _FortuneListState extends ConsumerState<FortuneList> {
 
   @override
   Widget build(BuildContext context) {
-    final fortunes = ref.watch(filteredFortunesProvider);
-
-    return fortunes.when(
-      data: (data) => _buildList(data),
+    final fortunesAsync = ref.watch(fortuneListProvider);
+    
+    return fortunesAsync.when(
+      data: (fortunes) {
+        final filteredFortunes = ref.watch(filteredFortunesProvider(fortunes));
+        return _buildList(filteredFortunes);
+      },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(
         child: Text('載入失敗: $error'),
@@ -99,7 +103,7 @@ class _FortuneListState extends ConsumerState<FortuneList> {
             overflow: TextOverflow.ellipsis,
           ),
           subtitle: Text(
-            '適合活動: ${fortune.suitableActivities.join(", ")}',
+            '推薦活動: ${fortune.recommendations.join(", ")}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

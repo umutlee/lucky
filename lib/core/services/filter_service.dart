@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/fortune.dart';
 import '../models/compass_direction.dart';
+import '../models/filter_criteria.dart';
 import 'fortune_direction_service.dart';
 import '../utils/logger.dart';
 
@@ -36,23 +37,64 @@ class FilterService {
     if (criteria.minScore != null || criteria.maxScore != null) {
       filtered = filtered.where((f) {
         final score = f.score;
-        if (score == null) return false;
         if (criteria.minScore != null && score < criteria.minScore!) return false;
         if (criteria.maxScore != null && score > criteria.maxScore!) return false;
         return true;
       }).toList();
     }
 
-    // 根據方位過濾
-    if (currentDirection != null) {
-      final luckyDirections = _fortuneDirectionService.getLuckyDirections();
+    // 根據吉日過濾
+    if (criteria.isLuckyDay != null) {
+      filtered = filtered.where((f) => f.isLuckyDay == criteria.isLuckyDay).toList();
+    }
+
+    // 根據推薦活動過濾
+    if (criteria.recommendations != null && criteria.recommendations!.isNotEmpty) {
       filtered = filtered.where((f) {
-        if (!luckyDirections.contains(currentDirection)) {
-          return !f.isLuckyDay;
-        }
-        return f.isLuckyDay;
+        return f.recommendations.any((activity) => 
+          criteria.recommendations!.contains(activity));
       }).toList();
     }
+
+    // 根據日期範圍過濾
+    if (criteria.startDate != null || criteria.endDate != null) {
+      filtered = filtered.where((f) {
+        if (criteria.startDate != null && f.date.isBefore(criteria.startDate!)) {
+          return false;
+        }
+        if (criteria.endDate != null && f.date.isAfter(criteria.endDate!)) {
+          return false;
+        }
+        return true;
+      }).toList();
+    }
+
+    // 根據方位過濾
+    if (currentDirection != null && criteria.luckyDirections != null) {
+      filtered = filtered.where((f) {
+        return criteria.luckyDirections!.contains(currentDirection.toString());
+      }).toList();
+    }
+
+    // 排序
+    filtered.sort((a, b) {
+      int comparison;
+      switch (criteria.sortField) {
+        case SortField.date:
+          comparison = a.date.compareTo(b.date);
+          break;
+        case SortField.score:
+          comparison = a.score.compareTo(b.score);
+          break;
+        case SortField.compatibility:
+          comparison = (a.zodiacAffinity[a.zodiac] ?? 0)
+              .compareTo(b.zodiacAffinity[b.zodiac] ?? 0);
+          break;
+      }
+      return criteria.sortOrder == SortOrder.ascending
+          ? comparison
+          : -comparison;
+    });
 
     return filtered;
   }
@@ -62,7 +104,7 @@ class FilterService {
 
     // 按分數排序
     final sorted = List<Fortune>.from(fortunes)
-      ..sort((a, b) => (b.score ?? 0).compareTo(a.score ?? 0));
+      ..sort((a, b) => b.score.compareTo(a.score));
 
     // 只返回前3個最高分的運勢
     return sorted.take(3).toList();
@@ -103,29 +145,4 @@ class FilterService {
   void clearCache() {
     _filterCache.clear();
   }
-}
-
-class FilterCriteria {
-  final FortuneType? fortuneType;
-  final double? minScore;
-  final double? maxScore;
-  final bool? isLuckyDay;
-  final DateTime? startDate;
-  final DateTime? endDate;
-  final SortField? sortField;
-  final SortOrder? sortOrder;
-
-  FilterCriteria({
-    this.fortuneType,
-    this.minScore,
-    this.maxScore,
-    this.isLuckyDay,
-    this.startDate,
-    this.endDate,
-    this.sortField,
-    this.sortOrder,
-  });
-}
-
-enum SortField { score, date }
-enum SortOrder { ascending, descending } 
+} 

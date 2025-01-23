@@ -1,40 +1,50 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences.dart';
-
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError('需要在 main.dart 中初始化 SharedPreferences');
-});
+import '../services/sqlite_preferences_service.dart';
 
 final themeProvider = StateNotifierProvider<ThemeNotifier, bool>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return ThemeNotifier(prefs);
+  final prefsService = ref.watch(sqlitePreferencesServiceProvider);
+  return ThemeNotifier(prefsService);
 });
 
 class ThemeNotifier extends StateNotifier<bool> {
-  final SharedPreferences _prefs;
+  final SQLitePreferencesService _prefsService;
   static const _key = 'isDarkMode';
 
-  ThemeNotifier(this._prefs) : super(_prefs.getBool(_key) ?? false);
+  ThemeNotifier(this._prefsService) : super(false) {
+    _loadTheme();
+  }
 
-  void toggleTheme() {
+  Future<void> _loadTheme() async {
+    final isDark = await _prefsService.getValue<bool>(_key) ?? false;
+    state = isDark;
+  }
+
+  Future<void> toggleTheme() async {
     state = !state;
-    _prefs.setBool(_key, state);
+    await _prefsService.setValue(_key, state);
   }
 }
 
 final notificationEnabledProvider = StateNotifierProvider<NotificationNotifier, bool>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return NotificationNotifier(prefs);
+  final prefsService = ref.watch(sqlitePreferencesServiceProvider);
+  return NotificationNotifier(prefsService);
 });
 
 class NotificationNotifier extends StateNotifier<bool> {
-  final SharedPreferences _prefs;
+  final SQLitePreferencesService _prefsService;
   static const _key = 'notificationsEnabled';
 
-  NotificationNotifier(this._prefs) : super(_prefs.getBool(_key) ?? true);
+  NotificationNotifier(this._prefsService) : super(true) {
+    _loadNotificationSettings();
+  }
 
-  void toggleNotifications() {
+  Future<void> _loadNotificationSettings() async {
+    final enabled = await _prefsService.getValue<bool>(_key) ?? true;
+    state = enabled;
+  }
+
+  Future<void> toggleNotifications() async {
     state = !state;
-    _prefs.setBool(_key, state);
+    await _prefsService.setValue(_key, state);
   }
 } 
