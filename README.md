@@ -41,7 +41,7 @@
 
 1. 克隆項目
 ```bash
-git clone https://github.com/yourusername/all-lucky.git
+git clone https://github.com/umutlee/lucky.git
 ```
 
 2. 安裝依賴
@@ -121,4 +121,94 @@ lib/
 - 查看緩存使用統計
 - 清理過期緩存
 - 清理所有緩存
-- 實時監控緩存命中率（調試模式） 
+- 實時監控緩存命中率（調試模式）
+
+# 諸事大吉
+
+## 開發指引
+
+### 文檔閱讀順序
+在開始任何開發工作前，請按照以下順序閱讀相關文檔：
+
+1. **核心原則** (`/docs/CORE_PRINCIPLES.md`)
+   - 理解應用的基本理念和核心價值
+   - 確認功能設計原則
+   - 檢查數據來源規範
+
+2. **架構文檔** (`/docs/ARCHITECTURE.md`)
+   - 了解系統整體架構
+   - 確認服務依賴關係
+   - 掌握數據流轉方式
+
+3. **API 文檔** (`/docs/api/API.md`)
+   - 查看 API 設計規範
+   - 了解數據交互方式
+   - 確認錯誤處理機制
+
+4. **開發指南** (`/docs/DEVELOPMENT_GUIDE.md`)
+   - 掌握開發環境配置
+   - 遵循代碼規範
+   - 了解開發流程
+
+5. **測試文檔** (`/docs/TESTING.md`)
+   - 確認測試策略
+   - 查看測試用例要求
+   - 了解性能指標
+
+6. **進度記錄** (`/docs/PROGRESS.md`)
+   - 查看當前開發進度
+   - 了解待辦事項
+   - 確認已知問題
+
+### 開發檢查清單
+每次開發前必須：
+- [ ] 閱讀並理解核心原則
+- [ ] 確認功能符合基本理念
+- [ ] 檢查數據來源合規性
+- [ ] 評估技術可行性
+- [ ] 查看相關進度記錄
+
+### 開發注意事項
+1. 始終以實用性為核心，避免過度開發
+2. 保持功能簡單直觀，拒絕複雜設計
+3. 優先使用本地計算，減少外部依賴
+4. 重視用戶體驗，保持趣味性
+5. 定期檢查與核心原則的一致性
+
+## 技術棧
+
+- 框架：Flutter (最新穩定版)
+- 狀態管理：Riverpod
+- 本地存儲：SQLite
+- 網絡請求：Dio
+- 代碼生成：freezed
+
+## 開發環境
+
+### 必要條件
+- Flutter SDK
+- Dart SDK
+- Android Studio / VS Code
+- Git
+- SQLite
+
+### 環境配置
+```bash
+# 克隆項目
+git clone https://github.com/your-org/all-lucky.git
+cd all-lucky
+
+# 安裝依賴
+flutter pub get
+
+# 生成代碼
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+## 更新記錄
+
+### 2024-03-21
+- 添加文檔閱讀順序
+- 完善開發指引
+- 更新開發檢查清單
+- 補充注意事項說明 
