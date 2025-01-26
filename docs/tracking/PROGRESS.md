@@ -26,56 +26,105 @@
 
 ## 更新歷史
 
+### 2024-03-21
+- ✅ 完成 SQLitePreferencesService 測試
+- ✅ 完成 SQLiteUserSettingsService 測試
+- ✅ 完成 StudyFortuneService 測試
+- ⏳ 進行中 ZodiacFortuneService 測試
+  - 遇到的問題：
+    1. FortuneType 的 freezed 文件生成問題
+    2. ApiClient 的 mock 實現需要調整
+    3. Zodiac 類型轉換問題
+  - 下一步：
+    1. 修復 FortuneType 的文件生成
+    2. 完善 ApiClient 的 mock 實現
+    3. 調整 Zodiac 相關的類型處理
+
 ### 2024-01-26
-- ✅ 完成數據庫抽象層重構
-  - 修改 `DatabaseHelper` 類為抽象接口
-  - 實現 `DatabaseHelperImpl` 具體實現類
-  - 相關文件：`lib/core/database/database_helper.dart`
+- ✅ 重構數據庫抽象層
+- ✅ 更新用戶設置服務
+- ✅ 升級測試框架
+- ✅ 重組文檔結構
 
-- ✅ 完成用戶設置服務重構
-  - 更新 `UserSettings` 模型
-  - 修改 `SQLiteUserSettingsService` 實現
-  - 相關文件：
-    - `lib/core/models/user_settings.dart`
-    - `lib/core/services/sqlite_user_settings_service.dart`
+## 測試覆蓋狀態
 
-- ✅ 完成測試框架升級
-  - 從 `test` 包遷移到 `flutter_test`
-  - 更新所有測試用例
-  - 相關文件：
-    - `test/core/services/study_fortune_service_test.dart`
-    - `test/core/services/sqlite_preferences_service_test.dart`
-    - `test/core/services/sqlite_user_settings_service_test.dart`
+### 已完成測試的服務
+1. SQLitePreferencesService
+   - 基本 CRUD 操作
+   - 默認值初始化
+   - 錯誤處理
+   
+2. SQLiteUserSettingsService
+   - 用戶設置的存儲和讀取
+   - 設置更新邏輯
+   - 數據遷移處理
 
-- ✅ 完成文檔結構重組
-  - 重組 `/docs` 目錄結構
-  - 整理和合併重複文檔
-  - 創建文檔導航和維護規範
+3. StudyFortuneService
+   - 運勢計算邏輯
+   - 推薦生成
+   - 時間段處理
+   - 分數調整機制
 
-## 測試覆蓋情況
-### 已完成測試文件
-- ⏳ 模型測試（待驗證）
-  - Fortune 模型
-  - 歷史記錄模型
-- ⏳ 服務層測試（待驗證）
-  - 運勢過濾服務
-  - 數據庫服務
-  - 備份服務
-  - 緩存服務
-  - 吉日服務
-  - 用戶設置服務
-  - 本地通知服務
-  - 推送通知服務
-  - 數據加密服務
-  - 安全數據傳輸服務
-- ⏳ 整合測試（待驗證）
-  - 應用啟動流程
-  - 運勢方位功能
-  - 通知系統
-- ⏳ 性能測試（待驗證）
-  - 載入時間測試
-  - 內存使用測試
-  - 渲染性能測試
+### 待完成測試的服務
+1. ZodiacFortuneService
+   - 生肖相性計算
+   - 運勢增強邏輯
+   - API 調用處理
+   
+2. CompassService
+   - 方位計算
+   - 吉凶判定
+   
+3. FilterService
+   - 數據過濾邏輯
+   - 條件組合處理
+
+4. FortuneService
+   - 綜合運勢生成
+   - 運勢分析邏輯
+
+5. CalendarMarkerService
+   - 日期標記處理
+   - 事件記錄邏輯
+
+6. StorageService
+   - 文件存儲邏輯
+   - 緩存處理
+
+7. LuckyDayService
+   - 吉日計算
+   - 時辰判定
+
+8. SolarTermService
+   - 節氣計算
+   - 季節轉換處理
+
+9. AlmanacService
+   - 黃曆查詢
+   - 日期轉換
+
+10. LunarCalculator
+    - 農曆轉換
+    - 節日計算
+
+## 待優化項目
+1. 提高測試覆蓋率
+2. 添加性能測試
+3. 完善錯誤處理測試
+4. 補充邊界條件測試
+5. 添加並發測試
+
+## 技術債務
+1. FortuneType 的 freezed 生成問題
+2. ApiClient mock 實現的完善
+3. Zodiac 枚舉類型的統一處理
+4. 測試數據的模擬改進
+
+## 下一步計劃
+1. 解決 FortuneType 生成問題
+2. 完善 ApiClient mock
+3. 統一 Zodiac 類型處理
+4. 繼續完成剩餘服務的測試
 
 ## MVP 發布前最後檢查項目
 1. 整體功能測試
@@ -88,44 +137,10 @@
    - ⏳ 內存使用合理
    - ⏳ 渲染性能流暢
 
-## 待優化項目
-
-### 高優先級
-- ⏳ 完善錯誤處理機制（待測試）
-- ⏳ 優化本地數據存儲（待測試）
-- ⏳ 確保運勢計算穩定性（待測試）
-- ⏳ 實現數據安全保障（待測試）
-- ⏳ 完善推送通知功能（待測試）
-
-### 中優先級
-- ⏳ 添加必要的載入提示（待測試）
-- ⏳ 完善錯誤提示文案（待測試）
-- ⏳ 優化頁面切換流暢度（待測試）
-- ⏳ 優化網絡請求處理（待測試）
-- ⏳ 優化推送通知的用戶體驗（待測試）
-
-### 低優先級
-- ⏳ 添加更多自定義選項
-- ⏳ 優化動畫效果
-- ⏳ 添加主題切換功能
-- ⏳ 擴展推送通知的類型
-
 ## 已知問題
 - 數據同步偶爾失敗（待驗證修復效果）
 - 配置加載可能出錯（待驗證修復效果）
 - 推送通知可能延遲（待驗證優化效果）
-
-## 技術債務
-- ⏳ 重構部分代碼（待測試）
-- ⏳ 優化數據庫查詢（待測試）
-- ⏳ 添加更多單元測試（進行中）
-- ⏳ 完善推送服務的錯誤處理（待測試）
-
-## 下一步工作重點
-1. 執行所有已編寫的測試用例
-2. 修復測試過程中發現的問題
-3. 驗證所有功能的穩定性
-4. 確認性能指標達標
 
 ## 備註
 - 已完成大部分測試文件的編寫
