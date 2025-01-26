@@ -5,9 +5,11 @@ import 'package:mockito/annotations.dart';
 import 'package:all_lucky/core/services/encryption_service.dart';
 import 'package:all_lucky/core/models/fortune.dart';
 
-@GenerateMocks([KeySource])
-import 'encryption_service_test.mocks.dart';
+abstract class KeySource {
+  String getKey();
+}
 
+@GenerateMocks([KeySource])
 void main() {
   late EncryptionService encryptionService;
   late MockKeySource mockKeySource;
@@ -33,13 +35,17 @@ void main() {
     test('加密對象測試', () {
       final fortune = Fortune(
         id: '1',
-        description: '今天運勢不錯',
-        score: 80,
         type: '學習',
+        score: 80,
+        description: '今天運勢不錯',
         date: DateTime(2024, 1, 1),
-        recommendations: ['早起學習', '閱讀新書'],
-        zodiac: '龍',
-        zodiacAffinity: {'鼠': 90},
+        luckyTimes: ['早上', '下午'],
+        luckyDirections: ['東', '南'],
+        luckyColors: ['紅', '黃'],
+        luckyNumbers: [1, 8],
+        suggestions: ['早起學習', '閱讀新書'],
+        warnings: ['避免熬夜'],
+        createdAt: DateTime.now(),
       );
 
       final encrypted = encryptionService.encryptObject(fortune);
@@ -51,13 +57,16 @@ void main() {
       );
       
       expect(decrypted.id, equals(fortune.id));
-      expect(decrypted.description, equals(fortune.description));
-      expect(decrypted.score, equals(fortune.score));
       expect(decrypted.type, equals(fortune.type));
+      expect(decrypted.score, equals(fortune.score));
+      expect(decrypted.description, equals(fortune.description));
       expect(decrypted.date, equals(fortune.date));
-      expect(decrypted.recommendations, equals(fortune.recommendations));
-      expect(decrypted.zodiac, equals(fortune.zodiac));
-      expect(decrypted.zodiacAffinity, equals(fortune.zodiacAffinity));
+      expect(decrypted.luckyTimes, equals(fortune.luckyTimes));
+      expect(decrypted.luckyDirections, equals(fortune.luckyDirections));
+      expect(decrypted.luckyColors, equals(fortune.luckyColors));
+      expect(decrypted.luckyNumbers, equals(fortune.luckyNumbers));
+      expect(decrypted.suggestions, equals(fortune.suggestions));
+      expect(decrypted.warnings, equals(fortune.warnings));
     });
 
     test('完整性驗證測試', () {
@@ -159,6 +168,93 @@ void main() {
         ),
         throwsA(isA<FormatException>()),
       );
+    });
+  });
+
+  group('加密服務測試', () {
+    test('數據加密測試', () {
+      const originalData = '測試數據';
+      final encryptedData = encryptionService.encrypt(originalData);
+      
+      // 驗證加密後的數據不等於原始數據
+      expect(encryptedData, isNot(equals(originalData)));
+      
+      // 驗證加密後的數據不為空
+      expect(encryptedData, isNotEmpty);
+    });
+
+    test('數據解密測試', () {
+      const originalData = '測試數據';
+      final encryptedData = encryptionService.encrypt(originalData);
+      final decryptedData = encryptionService.decrypt(encryptedData);
+      
+      // 驗證解密後的數據等於原始數據
+      expect(decryptedData, equals(originalData));
+    });
+
+    test('空數據加密測試', () {
+      const originalData = '';
+      final encryptedData = encryptionService.encrypt(originalData);
+      final decryptedData = encryptionService.decrypt(encryptedData);
+      
+      // 驗證空數據的加解密
+      expect(decryptedData, equals(originalData));
+    });
+
+    test('特殊字符加密測試', () {
+      const originalData = '!@#\$%^&*()_+{}:"<>?~';
+      final encryptedData = encryptionService.encrypt(originalData);
+      final decryptedData = encryptionService.decrypt(encryptedData);
+      
+      // 驗證特殊字符的加解密
+      expect(decryptedData, equals(originalData));
+    });
+
+    test('中文字符加密測試', () {
+      const originalData = '你好世界！123';
+      final encryptedData = encryptionService.encrypt(originalData);
+      final decryptedData = encryptionService.decrypt(encryptedData);
+      
+      // 驗證中文字符的加解密
+      expect(decryptedData, equals(originalData));
+    });
+
+    test('大數據加密測試', () {
+      final originalData = 'a' * 1000000; // 1MB 的數據
+      final encryptedData = encryptionService.encrypt(originalData);
+      final decryptedData = encryptionService.decrypt(encryptedData);
+      
+      // 驗證大數據的加解密
+      expect(decryptedData, equals(originalData));
+    });
+
+    test('加密密鑰變更測試', () {
+      const originalData = '測試數據';
+      final encryptedData = encryptionService.encrypt(originalData);
+      
+      // 變更密鑰
+      encryptionService.updateEncryptionKey('new_key');
+      
+      // 使用新密鑰加密
+      final newEncryptedData = encryptionService.encrypt(originalData);
+      
+      // 驗證使用不同密鑰加密的結果不同
+      expect(newEncryptedData, isNot(equals(encryptedData)));
+    });
+
+    test('加密性能測試', () {
+      const originalData = '測試數據';
+      final stopwatch = Stopwatch()..start();
+      
+      // 執行 1000 次加密
+      for (var i = 0; i < 1000; i++) {
+        encryptionService.encrypt(originalData);
+      }
+      
+      stopwatch.stop();
+      
+      // 驗證加密性能（平均每次加密應小於 1ms）
+      expect(stopwatch.elapsedMilliseconds / 1000, lessThan(1));
     });
   });
 } 

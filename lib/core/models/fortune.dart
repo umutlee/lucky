@@ -12,43 +12,21 @@ part 'fortune.g.dart';
 /// 運勢模型
 @freezed
 class Fortune with _$Fortune {
-  /// 構造函數
+  const Fortune._();  // 添加私有構造函數
+
   const factory Fortune({
-    /// 運勢類型
-    required FortuneType type,
-
-    /// 運勢分數
+    required String id,
+    required String type,
     required int score,
-
-    /// 運勢描述
     required String description,
-
-    /// 幸運時段
+    required DateTime date,
     required List<String> luckyTimes,
-
-    /// 幸運方位
     required List<String> luckyDirections,
-
-    /// 幸運顏色
     required List<String> luckyColors,
-
-    /// 幸運數字
     required List<int> luckyNumbers,
-
-    /// 建議
     required List<String> suggestions,
-
-    /// 注意事項
     required List<String> warnings,
-
-    /// 創建時間
     required DateTime createdAt,
-
-    /// 詳細運勢（可選）
-    StudyFortune? studyFortune,
-    CareerFortune? careerFortune,
-    LoveFortune? loveFortune,
-    DailyFortune? dailyFortune,
   }) = _Fortune;
 
   /// 從 JSON 創建
@@ -60,17 +38,16 @@ class Fortune with _$Fortune {
     if (score >= 80) return '中吉';
     if (score >= 70) return '小吉';
     if (score >= 60) return '平';
-    return '凶';
+    if (score >= 50) return '凶';
+    return '大凶';
   }
 
   /// 獲取運勢標籤
-  List<String> getTags() {
-    final List<String> tags = [];
+  List<String> get tags {
+    final tags = <String>[];
     
-    // 添加運勢等級
     tags.add(getFortuneLevel(score));
     
-    // 添加幸運資訊
     if (luckyTimes.isNotEmpty) {
       tags.add('宜在 ${luckyTimes.join("、")} 行事');
     }
