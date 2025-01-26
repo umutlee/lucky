@@ -20,6 +20,7 @@ dependencies:
   http: ^1.2.0
   path_provider: ^2.1.2
   sqflite: ^2.3.2
+  sqflite_common_ffi: ^2.3.2
   flutter_local_notifications: ^16.3.0
   url_launcher: ^6.2.4
   package_info_plus: ^5.0.1
@@ -59,13 +60,13 @@ flutter:
     - assets/images/
     - assets/images/zodiac/
     - assets/icons/
-    - assets/fonts/
+    # - assets/fonts/
     
-  fonts:
-    - family: NotoSansTC
-      fonts:
-        - asset: assets/fonts/NotoSansTC-Regular.otf
-        - asset: assets/fonts/NotoSansTC-Medium.otf
-          weight: 500
-        - asset: assets/fonts/NotoSansTC-Bold.otf
-          weight: 700 
+  # fonts:
+  #   - family: NotoSansTC
+  #     fonts:
+  #       - asset: assets/fonts/NotoSansTC-Regular.otf
+  #       - asset: assets/fonts/NotoSansTC-Medium.otf
+  #         weight: 500
+  #       - asset: assets/fonts/NotoSansTC-Bold.otf
+  #         weight: 700 

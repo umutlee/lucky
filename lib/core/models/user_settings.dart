@@ -9,6 +9,9 @@ part 'user_settings.g.dart';
 class UserSettings with _$UserSettings {
   const factory UserSettings({
     @Default(Zodiac.rat) Zodiac zodiac,
+    @Default('鼠') String chineseZodiac,
+    @Default(true) bool dailyNotification,
+    @Default('09:00') String notificationTime,
     @Default(2000) int birthYear,
     @Default(true) bool hasEnabledNotifications,
     @Default(false) bool hasLocationPermission,
@@ -17,7 +20,6 @@ class UserSettings with _$UserSettings {
     @Default(false) bool hasAcceptedPrivacy,
     @Default(true) bool isFirstLaunch,
     @Default([]) List<String> preferredFortuneTypes,
-    String? notificationTime,
     String? selectedLanguage,
     String? selectedTheme,
   }) = _UserSettings;
@@ -28,6 +30,9 @@ class UserSettings with _$UserSettings {
   static UserSettings defaultSettings() {
     return const UserSettings(
       zodiac: Zodiac.rat,
+      chineseZodiac: '鼠',
+      dailyNotification: true,
+      notificationTime: '09:00',
       birthYear: 2000,
       hasEnabledNotifications: true,
       hasLocationPermission: false,
@@ -36,7 +41,6 @@ class UserSettings with _$UserSettings {
       hasAcceptedPrivacy: false,
       isFirstLaunch: true,
       preferredFortuneTypes: [],
-      notificationTime: '08:00',
       selectedLanguage: 'zh_TW',
       selectedTheme: 'system',
     );
@@ -66,13 +70,16 @@ class UserSettings with _$UserSettings {
       selectedTheme ?? 'system';
 
   String get displayNotificationTime =>
-      notificationTime ?? '08:00';
+      notificationTime;
 }
 
 extension UserSettingsX on UserSettings {
   Map<String, dynamic> toMap() {
     return {
-      'zodiac': zodiac.index,
+      'zodiac': zodiac.name,
+      'chinese_zodiac': chineseZodiac,
+      'daily_notification': dailyNotification ? 1 : 0,
+      'notification_time': notificationTime,
       'birth_year': birthYear,
       'notifications_enabled': hasEnabledNotifications ? 1 : 0,
       'location_permission_granted': hasLocationPermission ? 1 : 0,
@@ -81,7 +88,6 @@ extension UserSettingsX on UserSettings {
       'privacy_accepted': hasAcceptedPrivacy ? 1 : 0,
       'is_first_launch': isFirstLaunch ? 1 : 0,
       'preferred_fortune_types': preferredFortuneTypes,
-      'notification_time': notificationTime,
       'selected_language': selectedLanguage,
       'selected_theme': selectedTheme,
     };

@@ -3,6 +3,9 @@ import 'package:meta/meta.dart';
 /// 學業運勢數據模型
 @immutable
 class StudyFortune {
+  /// 唯一標識符
+  final String id;
+  
   /// 整體運勢評分（0-100）
   final int overallScore;
   
@@ -32,6 +35,7 @@ class StudyFortune {
 
   /// 構造函數
   const StudyFortune({
+    required this.id,
     required this.overallScore,
     required this.efficiencyScore,
     required this.memoryScore,
@@ -46,6 +50,7 @@ class StudyFortune {
   /// 從 JSON 創建實例
   factory StudyFortune.fromJson(Map<String, dynamic> json) {
     return StudyFortune(
+      id: json['id'] as String,
       overallScore: json['overallScore'] as int,
       efficiencyScore: json['efficiencyScore'] as int,
       memoryScore: json['memoryScore'] as int,
@@ -61,6 +66,7 @@ class StudyFortune {
   /// 轉換為 JSON
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'overallScore': overallScore,
       'efficiencyScore': efficiencyScore,
       'memoryScore': memoryScore,

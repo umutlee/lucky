@@ -5,22 +5,56 @@ import 'package:all_lucky/core/utils/logger.dart';
 
 /// 數據庫幫助類提供者
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
-  return DatabaseHelper();
+  return DatabaseHelperImpl();
 });
 
-/// 數據庫幫助類
-class DatabaseHelper {
+/// 數據庫幫助類基類
+abstract class DatabaseHelper {
+  /// 獲取數據庫實例
+  Future<Database> get database;
+
+  /// 初始化數據庫
+  Future<bool> init();
+
+  /// 插入數據
+  Future<int> insert(String table, Map<String, dynamic> values);
+
+  /// 更新數據
+  Future<int> update(String table, Map<String, dynamic> values, {String? where, List<Object?>? whereArgs});
+
+  /// 刪除數據
+  Future<int> delete(String table, {String? where, List<Object?>? whereArgs});
+
+  /// 查詢數據
+  Future<List<Map<String, dynamic>>> query(String table, {
+    bool? distinct,
+    List<String>? columns,
+    String? where,
+    List<Object?>? whereArgs,
+    String? groupBy,
+    String? having,
+    String? orderBy,
+    int? limit,
+    int? offset,
+  });
+
+  /// 執行 SQL 語句
+  Future<void> execute(String sql, [List<Object?>? arguments]);
+}
+
+/// 數據庫幫助類實現
+class DatabaseHelperImpl implements DatabaseHelper {
   static const String _tag = 'DatabaseHelper';
   final _logger = Logger(_tag);
   Database? _database;
 
-  /// 獲取數據庫實例
+  @override
   Future<Database> get database async {
     _database ??= await _initDatabase();
     return _database!;
   }
 
-  /// 初始化數據庫
+  @override
   Future<bool> init() async {
     try {
       await database;
@@ -89,7 +123,7 @@ class DatabaseHelper {
     }
   }
 
-  /// 插入數據
+  @override
   Future<int> insert(String table, Map<String, dynamic> values) async {
     try {
       final db = await database;
@@ -100,14 +134,46 @@ class DatabaseHelper {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     } catch (e, stackTrace) {
-      _logger.error('插入數據失敗: $table', e, stackTrace);
+      _logger.error('插入數據失敗', e, stackTrace);
       rethrow;
     }
   }
 
-  /// 查詢數據
-  Future<List<Map<String, dynamic>>> query(
-    String table, {
+  @override
+  Future<int> update(String table, Map<String, dynamic> values, {String? where, List<Object?>? whereArgs}) async {
+    try {
+      final db = await database;
+      values['updated_at'] = DateTime.now().toIso8601String();
+      return await db.update(
+        table,
+        values,
+        where: where,
+        whereArgs: whereArgs,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (e, stackTrace) {
+      _logger.error('更新數據失敗', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<int> delete(String table, {String? where, List<Object?>? whereArgs}) async {
+    try {
+      final db = await database;
+      return await db.delete(
+        table,
+        where: where,
+        whereArgs: whereArgs,
+      );
+    } catch (e, stackTrace) {
+      _logger.error('刪除數據失敗', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> query(String table, {
     bool? distinct,
     List<String>? columns,
     String? where,
@@ -133,62 +199,18 @@ class DatabaseHelper {
         offset: offset,
       );
     } catch (e, stackTrace) {
-      _logger.error('查詢數據失敗: $table', e, stackTrace);
+      _logger.error('查詢數據失敗', e, stackTrace);
       rethrow;
     }
   }
 
-  /// 更新數據
-  Future<int> update(
-    String table,
-    Map<String, dynamic> values, {
-    String? where,
-    List<Object?>? whereArgs,
-  }) async {
+  @override
+  Future<void> execute(String sql, [List<Object?>? arguments]) async {
     try {
       final db = await database;
-      values['updated_at'] = DateTime.now().toIso8601String();
-      return await db.update(
-        table,
-        values,
-        where: where,
-        whereArgs: whereArgs,
-      );
+      await db.execute(sql, arguments);
     } catch (e, stackTrace) {
-      _logger.error('更新數據失敗: $table', e, stackTrace);
-      rethrow;
-    }
-  }
-
-  /// 刪除數據
-  Future<int> delete(
-    String table, {
-    String? where,
-    List<Object?>? whereArgs,
-  }) async {
-    try {
-      final db = await database;
-      return await db.delete(
-        table,
-        where: where,
-        whereArgs: whereArgs,
-      );
-    } catch (e, stackTrace) {
-      _logger.error('刪除數據失敗: $table', e, stackTrace);
-      rethrow;
-    }
-  }
-
-  /// 關閉數據庫
-  Future<void> close() async {
-    try {
-      if (_database != null) {
-        await _database!.close();
-        _database = null;
-        _logger.info('數據庫已關閉');
-      }
-    } catch (e, stackTrace) {
-      _logger.error('關閉數據庫失敗', e, stackTrace);
+      _logger.error('執行 SQL 失敗', e, stackTrace);
       rethrow;
     }
   }

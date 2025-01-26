@@ -18,8 +18,7 @@ class SQLiteUserSettingsService {
 
   Future<void> init() async {
     try {
-      final db = await _dbHelper.database;
-      await db.execute('''
+      await _dbHelper.execute('''
         CREATE TABLE IF NOT EXISTS $_tableName (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           zodiac TEXT NOT NULL,
@@ -52,8 +51,7 @@ class SQLiteUserSettingsService {
 
   Future<UserSettings?> getUserSettings() async {
     try {
-      final db = await _dbHelper.database;
-      final results = await db.query(_tableName, limit: 1);
+      final results = await _dbHelper.query(_tableName, limit: 1);
       
       if (results.isEmpty) {
         return null;
@@ -66,11 +64,11 @@ class SQLiteUserSettingsService {
           orElse: () => Zodiac.rat,
         ),
         birthYear: map['birth_year'] as int,
-        notificationsEnabled: map['notifications_enabled'] == 1,
-        locationPermissionGranted: map['location_permission_granted'] == 1,
-        onboardingCompleted: map['onboarding_completed'] == 1,
-        termsAccepted: map['terms_accepted'] == 1,
-        privacyAccepted: map['privacy_accepted'] == 1,
+        hasEnabledNotifications: map['notifications_enabled'] == 1,
+        hasLocationPermission: map['location_permission_granted'] == 1,
+        hasCompletedOnboarding: map['onboarding_completed'] == 1,
+        hasAcceptedTerms: map['terms_accepted'] == 1,
+        hasAcceptedPrivacy: map['privacy_accepted'] == 1,
         isFirstLaunch: map['is_first_launch'] == 1,
         preferredFortuneTypes: _decodeStringList(map['preferred_fortune_types']),
         notificationTime: map['notification_time'] as String?,
@@ -128,7 +126,7 @@ class SQLiteUserSettingsService {
         throw Exception('未找到用戶設置');
       }
       
-      final newSettings = settings.copyWith(notificationsEnabled: enabled);
+      final newSettings = settings.copyWith(hasEnabledNotifications: enabled);
       await _saveSettings(newSettings);
     } catch (e, stackTrace) {
       _logger.error('更新通知設置失敗', e, stackTrace);
@@ -143,7 +141,7 @@ class SQLiteUserSettingsService {
         throw Exception('未找到用戶設置');
       }
       
-      final newSettings = settings.copyWith(locationPermissionGranted: granted);
+      final newSettings = settings.copyWith(hasLocationPermission: granted);
       await _saveSettings(newSettings);
     } catch (e, stackTrace) {
       _logger.error('更新位置權限失敗', e, stackTrace);
@@ -159,7 +157,7 @@ class SQLiteUserSettingsService {
       }
       
       final newSettings = settings.copyWith(
-        onboardingCompleted: true,
+        hasCompletedOnboarding: true,
         isFirstLaunch: false,
       );
       await _saveSettings(newSettings);
@@ -176,7 +174,7 @@ class SQLiteUserSettingsService {
         throw Exception('未找到用戶設置');
       }
       
-      final newSettings = settings.copyWith(termsAccepted: true);
+      final newSettings = settings.copyWith(hasAcceptedTerms: true);
       await _saveSettings(newSettings);
     } catch (e, stackTrace) {
       _logger.error('接受條款失敗', e, stackTrace);
@@ -191,7 +189,7 @@ class SQLiteUserSettingsService {
         throw Exception('未找到用戶設置');
       }
       
-      final newSettings = settings.copyWith(privacyAccepted: true);
+      final newSettings = settings.copyWith(hasAcceptedPrivacy: true);
       await _saveSettings(newSettings);
     } catch (e, stackTrace) {
       _logger.error('接受隱私政策失敗', e, stackTrace);
@@ -265,23 +263,8 @@ class SQLiteUserSettingsService {
 
   Future<void> _saveSettings(UserSettings settings) async {
     try {
-      final db = await _dbHelper.database;
-      await db.delete(_tableName);
-      await db.insert(_tableName, {
-        'zodiac': settings.zodiac.toString(),
-        'birth_year': settings.birthYear,
-        'notifications_enabled': settings.hasEnabledNotifications ? 1 : 0,
-        'location_permission_granted': settings.hasLocationPermission ? 1 : 0,
-        'onboarding_completed': settings.hasCompletedOnboarding ? 1 : 0,
-        'terms_accepted': settings.hasAcceptedTerms ? 1 : 0,
-        'privacy_accepted': settings.hasAcceptedPrivacy ? 1 : 0,
-        'is_first_launch': settings.isFirstLaunch ? 1 : 0,
-        'preferred_fortune_types': _encodeStringList(settings.preferredFortuneTypes),
-        'notification_time': settings.notificationTime,
-        'selected_language': settings.selectedLanguage,
-        'selected_theme': settings.selectedTheme,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      await _dbHelper.delete(_tableName);
+      await _dbHelper.insert(_tableName, settings.toMap());
     } catch (e, stackTrace) {
       _logger.error('保存用戶設置失敗', e, stackTrace);
       rethrow;
@@ -305,8 +288,8 @@ class SQLiteUserSettingsService {
   List<String> _decodeStringList(dynamic value) {
     if (value == null) return [];
     try {
-      final List<dynamic> list = jsonDecode(value as String);
-      return list.map((e) => e.toString()).toList();
+      final List<dynamic> decoded = jsonDecode(value as String);
+      return decoded.map((e) => e.toString()).toList();
     } catch (e) {
       return [];
     }
