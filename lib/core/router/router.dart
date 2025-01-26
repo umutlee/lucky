@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../services/sqlite_preferences_service.dart';
 import '../providers/fortune_config_provider.dart';
+import '../utils/page_transition_manager.dart';
 import '../../features/onboarding/screens/identity_selection_screen.dart';
 import '../../features/onboarding/screens/birth_info_screen.dart';
 import '../../features/home/screens/home_screen.dart';
@@ -19,11 +20,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/identity',
-        builder: (context, state) => const IdentitySelectionScreen(),
+        pageBuilder: (context, state) => PageTransitionManager.createRoute(
+          page: const IdentitySelectionScreen(),
+          type: PageTransitionType.fade,
+        ),
       ),
       GoRoute(
         path: '/birth-info',
-        builder: (context, state) => const BirthInfoScreen(),
+        pageBuilder: (context, state) => PageTransitionManager.createRoute(
+          page: const BirthInfoScreen(),
+          type: PageTransitionType.slideAndFade,
+          direction: TransitionDirection.left,
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -32,21 +40,37 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/home',
-            builder: (context, state) => const HomeScreen(),
+            pageBuilder: (context, state) => PageTransitionManager.createRoute(
+              page: const HomeScreen(),
+              type: PageTransitionType.fade,
+              duration: const Duration(milliseconds: 200),
+            ),
           ),
           GoRoute(
             path: '/calendar',
-            builder: (context, state) => const CalendarScreen(),
+            pageBuilder: (context, state) => PageTransitionManager.createRoute(
+              page: const CalendarScreen(),
+              type: PageTransitionType.fade,
+              duration: const Duration(milliseconds: 200),
+            ),
           ),
           GoRoute(
             path: '/settings',
-            builder: (context, state) => const SettingsScreen(),
+            pageBuilder: (context, state) => PageTransitionManager.createRoute(
+              page: const SettingsScreen(),
+              type: PageTransitionType.fade,
+              duration: const Duration(milliseconds: 200),
+            ),
           ),
         ],
       ),
       GoRoute(
         path: '/settings/identity',
-        builder: (context, state) => const IdentitySettingsScreen(),
+        pageBuilder: (context, state) => PageTransitionManager.createRoute(
+          page: const IdentitySettingsScreen(),
+          type: PageTransitionType.slideAndFade,
+          direction: TransitionDirection.right,
+        ),
       ),
     ],
   );
@@ -80,8 +104,10 @@ class ScaffoldWithBottomNavBar extends ConsumerStatefulWidget {
   ConsumerState<ScaffoldWithBottomNavBar> createState() => _ScaffoldWithBottomNavBarState();
 }
 
-class _ScaffoldWithBottomNavBarState extends ConsumerState<ScaffoldWithBottomNavBar> {
+class _ScaffoldWithBottomNavBarState extends ConsumerState<ScaffoldWithBottomNavBar> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnimation;
 
   static const List<(String path, String label, IconData icon)> _tabs = [
     ('/home', '今日運勢', Icons.home),
@@ -90,14 +116,41 @@ class _ScaffoldWithBottomNavBarState extends ConsumerState<ScaffoldWithBottomNav
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _controller = PageTransitionManager.createController(
+      this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _fadeAnimation = PageTransitionManager.createAnimation(
+      controller: _controller,
+      begin: 0.0,
+      end: 1.0,
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: widget.child,
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: widget.child,
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
           setState(() => _currentIndex = index);
-          context.go(_tabs[index].$1);
+          _controller.reverse().then((_) {
+            context.go(_tabs[index].$1);
+            _controller.forward();
+          });
         },
         destinations: _tabs
             .map((tab) => NavigationDestination(
