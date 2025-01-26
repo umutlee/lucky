@@ -2,6 +2,26 @@
 
 一款基於 Flutter 開發的運勢預測應用，提供每日運勢查詢、方位指南和通知提醒功能。
 
+## 當前版本狀態
+
+- 版本：MVP 1.0.0（開發中）
+- 進度：85%
+- 預計發布：2024-04
+
+### 完成功能
+- ✅ 運勢查詢核心功能
+- ✅ 用戶身份設置
+- ✅ 基礎日曆功能
+- ✅ 通知系統
+- ✅ 錯誤處理機制
+- ✅ 載入提示系統
+- ✅ 頁面切換優化
+
+### 進行中功能
+- ⏳ 數據安全保障（待測試）
+- ⏳ 推送通知功能（待測試）
+- ⏳ 性能優化和測試
+
 ## 功能特點
 
 ### 1. 運勢預測
@@ -32,10 +52,31 @@
 
 ## 開發環境要求
 
+### 必要條件
 - Flutter 3.x
 - Dart 3.x
 - Android Studio / VS Code
 - iOS 13.0+ / Android 5.0+
+- Git
+- SQLite
+
+### 測試環境配置
+1. 安裝必要工具
+```bash
+flutter pub global activate coverage
+flutter pub global activate test_coverage
+```
+
+2. 配置環境變量
+```bash
+export VM_SERVICE_URL="http://127.0.0.1:8181/"
+```
+
+3. 安裝測試依賴
+```bash
+flutter pub add --dev mockito
+flutter pub add --dev build_runner
+```
 
 ## 安裝說明
 
@@ -49,7 +90,17 @@ git clone https://github.com/umutlee/lucky.git
 flutter pub get
 ```
 
-3. 運行應用
+3. 生成必要文件
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+4. 運行測試
+```bash
+flutter test
+```
+
+5. 運行應用
 ```bash
 flutter run
 ```
@@ -67,6 +118,11 @@ lib/
   │   ├── compass/         # 方位指南
   │   └── notification/    # 推送通知
   └── main.dart            # 入口文件
+
+test/
+  ├── unit/               # 單元測試
+  ├── integration/        # 集成測試
+  └── performance/        # 性能測試
 ```
 
 ## 使用說明
@@ -87,6 +143,25 @@ lib/
 3. 可以開啟/關閉每日運勢提醒
 4. 支持手動清除所有通知
 
+## 開發指引
+
+### 文檔閱讀順序
+在開始任何開發工作前，請按照以下順序閱讀相關文檔：
+
+1. **核心原則** (`/docs/CORE_PRINCIPLES.md`)
+2. **架構文檔** (`/docs/ARCHITECTURE.md`)
+3. **API 文檔** (`/docs/api/API.md`)
+4. **開發指南** (`/docs/DEVELOPMENT_GUIDE.md`)
+5. **測試文檔** (`/docs/TESTING.md`)
+6. **進度記錄** (`/docs/PROGRESS.md`)
+
+### MVP 版本發布檢查清單
+- [ ] 完成所有核心功能測試
+- [ ] 驗證性能指標達標
+- [ ] 確認安全性要求
+- [ ] 完成文檔更新
+- [ ] 準備發布材料
+
 ## 注意事項
 
 - 方位指南功能需要設備支持磁力計
@@ -101,114 +176,10 @@ lib/
 
 本項目基於 MIT 許可證開源。
 
-# 存儲層優化更新說明
-
-## 更新內容
-1. 移除 SharedPreferences，統一使用 SQLite 作為本地存儲
-2. 實現多級緩存策略（內存 + 數據庫）
-3. 添加緩存監控和管理功能
-4. 優化存儲層性能
-
-## 主要改動
-- 重構 Repository 類，統一使用 DatabaseService
-- 實現 LRU 算法的內存緩存
-- 添加緩存統計和監控界面
-- 實現自動緩存清理機制
-- 完善單元測試
-
-## 使用說明
-緩存管理功能可以在設置頁面中找到，提供以下功能：
-- 查看緩存使用統計
-- 清理過期緩存
-- 清理所有緩存
-- 實時監控緩存命中率（調試模式）
-
-# 諸事大吉
-
-## 開發指引
-
-### 文檔閱讀順序
-在開始任何開發工作前，請按照以下順序閱讀相關文檔：
-
-1. **核心原則** (`/docs/CORE_PRINCIPLES.md`)
-   - 理解應用的基本理念和核心價值
-   - 確認功能設計原則
-   - 檢查數據來源規範
-
-2. **架構文檔** (`/docs/ARCHITECTURE.md`)
-   - 了解系統整體架構
-   - 確認服務依賴關係
-   - 掌握數據流轉方式
-
-3. **API 文檔** (`/docs/api/API.md`)
-   - 查看 API 設計規範
-   - 了解數據交互方式
-   - 確認錯誤處理機制
-
-4. **開發指南** (`/docs/DEVELOPMENT_GUIDE.md`)
-   - 掌握開發環境配置
-   - 遵循代碼規範
-   - 了解開發流程
-
-5. **測試文檔** (`/docs/TESTING.md`)
-   - 確認測試策略
-   - 查看測試用例要求
-   - 了解性能指標
-
-6. **進度記錄** (`/docs/PROGRESS.md`)
-   - 查看當前開發進度
-   - 了解待辦事項
-   - 確認已知問題
-
-### 開發檢查清單
-每次開發前必須：
-- [ ] 閱讀並理解核心原則
-- [ ] 確認功能符合基本理念
-- [ ] 檢查數據來源合規性
-- [ ] 評估技術可行性
-- [ ] 查看相關進度記錄
-
-### 開發注意事項
-1. 始終以實用性為核心，避免過度開發
-2. 保持功能簡單直觀，拒絕複雜設計
-3. 優先使用本地計算，減少外部依賴
-4. 重視用戶體驗，保持趣味性
-5. 定期檢查與核心原則的一致性
-
-## 技術棧
-
-- 框架：Flutter (最新穩定版)
-- 狀態管理：Riverpod
-- 本地存儲：SQLite
-- 網絡請求：Dio
-- 代碼生成：freezed
-
-## 開發環境
-
-### 必要條件
-- Flutter SDK
-- Dart SDK
-- Android Studio / VS Code
-- Git
-- SQLite
-
-### 環境配置
-```bash
-# 克隆項目
-git clone https://github.com/your-org/all-lucky.git
-cd all-lucky
-
-# 安裝依賴
-flutter pub get
-
-# 生成代碼
-flutter pub run build_runner build --delete-conflicting-outputs
-```
-
 ## 更新記錄
 
 ### 2024-03-21
-- 添加文檔閱讀順序
-- 完善開發指引
-- 更新開發檢查清單
-- 補充注意事項說明 
+- 更新 MVP 版本進度
+- 添加測試環境配置說明
+- 完善安裝步驟
+- 添加發布檢查清單 
