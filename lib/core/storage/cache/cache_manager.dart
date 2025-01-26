@@ -48,12 +48,11 @@ class CacheManager {
         );
       }
     } catch (e, stackTrace) {
-      _logger.error('設置緩存失敗: $key', e, stackTrace);
+      _logger.error('設置緩存失敗', e, stackTrace);
       throw AppError(
-        ErrorType.database,
-        '設置緩存失敗',
-        originalError: e,
-        stackTrace: stackTrace,
+        type: ErrorType.cache,
+        message: '設置緩存失敗: $key',
+        error: e,
       );
     }
   }
@@ -189,5 +188,34 @@ class CacheManager {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  /// 清除所有緩存
+  Future<void> clear() async {
+    try {
+      // 清除內存緩存
+      _memoryCache.clear();
+      
+      // 清除持久化緩存
+      await _databaseManager.delete('cache');
+      
+      _logger.info('緩存已清除');
+    } catch (e, stackTrace) {
+      _logger.error('清除緩存失敗', e, stackTrace);
+      throw AppError(
+        type: ErrorType.cache,
+        message: '清除緩存失敗',
+        error: e,
+      );
+    }
+  }
+
+  /// 獲取緩存統計信息
+  Map<String, dynamic> getStats() {
+    return {
+      'memorySize': _memoryCache.length,
+      'keys': _memoryCache.keys.toList(),
+      'lastCleared': DateTime.now().toIso8601String(),
+    };
   }
 } 

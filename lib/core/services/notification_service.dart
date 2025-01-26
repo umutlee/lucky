@@ -210,37 +210,27 @@ class NotificationService {
   }
 
   Future<List<PendingNotificationRequest>> getPendingNotifications() async {
-    try {
-      _logger.info('獲取待處理通知列表...');
-      final pendingNotifications = await _notifications.pendingNotificationRequests();
-      _logger.info('找到 ${pendingNotifications.length} 個待處理通知');
-      return pendingNotifications;
-    } catch (e, stackTrace) {
-      _logger.error('獲取待處理通知失敗', e, stackTrace);
+    if (!_isInitialized) {
+      _logger.error('通知服務未初始化');
       return [];
     }
+    return await _notifications.pendingNotificationRequests();
   }
 
-  Future<bool> cancelAllNotifications() async {
-    try {
-      await _notifications.cancelAll();
-      _logger.info('已取消所有通知');
-      return true;
-    } catch (e, stackTrace) {
-      _logger.error('取消通知失敗', e, stackTrace);
-      return false;
+  Future<void> cancelAllNotifications() async {
+    if (!_isInitialized) {
+      _logger.error('通知服務未初始化');
+      return;
     }
+    await _notifications.cancelAll();
   }
 
-  Future<bool> cancelNotification(int id) async {
-    try {
-      await _notifications.cancel(id);
-      _logger.info('已取消通知 $id');
-      return true;
-    } catch (e, stack) {
-      _logger.error('取消通知失敗', e, stack);
-      return false;
+  Future<void> cancelNotification(int id) async {
+    if (!_isInitialized) {
+      _logger.error('通知服務未初始化');
+      return;
     }
+    await _notifications.cancel(id);
   }
 
   void _handleNotificationResponse(NotificationResponse response) {
@@ -251,5 +241,59 @@ class NotificationService {
   @pragma('vm:entry-point')
   static void _onBackgroundNotificationTap(NotificationResponse response) {
     // 處理背景通知點擊事件
+  }
+
+  Future<bool> checkPermission() async {
+    if (!_isInitialized) {
+      _logger.error('通知服務未初始化');
+      return false;
+    }
+
+    final status = await Permission.notification.status;
+    return status.isGranted;
+  }
+
+  Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    String? payload,
+  }) async {
+    if (!_isInitialized) {
+      _logger.error('通知服務未初始化');
+      return;
+    }
+
+    final androidDetails = AndroidNotificationDetails(
+      'fortune_channel',
+      '運勢通知',
+      channelDescription: '每日運勢提醒',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notifications.zonedSchedule(
+      id,
+      title,
+      body,
+      tz.TZDateTime.from(scheduledDate, tz.local),
+      notificationDetails,
+      androidAllowWhileIdle: true,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: payload,
+    );
   }
 } 

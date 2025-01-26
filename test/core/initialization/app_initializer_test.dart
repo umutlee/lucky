@@ -24,8 +24,8 @@ void main() {
     mockPreferencesService = MockSQLitePreferencesService();
     mockUserSettingsService = MockSQLiteUserSettingsService();
     appInitializer = AppInitializer(
-      mockMigrationService,
       mockPreferencesService,
+      mockMigrationService,
       mockUserSettingsService,
     );
   });
@@ -48,7 +48,6 @@ void main() {
       verify(mockUserSettingsService.init()).called(1);
       verify(mockMigrationService.needsMigration()).called(1);
       verifyNever(mockMigrationService.migrateToSQLite());
-      verifyNever(mockMigrationService.cleanupOldData());
     });
 
     test('當需要遷移時應該執行完整的遷移流程', () async {
@@ -56,8 +55,6 @@ void main() {
       when(mockMigrationService.needsMigration())
           .thenAnswer((_) async => true);
       when(mockMigrationService.migrateToSQLite())
-          .thenAnswer((_) async {});
-      when(mockMigrationService.cleanupOldData())
           .thenAnswer((_) async {});
       when(mockPreferencesService.init())
           .thenAnswer((_) async {});
@@ -68,7 +65,7 @@ void main() {
       when(mockPreferencesService.getNotificationTime())
           .thenAnswer((_) async => '08:00');
       when(mockUserSettingsService.getUserSettings())
-          .thenAnswer((_) async => UserSettings.defaultSettings());
+          .thenAnswer((_) async => const UserSettings());
 
       // 執行初始化
       await appInitializer.initialize();
@@ -82,18 +79,15 @@ void main() {
         mockPreferencesService.getDailyNotification(),
         mockPreferencesService.getNotificationTime(),
         mockUserSettingsService.getUserSettings(),
-        mockMigrationService.cleanupOldData(),
       ]);
     });
 
-    test('當遷移失敗時應該執行回滾', () async {
+    test('當遷移失敗時應該拋出異常', () async {
       // 設置 mock 行為
       when(mockMigrationService.needsMigration())
           .thenAnswer((_) async => true);
       when(mockMigrationService.migrateToSQLite())
           .thenThrow(Exception('遷移失敗'));
-      when(mockMigrationService.rollbackMigration())
-          .thenAnswer((_) async {});
       when(mockPreferencesService.init())
           .thenAnswer((_) async {});
       when(mockUserSettingsService.init())
@@ -104,18 +98,13 @@ void main() {
         () => appInitializer.initialize(),
         throwsException,
       );
-
-      // 驗證回滾被調用
-      verify(mockMigrationService.rollbackMigration()).called(1);
     });
 
-    test('當驗證失敗時應該執行回滾', () async {
+    test('當驗證失敗時應該拋出異常', () async {
       // 設置 mock 行為
       when(mockMigrationService.needsMigration())
           .thenAnswer((_) async => true);
       when(mockMigrationService.migrateToSQLite())
-          .thenAnswer((_) async {});
-      when(mockMigrationService.rollbackMigration())
           .thenAnswer((_) async {});
       when(mockPreferencesService.init())
           .thenAnswer((_) async {});
@@ -131,9 +120,6 @@ void main() {
         () => appInitializer.initialize(),
         throwsException,
       );
-
-      // 驗證回滾被調用
-      verify(mockMigrationService.rollbackMigration()).called(1);
     });
   });
 } 

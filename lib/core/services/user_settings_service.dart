@@ -14,7 +14,14 @@ class UserSettingsService {
 
   UserSettingsService(this._prefs);
 
-  Future<UserSettings> getUserSettings() async {
+  Future<void> init() async {
+    // 初始化服務
+    if (!_prefs.containsKey(_settingsKey)) {
+      await _saveSettings(UserSettings.defaultSettings());
+    }
+  }
+
+  Future<UserSettings> loadSettings() async {
     try {
       final jsonStr = _prefs.getString(_settingsKey);
       if (jsonStr == null) {
@@ -28,39 +35,54 @@ class UserSettingsService {
     }
   }
 
+  Future<void> saveSettings(UserSettings settings) async {
+    await _saveSettings(settings);
+  }
+
+  Future<UserSettings> getUserSettings() async {
+    return await loadSettings();
+  }
+
   Future<void> updateUserZodiac(Zodiac zodiac) async {
-    final currentSettings = await getUserSettings();
+    final currentSettings = await loadSettings();
     final newSettings = currentSettings.copyWith(zodiac: zodiac);
     await _saveSettings(newSettings);
   }
 
   Future<void> updateBirthYear(int birthYear) async {
-    if (!_isValidBirthYear(birthYear)) {
+    if (!isValidBirthYear(birthYear)) {
       throw ArgumentError('無效的出生年份');
     }
-    final currentSettings = await getUserSettings();
-    final zodiac = Zodiac.fromYear(birthYear);
-    final newSettings = currentSettings.copyWith(
-      birthYear: birthYear,
-      zodiac: zodiac,
-    );
+    final currentSettings = await loadSettings();
+    final newSettings = currentSettings.copyWith(birthYear: birthYear);
     await _saveSettings(newSettings);
   }
 
+  Future<void> updateNotificationSettings(bool enabled) async {
+    final currentSettings = await loadSettings();
+    final newSettings = currentSettings.copyWith(notificationsEnabled: enabled);
+    await _saveSettings(newSettings);
+  }
+
+  Future<void> updatePreferredFortuneTypes(List<String> types) async {
+    final currentSettings = await loadSettings();
+    await _saveSettings(currentSettings);
+  }
+
   Future<void> updateNotificationPreference(bool enabled) async {
-    final currentSettings = await getUserSettings();
+    final currentSettings = await loadSettings();
     final newSettings = currentSettings.copyWith(hasEnabledNotifications: enabled);
     await _saveSettings(newSettings);
   }
 
   Future<void> updateLocationPermission(bool granted) async {
-    final currentSettings = await getUserSettings();
+    final currentSettings = await loadSettings();
     final newSettings = currentSettings.copyWith(hasLocationPermission: granted);
     await _saveSettings(newSettings);
   }
 
   Future<void> completeOnboarding() async {
-    final currentSettings = await getUserSettings();
+    final currentSettings = await loadSettings();
     final newSettings = currentSettings.copyWith(
       hasCompletedOnboarding: true,
       isFirstLaunch: false,
@@ -69,24 +91,41 @@ class UserSettingsService {
   }
 
   Future<void> acceptTerms() async {
-    final currentSettings = await getUserSettings();
+    final currentSettings = await loadSettings();
     final newSettings = currentSettings.copyWith(hasAcceptedTerms: true);
     await _saveSettings(newSettings);
   }
 
   Future<void> acceptPrivacy() async {
-    final currentSettings = await getUserSettings();
+    final currentSettings = await loadSettings();
     final newSettings = currentSettings.copyWith(hasAcceptedPrivacy: true);
     await _saveSettings(newSettings);
   }
 
   Future<void> _saveSettings(UserSettings settings) async {
-    final jsonStr = jsonEncode(settings.toJson());
-    await _prefs.setString(_settingsKey, jsonStr);
+    try {
+      final jsonStr = jsonEncode(settings.toJson());
+      await _prefs.setString(_settingsKey, jsonStr);
+    } catch (e) {
+      print('保存用戶設置失敗: $e');
+      rethrow;
+    }
   }
 
-  bool _isValidBirthYear(int year) {
+  bool isValidBirthYear(int year) {
     final currentYear = DateTime.now().year;
-    return year > 1900 && year <= currentYear;
+    return year >= 1900 && year <= currentYear;
+  }
+
+  bool isValidZodiac(String zodiac) {
+    try {
+      return Zodiac.values.any((z) => z.toString() == zodiac);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Zodiac calculateZodiac(int birthYear) {
+    return Zodiac.fromYear(birthYear);
   }
 } 

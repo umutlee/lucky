@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 
 /// 日誌工具類,用於輸出不同級別的日誌信息
@@ -16,20 +17,34 @@ class Logger {
   
   Logger(this._tag);
   
-  void info(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    logger.i('[$_tag] $message', error, stackTrace);
+  void info(String message) {
+    if (kDebugMode) {
+      print('[$_tag] INFO: $message');
+    }
   }
   
-  void error(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    logger.e('[$_tag] $message', error, stackTrace);
+  void warning(String message) {
+    if (kDebugMode) {
+      print('[$_tag] WARNING: $message');
+    }
   }
   
-  void warning(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    logger.w('[$_tag] $message', error, stackTrace);
+  void error(String message, [dynamic error, StackTrace? stackTrace]) {
+    if (kDebugMode) {
+      print('[$_tag] ERROR: $message');
+      if (error != null) {
+        print('Error details: $error');
+      }
+      if (stackTrace != null) {
+        print('Stack trace:\n$stackTrace');
+      }
+    }
   }
   
-  void debug(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    logger.d('[$_tag] $message', error, stackTrace);
+  void debug(String message) {
+    if (kDebugMode) {
+      print('[$_tag] DEBUG: $message');
+    }
   }
   
   void verbose(dynamic message, [dynamic error, StackTrace? stackTrace]) {

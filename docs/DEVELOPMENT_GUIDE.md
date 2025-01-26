@@ -1,5 +1,60 @@
 # 開發指南
 
+## 運勢類型系統
+
+### FortuneType 枚舉
+運勢類型系統使用 `FortuneType` 枚舉來管理所有可能的運勢類型。主要分為四大類：
+
+1. 日常決策
+   - daily: 今日運勢
+   - timing: 時機運勢
+   - activity: 活動運勢
+   - direction: 方位運勢
+
+2. 學習職業
+   - study: 學習運勢
+   - work: 工作運勢
+   - programming: 編程運勢
+   - creative: 創作運勢
+
+3. 人際互動
+   - social: 人際運勢
+   - relationship: 緣分運勢
+   - cooperation: 合作運勢
+
+4. 生活休閒
+   - health: 健康運勢
+   - entertainment: 娛樂運勢
+   - shopping: 消費運勢
+   - travel: 旅行運勢
+
+### 使用方式
+```dart
+// 檢查運勢類型
+final isDaily = fortuneType.isDaily;
+final isCareer = fortuneType.isCareer;
+final isSocial = fortuneType.isSocial;
+final isLifestyle = fortuneType.isLifestyle;
+
+// 獲取圖標
+final iconPath = fortuneType.iconName;
+
+// 獲取分類名稱
+final category = fortuneType.categoryName;
+
+// 從字符串創建
+final type = FortuneType.fromString('daily');
+```
+
+### MVP 版本開發重點
+目前 MVP 版本優先實現以下運勢類型：
+1. ✅ daily（今日運勢）- 基礎運勢預測
+2. ⏳ study（學習運勢）- 學業發展指引
+3. ⏳ work（工作運勢）- 職場發展建議
+4. ⏳ relationship（緣分運勢）- 感情發展預測
+
+其他運勢類型將在後續版本中逐步添加。
+
 ## MVP 版本開發重點
 
 ### 當前階段（測試與優化）

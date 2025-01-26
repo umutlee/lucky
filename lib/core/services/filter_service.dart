@@ -2,132 +2,120 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/fortune.dart';
 import '../models/compass_direction.dart';
 import '../models/filter_criteria.dart';
-import 'fortune_direction_service.dart';
 import '../utils/logger.dart';
 
-final filterServiceProvider = Provider<FilterService>((ref) {
-  return FilterService(ref.read(fortuneDirectionProvider));
-});
+final filterServiceProvider = Provider<FilterService>((ref) => FilterService());
 
 class FilterService {
-  final FortuneDirectionService _fortuneDirectionService;
   final _logger = Logger('FilterService');
   
   // 使用 LRU 緩存存儲過濾結果
   final Map<String, List<Fortune>> _filterCache = {};
   final int _maxCacheSize = 10;
 
-  FilterService(this._fortuneDirectionService);
+  FilterService();
 
-  List<Fortune> filterFortunes(
-    List<Fortune> fortunes,
-    FilterCriteria criteria,
-    CompassDirection? currentDirection,
-  ) {
-    if (fortunes.isEmpty) return [];
-
-    var filtered = List<Fortune>.from(fortunes);
-
-    // 根據運勢類型過濾
-    if (criteria.fortuneType != null) {
-      filtered = filtered.where((f) => f.type == criteria.fortuneType).toList();
-    }
-
-    // 根據分數範圍過濾
-    if (criteria.minScore != null || criteria.maxScore != null) {
-      filtered = filtered.where((f) {
-        final score = f.score;
-        if (criteria.minScore != null && score < criteria.minScore!) return false;
-        if (criteria.maxScore != null && score > criteria.maxScore!) return false;
-        return true;
-      }).toList();
-    }
-
-    // 根據吉日過濾
-    if (criteria.isLuckyDay != null) {
-      filtered = filtered.where((f) => f.isLuckyDay == criteria.isLuckyDay).toList();
-    }
-
-    // 根據推薦活動過濾
-    if (criteria.recommendations != null && criteria.recommendations!.isNotEmpty) {
-      filtered = filtered.where((f) {
-        return f.recommendations.any((activity) => 
-          criteria.recommendations!.contains(activity));
-      }).toList();
-    }
-
-    // 根據日期範圍過濾
-    if (criteria.startDate != null || criteria.endDate != null) {
-      filtered = filtered.where((f) {
-        if (criteria.startDate != null && f.date.isBefore(criteria.startDate!)) {
-          return false;
-        }
-        if (criteria.endDate != null && f.date.isAfter(criteria.endDate!)) {
-          return false;
-        }
-        return true;
-      }).toList();
-    }
-
-    // 根據方位過濾
-    if (currentDirection != null && criteria.luckyDirections != null) {
-      filtered = filtered.where((f) {
-        return criteria.luckyDirections!.contains(currentDirection.toString());
-      }).toList();
-    }
-
-    // 排序
-    filtered.sort((a, b) {
-      int comparison;
-      switch (criteria.sortField) {
-        case SortField.date:
-          comparison = a.date.compareTo(b.date);
-          break;
-        case SortField.score:
-          comparison = a.score.compareTo(b.score);
-          break;
-        case SortField.compatibility:
-          comparison = (a.zodiacAffinity[a.zodiac] ?? 0)
-              .compareTo(b.zodiacAffinity[b.zodiac] ?? 0);
-          break;
+  List<Fortune> filterFortunes(List<Fortune> fortunes, FilterCriteria criteria) {
+    try {
+      // 生成緩存鍵
+      final cacheKey = _generateCacheKey(fortunes, criteria);
+      
+      // 檢查緩存
+      if (_filterCache.containsKey(cacheKey)) {
+        _logger.info('使用緩存的過濾結果');
+        return List<Fortune>.from(_filterCache[cacheKey]!);
       }
-      return criteria.sortOrder == SortOrder.ascending
-          ? comparison
-          : -comparison;
-    });
 
-    return filtered;
+      var filtered = List<Fortune>.from(fortunes);
+
+      // 按類型過濾
+      if (criteria.type != null) {
+        filtered = filtered.where((f) => f.type == criteria.type).toList();
+      }
+
+      // 按分數範圍過濾
+      if (criteria.minScore != null) {
+        filtered = filtered.where((f) => f.score >= criteria.minScore!).toList();
+      }
+      if (criteria.maxScore != null) {
+        filtered = filtered.where((f) => f.score <= criteria.maxScore!).toList();
+      }
+
+      // 按吉日過濾
+      if (criteria.isLuckyDay != null) {
+        filtered = filtered.where((f) => f.isLuckyDay == criteria.isLuckyDay).toList();
+      }
+
+      // 按日期範圍過濾
+      if (criteria.startDate != null) {
+        filtered = filtered.where((f) => 
+          f.date.isAfter(criteria.startDate!) || 
+          f.date.isAtSameMomentAs(criteria.startDate!)
+        ).toList();
+      }
+      if (criteria.endDate != null) {
+        filtered = filtered.where((f) => 
+          f.date.isBefore(criteria.endDate!) || 
+          f.date.isAtSameMomentAs(criteria.endDate!)
+        ).toList();
+      }
+
+      // 按活動過濾
+      if (criteria.activities != null && criteria.activities!.isNotEmpty) {
+        filtered = filtered.where((f) => 
+          f.suitableActivities.any((a) => criteria.activities!.contains(a))
+        ).toList();
+      }
+
+      // 排序結果
+      filtered.sort((a, b) {
+        final result = switch (criteria.sortField) {
+          SortField.date => a.date.compareTo(b.date),
+          SortField.score => a.score.compareTo(b.score),
+          SortField.type => a.type.compareTo(b.type),
+        };
+        return criteria.sortOrder == SortOrder.ascending ? result : -result;
+      });
+
+      // 更新緩存
+      _updateCache(cacheKey, filtered);
+
+      return filtered;
+    } catch (e, stackTrace) {
+      _logger.error('過濾運勢失敗', e, stackTrace);
+      return [];
+    }
   }
 
   List<Fortune> generateRecommendations(List<Fortune> fortunes) {
     if (fortunes.isEmpty) return [];
 
-    // 按分數排序
-    final sorted = List<Fortune>.from(fortunes)
-      ..sort((a, b) => b.score.compareTo(a.score));
+    try {
+      // 按分數排序
+      final sorted = List<Fortune>.from(fortunes)
+        ..sort((a, b) => b.score.compareTo(a.score));
 
-    // 只返回前3個最高分的運勢
-    return sorted.take(3).toList();
+      // 只返回前3個最高分的運勢
+      return sorted.take(3).toList();
+    } catch (e, stackTrace) {
+      _logger.error('生成推薦失敗', e, stackTrace);
+      return [];
+    }
   }
 
   // 生成緩存鍵
-  String _generateCacheKey(
-    List<Fortune> fortunes,
-    CompassDirection? currentDirection,
-    DateTime currentTime,
-    int? minScore,
-    List<String>? types,
-    bool considerDirection,
-    bool considerTime,
-  ) {
+  String _generateCacheKey(List<Fortune> fortunes, FilterCriteria criteria) {
     return [
       fortunes.map((f) => f.id).join(','),
-      currentDirection?.direction ?? 'noDirection',
-      '${currentTime.hour}',
-      minScore?.toString() ?? 'noScore',
-      types?.join(',') ?? 'noTypes',
-      considerDirection.toString(),
-      considerTime.toString(),
+      criteria.type ?? 'noType',
+      criteria.minScore?.toString() ?? 'noMinScore',
+      criteria.maxScore?.toString() ?? 'noMaxScore',
+      criteria.isLuckyDay?.toString() ?? 'noLuckyDay',
+      criteria.startDate?.toIso8601String() ?? 'noStartDate',
+      criteria.endDate?.toIso8601String() ?? 'noEndDate',
+      criteria.activities?.join(',') ?? 'noActivities',
+      criteria.sortField.toString(),
+      criteria.sortOrder.toString(),
     ].join('|');
   }
 
@@ -138,11 +126,12 @@ class FilterService {
       final firstKey = _filterCache.keys.first;
       _filterCache.remove(firstKey);
     }
-    _filterCache[key] = value;
+    _filterCache[key] = List<Fortune>.from(value);
   }
 
   // 清除緩存
   void clearCache() {
     _filterCache.clear();
+    _logger.info('緩存已清除');
   }
 } 

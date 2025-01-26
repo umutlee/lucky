@@ -197,6 +197,51 @@ void main() {
 }
 ```
 
+## 運勢類型測試
+
+### FortuneType 枚舉測試
+測試 `FortuneType` 枚舉的所有功能：
+
+```dart
+void main() {
+  group('FortuneType Tests', () {
+    test('基本類型檢查', () {
+      expect(FortuneType.daily.isDaily, isTrue);
+      expect(FortuneType.study.isDaily, isFalse);
+    });
+
+    test('職業類型檢查', () {
+      expect(FortuneType.study.isCareer, isTrue);
+      expect(FortuneType.work.isCareer, isTrue);
+      expect(FortuneType.daily.isCareer, isFalse);
+    });
+
+    test('從字符串創建', () {
+      expect(FortuneType.fromString('daily'), equals(FortuneType.daily));
+      expect(FortuneType.fromString('invalid'), isNull);
+    });
+
+    test('圖標路徑檢查', () {
+      expect(FortuneType.daily.iconName, equals('assets/icons/fortune_daily.png'));
+    });
+  });
+}
+```
+
+### 測試覆蓋要求
+- 枚舉值完整性測試
+- 類型檢查方法測試
+- 字符串轉換測試
+- 圖標路徑驗證
+- 分類名稱驗證
+
+### MVP 版本測試重點
+優先完成以下測試：
+1. ✅ 基本運勢類型判斷
+2. ✅ 特殊運勢類型判斷
+3. ⏳ 運勢預測準確性驗證
+4. ⏳ 用戶設置與運勢關聯測試
+
 ## MVP 版本性能指標
 
 ### 1. 啟動性能

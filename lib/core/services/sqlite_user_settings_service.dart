@@ -1,197 +1,314 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../models/user_settings.dart';
 import '../models/zodiac.dart';
 import '../utils/logger.dart';
 
 final sqliteUserSettingsServiceProvider = Provider<SQLiteUserSettingsService>((ref) {
-  final databaseHelper = ref.watch(databaseHelperProvider);
-  return SQLiteUserSettingsService(databaseHelper);
+  return SQLiteUserSettingsService(ref.read(databaseHelperProvider));
 });
 
 class SQLiteUserSettingsService {
-  static const String _tag = 'SQLiteUserSettingsService';
-  final _logger = Logger(_tag);
-  final DatabaseHelper _databaseHelper;
+  final DatabaseHelper _dbHelper;
+  final _logger = Logger('SQLiteUserSettingsService');
+  static const _tableName = 'user_settings';
 
-  SQLiteUserSettingsService(this._databaseHelper);
+  SQLiteUserSettingsService(this._dbHelper);
 
-  Future<bool> init() async {
+  Future<void> init() async {
     try {
-      await _databaseHelper.init();
-      return true;
+      final db = await _dbHelper.database;
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS $_tableName (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          zodiac TEXT NOT NULL,
+          birth_year INTEGER NOT NULL,
+          notifications_enabled INTEGER DEFAULT 1,
+          location_permission_granted INTEGER DEFAULT 0,
+          onboarding_completed INTEGER DEFAULT 0,
+          terms_accepted INTEGER DEFAULT 0,
+          privacy_accepted INTEGER DEFAULT 0,
+          is_first_launch INTEGER DEFAULT 1,
+          preferred_fortune_types TEXT,
+          notification_time TEXT,
+          selected_language TEXT,
+          selected_theme TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      ''');
+
+      // 檢查是否需要初始化默認設置
+      final settings = await getUserSettings();
+      if (settings == null) {
+        await _saveSettings(UserSettings.defaultSettings());
+      }
     } catch (e, stackTrace) {
-      _logger.error('SQLite 用戶設置服務初始化失敗', e, stackTrace);
-      return false;
+      _logger.error('初始化用戶設置服務失敗', e, stackTrace);
+      rethrow;
     }
   }
 
-  Future<UserSettings> getUserSettings() async {
+  Future<UserSettings?> getUserSettings() async {
     try {
-      final result = await _databaseHelper.query('user_settings');
-      if (result.isEmpty) {
-        return UserSettings.initial();
+      final db = await _dbHelper.database;
+      final results = await db.query(_tableName, limit: 1);
+      
+      if (results.isEmpty) {
+        return null;
       }
 
-      final data = result.first;
+      final map = results.first;
       return UserSettings(
-        zodiac: data['zodiac'] != null ? Zodiac.values[data['zodiac'] as int] : null,
-        birthYear: data['birth_year'] as int?,
-        notificationsEnabled: (data['notifications_enabled'] as int) == 1,
-        locationPermissionGranted: (data['location_permission_granted'] as int) == 1,
-        onboardingCompleted: (data['onboarding_completed'] as int) == 1,
-        termsAccepted: (data['terms_accepted'] as int) == 1,
-        privacyAccepted: (data['privacy_accepted'] as int) == 1,
+        zodiac: Zodiac.values.firstWhere(
+          (z) => z.toString() == map['zodiac'] as String,
+          orElse: () => Zodiac.rat,
+        ),
+        birthYear: map['birth_year'] as int,
+        notificationsEnabled: map['notifications_enabled'] == 1,
+        locationPermissionGranted: map['location_permission_granted'] == 1,
+        onboardingCompleted: map['onboarding_completed'] == 1,
+        termsAccepted: map['terms_accepted'] == 1,
+        privacyAccepted: map['privacy_accepted'] == 1,
+        isFirstLaunch: map['is_first_launch'] == 1,
+        preferredFortuneTypes: _decodeStringList(map['preferred_fortune_types']),
+        notificationTime: map['notification_time'] as String?,
+        selectedLanguage: map['selected_language'] as String?,
+        selectedTheme: map['selected_theme'] as String?,
       );
     } catch (e, stackTrace) {
       _logger.error('獲取用戶設置失敗', e, stackTrace);
-      return UserSettings.initial();
+      return null;
     }
   }
 
-  Future<bool> updateZodiac(Zodiac zodiac) async {
+  Future<void> updateUserZodiac(Zodiac zodiac) async {
     try {
-      final currentSettings = await getUserSettings();
-      final newSettings = currentSettings.copyWith(zodiac: zodiac);
-      await _saveSettings(newSettings);
-      return true;
-    } catch (e, stackTrace) {
-      _logger.error('更新生肖失敗', e, stackTrace);
-      return false;
-    }
-  }
-
-  Future<bool> updateBirthYear(int year) async {
-    try {
-      if (year < 1900 || year > DateTime.now().year) {
-        throw ArgumentError('無效的出生年份');
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
       }
+      
+      final newSettings = settings.copyWith(zodiac: zodiac);
+      await _saveSettings(newSettings);
+    } catch (e, stackTrace) {
+      _logger.error('更新用戶生肖失敗', e, stackTrace);
+      rethrow;
+    }
+  }
 
-      final zodiac = Zodiac.fromYear(year);
-      final currentSettings = await getUserSettings();
-      final newSettings = UserSettings(
+  Future<void> updateBirthYear(int birthYear) async {
+    if (!_isValidBirthYear(birthYear)) {
+      throw ArgumentError('無效的出生年份');
+    }
+
+    try {
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
+      }
+      
+      final zodiac = Zodiac.fromYear(birthYear);
+      final newSettings = settings.copyWith(
+        birthYear: birthYear,
         zodiac: zodiac,
-        birthYear: year,
-        notificationsEnabled: currentSettings.notificationsEnabled,
-        locationPermissionGranted: currentSettings.locationPermissionGranted,
-        onboardingCompleted: currentSettings.onboardingCompleted,
-        termsAccepted: currentSettings.termsAccepted,
-        privacyAccepted: currentSettings.privacyAccepted,
       );
       await _saveSettings(newSettings);
-      return true;
     } catch (e, stackTrace) {
       _logger.error('更新出生年份失敗', e, stackTrace);
-      return false;
+      rethrow;
     }
   }
 
-  Future<bool> updateNotificationPreference(bool enabled) async {
+  Future<void> updateNotificationPreference(bool enabled) async {
     try {
-      final currentSettings = await getUserSettings();
-      final newSettings = currentSettings.copyWith(notificationsEnabled: enabled);
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
+      }
+      
+      final newSettings = settings.copyWith(notificationsEnabled: enabled);
       await _saveSettings(newSettings);
-      return true;
     } catch (e, stackTrace) {
-      _logger.error('更新通知偏好失敗', e, stackTrace);
-      return false;
+      _logger.error('更新通知設置失敗', e, stackTrace);
+      rethrow;
     }
   }
 
-  Future<bool> updateLocationPermission(bool granted) async {
+  Future<void> updateLocationPermission(bool granted) async {
     try {
-      final currentSettings = await getUserSettings();
-      final newSettings = currentSettings.copyWith(locationPermissionGranted: granted);
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
+      }
+      
+      final newSettings = settings.copyWith(locationPermissionGranted: granted);
       await _saveSettings(newSettings);
-      return true;
     } catch (e, stackTrace) {
       _logger.error('更新位置權限失敗', e, stackTrace);
-      return false;
+      rethrow;
     }
   }
 
-  Future<bool> completeOnboarding() async {
+  Future<void> completeOnboarding() async {
     try {
-      final currentSettings = await getUserSettings();
-      final newSettings = currentSettings.copyWith(onboardingCompleted: true);
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
+      }
+      
+      final newSettings = settings.copyWith(
+        onboardingCompleted: true,
+        isFirstLaunch: false,
+      );
       await _saveSettings(newSettings);
-      return true;
     } catch (e, stackTrace) {
-      _logger.error('更新引導狀態失敗', e, stackTrace);
-      return false;
+      _logger.error('完成引導失敗', e, stackTrace);
+      rethrow;
     }
   }
 
-  Future<bool> acceptTerms() async {
+  Future<void> acceptTerms() async {
     try {
-      final currentSettings = await getUserSettings();
-      final newSettings = currentSettings.copyWith(termsAccepted: true);
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
+      }
+      
+      final newSettings = settings.copyWith(termsAccepted: true);
       await _saveSettings(newSettings);
-      return true;
     } catch (e, stackTrace) {
-      _logger.error('更新條款接受狀態失敗', e, stackTrace);
-      return false;
+      _logger.error('接受條款失敗', e, stackTrace);
+      rethrow;
     }
   }
 
-  Future<bool> acceptPrivacy() async {
+  Future<void> acceptPrivacy() async {
     try {
-      final currentSettings = await getUserSettings();
-      final newSettings = currentSettings.copyWith(privacyAccepted: true);
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
+      }
+      
+      final newSettings = settings.copyWith(privacyAccepted: true);
       await _saveSettings(newSettings);
-      return true;
     } catch (e, stackTrace) {
-      _logger.error('更新隱私政策接受狀態失敗', e, stackTrace);
-      return false;
+      _logger.error('接受隱私政策失敗', e, stackTrace);
+      rethrow;
     }
   }
 
-  Future<bool> clear() async {
+  Future<void> updatePreferredFortuneTypes(List<String> types) async {
     try {
-      await _databaseHelper.delete('user_settings');
-      return true;
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
+      }
+      
+      final newSettings = settings.copyWith(preferredFortuneTypes: types);
+      await _saveSettings(newSettings);
     } catch (e, stackTrace) {
-      _logger.error('清除用戶設置失敗', e, stackTrace);
-      return false;
+      _logger.error('更新偏好運勢類型失敗', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> updateNotificationTime(String time) async {
+    if (!_isValidTimeFormat(time)) {
+      throw ArgumentError('無效的時間格式');
+    }
+
+    try {
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
+      }
+      
+      final newSettings = settings.copyWith(notificationTime: time);
+      await _saveSettings(newSettings);
+    } catch (e, stackTrace) {
+      _logger.error('更新通知時間失敗', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> updateLanguage(String language) async {
+    try {
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
+      }
+      
+      final newSettings = settings.copyWith(selectedLanguage: language);
+      await _saveSettings(newSettings);
+    } catch (e, stackTrace) {
+      _logger.error('更新語言設置失敗', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> updateTheme(String theme) async {
+    try {
+      final settings = await getUserSettings();
+      if (settings == null) {
+        throw Exception('未找到用戶設置');
+      }
+      
+      final newSettings = settings.copyWith(selectedTheme: theme);
+      await _saveSettings(newSettings);
+    } catch (e, stackTrace) {
+      _logger.error('更新主題設置失敗', e, stackTrace);
+      rethrow;
     }
   }
 
   Future<void> _saveSettings(UserSettings settings) async {
     try {
-      final data = settings.toMap();
-      await _databaseHelper.insert('user_settings', data);
+      final db = await _dbHelper.database;
+      await db.delete(_tableName);
+      await db.insert(_tableName, {
+        'zodiac': settings.zodiac.toString(),
+        'birth_year': settings.birthYear,
+        'notifications_enabled': settings.hasEnabledNotifications ? 1 : 0,
+        'location_permission_granted': settings.hasLocationPermission ? 1 : 0,
+        'onboarding_completed': settings.hasCompletedOnboarding ? 1 : 0,
+        'terms_accepted': settings.hasAcceptedTerms ? 1 : 0,
+        'privacy_accepted': settings.hasAcceptedPrivacy ? 1 : 0,
+        'is_first_launch': settings.isFirstLaunch ? 1 : 0,
+        'preferred_fortune_types': _encodeStringList(settings.preferredFortuneTypes),
+        'notification_time': settings.notificationTime,
+        'selected_language': settings.selectedLanguage,
+        'selected_theme': settings.selectedTheme,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
     } catch (e, stackTrace) {
       _logger.error('保存用戶設置失敗', e, stackTrace);
       rethrow;
     }
   }
 
-  Future<bool> migrateFromSharedPreferences(Map<String, dynamic> oldData) async {
-    try {
-      final zodiac = oldData['zodiac'] != null ? Zodiac.values[oldData['zodiac'] as int] : null;
-      final birthYear = oldData['birth_year'] as int?;
-      final notificationsEnabled = oldData['notifications_enabled'] as bool? ?? false;
-      final locationPermissionGranted = oldData['location_permission_granted'] as bool? ?? false;
-      final onboardingCompleted = oldData['onboarding_completed'] as bool? ?? false;
-      final termsAccepted = oldData['terms_accepted'] as bool? ?? false;
-      final privacyAccepted = oldData['privacy_accepted'] as bool? ?? false;
+  bool _isValidBirthYear(int year) {
+    final currentYear = DateTime.now().year;
+    return year > 1900 && year <= currentYear;
+  }
 
-      final newSettings = UserSettings(
-        zodiac: zodiac,
-        birthYear: birthYear,
-        notificationsEnabled: notificationsEnabled,
-        locationPermissionGranted: locationPermissionGranted,
-        onboardingCompleted: onboardingCompleted,
-        termsAccepted: termsAccepted,
-        privacyAccepted: privacyAccepted,
-      );
-      await _saveSettings(newSettings);
-      return true;
-    } catch (e, stackTrace) {
-      _logger.error('從 SharedPreferences 遷移用戶設置失敗', e, stackTrace);
-      return false;
+  bool _isValidTimeFormat(String time) {
+    final pattern = RegExp(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$');
+    return pattern.hasMatch(time);
+  }
+
+  String _encodeStringList(List<String> list) {
+    return jsonEncode(list);
+  }
+
+  List<String> _decodeStringList(dynamic value) {
+    if (value == null) return [];
+    try {
+      final List<dynamic> list = jsonDecode(value as String);
+      return list.map((e) => e.toString()).toList();
+    } catch (e) {
+      return [];
     }
   }
 } 

@@ -8,16 +8,18 @@ import '../utils/logger.dart';
 final appInitializerProvider = Provider<AppInitializer>((ref) {
   final prefsService = ref.watch(sqlitePreferencesServiceProvider);
   final migrationService = ref.watch(migrationServiceProvider);
-  return AppInitializer(prefsService, migrationService);
+  final userSettingsService = ref.watch(sqliteUserSettingsServiceProvider);
+  return AppInitializer(prefsService, migrationService, userSettingsService);
 });
 
 /// 應用程序初始化器
 class AppInitializer {
   final SQLitePreferencesService _prefsService;
   final MigrationService _migrationService;
+  final SQLiteUserSettingsService _userSettingsService;
   final _logger = Logger('AppInitializer');
 
-  AppInitializer(this._prefsService, this._migrationService);
+  AppInitializer(this._prefsService, this._migrationService, this._userSettingsService);
 
   /// 初始化應用程序
   Future<void> initialize() async {
@@ -26,11 +28,13 @@ class AppInitializer {
 
       // 初始化 SQLite 服務
       await _prefsService.init();
+      await _userSettingsService.init();
 
       // 檢查是否需要遷移數據
       if (await _migrationService.needsMigration()) {
         _logger.info('需要遷移數據');
         await _migrationService.migrateToSQLite();
+        await _validateMigration();
       }
 
       _logger.info('應用程序初始化完成');

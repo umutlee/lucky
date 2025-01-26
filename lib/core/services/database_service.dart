@@ -48,4 +48,34 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  Future<int> insert(String table, Map<String, dynamic> values, {ConflictAlgorithm? conflictAlgorithm}) async {
+    try {
+      final db = await database;
+      _logger.info('插入數據到表 $table: $values');
+      return await db.insert(
+        table,
+        values,
+        conflictAlgorithm: conflictAlgorithm,
+      );
+    } catch (e, stackTrace) {
+      _logger.error('插入數據失敗', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<int> delete(String table, {String? where, List<Object?>? whereArgs}) async {
+    try {
+      final db = await database;
+      _logger.info('從表 $table 刪除數據，條件: $where, 參數: $whereArgs');
+      return await db.delete(
+        table,
+        where: where,
+        whereArgs: whereArgs,
+      );
+    } catch (e, stackTrace) {
+      _logger.error('刪除數據失敗', e, stackTrace);
+      rethrow;
+    }
+  }
 } 

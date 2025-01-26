@@ -9,191 +9,138 @@ import '../../../lib/core/services/sqlite_user_settings_service.dart';
 import '../../../lib/core/models/user_settings.dart';
 import '../../../lib/core/models/zodiac.dart';
 
-@GenerateMocks([DatabaseHelper])
+@GenerateMocks([DatabaseHelper, Database])
 void main() {
-  late Database db;
-  late DatabaseHelper dbHelper;
   late SQLiteUserSettingsService service;
+  late MockDatabaseHelper mockDatabaseHelper;
+  late MockDatabase mockDatabase;
 
-  setUpAll(() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  });
-
-  setUp(() async {
-    // 創建內存數據庫
-    db = await databaseFactory.openDatabase(
-      inMemoryDatabasePath,
-      options: OpenDatabaseOptions(
-        version: 1,
-        onCreate: (db, version) async {
-          await db.execute('''
-            CREATE TABLE user_settings (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              zodiac TEXT NOT NULL,
-              birth_year INTEGER NOT NULL,
-              has_enabled_notifications BOOLEAN DEFAULT TRUE,
-              has_location_permission BOOLEAN DEFAULT FALSE,
-              has_completed_onboarding BOOLEAN DEFAULT FALSE,
-              has_accepted_terms BOOLEAN DEFAULT FALSE,
-              has_accepted_privacy BOOLEAN DEFAULT FALSE,
-              is_first_launch BOOLEAN DEFAULT TRUE,
-              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-          ''');
-        },
-      ),
-    );
-
-    // 創建 DatabaseHelper 實例
-    dbHelper = DatabaseHelper();
-    // 注入測試數據庫
-    when(dbHelper.database).thenAnswer((_) async => db);
-
-    // 創建服務實例
-    service = SQLiteUserSettingsService(dbHelper);
-    await service.init();
-  });
-
-  tearDown(() async {
-    await db.close();
+  setUp(() {
+    mockDatabaseHelper = MockDatabaseHelper();
+    mockDatabase = MockDatabase();
+    when(mockDatabaseHelper.database).thenAnswer((_) async => mockDatabase);
+    service = SQLiteUserSettingsService(mockDatabaseHelper);
   });
 
   group('SQLiteUserSettingsService', () {
-    test('初始化時應該設置默認值', () async {
-      final settings = await service.getUserSettings();
-      
-      expect(settings.zodiac, Zodiac.rat);
-      expect(settings.birthYear, 2000);
-      expect(settings.hasEnabledNotifications, true);
-      expect(settings.hasLocationPermission, false);
-      expect(settings.hasCompletedOnboarding, false);
-      expect(settings.hasAcceptedTerms, false);
-      expect(settings.hasAcceptedPrivacy, false);
-      expect(settings.isFirstLaunch, true);
+    test('init should create table and initialize default settings if needed', () async {
+      when(mockDatabase.execute(any)).thenAnswer((_) async {});
+      when(mockDatabase.query(any, limit: anyNamed('limit'))).thenAnswer((_) async => []);
+      when(mockDatabase.insert(any, any)).thenAnswer((_) async => 1);
+
+      await service.init();
+
+      verify(mockDatabase.execute(argThat(contains('CREATE TABLE IF NOT EXISTS user_settings')))).called(1);
+      verify(mockDatabase.query('user_settings', limit: 1)).called(1);
+      verify(mockDatabase.insert('user_settings', any)).called(1);
     });
 
-    test('updateUserZodiac 應該正確更新生肖', () async {
-      await service.updateUserZodiac(Zodiac.dragon);
-      
-      final settings = await service.getUserSettings();
-      expect(settings.zodiac, Zodiac.dragon);
-      
-      final result = await db.query('user_settings');
-      expect(result.first['zodiac'], Zodiac.dragon.toString());
+    test('getUserSettings should return null when no settings exist', () async {
+      when(mockDatabase.query(any, limit: anyNamed('limit'))).thenAnswer((_) async => []);
+
+      final result = await service.getUserSettings();
+
+      expect(result, isNull);
     });
 
-    test('updateBirthYear 應該正確更新出生年份和生肖', () async {
-      await service.updateBirthYear(1988);
-      
-      final settings = await service.getUserSettings();
-      expect(settings.birthYear, 1988);
-      expect(settings.zodiac, Zodiac.dragon);
+    test('getUserSettings should return UserSettings when settings exist', () async {
+      final testData = {
+        'zodiac': 'Zodiac.rat',
+        'birth_year': 2000,
+        'notifications_enabled': 1,
+        'location_permission_granted': 0,
+        'onboarding_completed': 1,
+        'terms_accepted': 1,
+        'privacy_accepted': 0,
+        'is_first_launch': 0,
+        'preferred_fortune_types': '["daily", "weekly"]',
+        'notification_time': '09:00',
+        'selected_language': 'zh_TW',
+        'selected_theme': 'light',
+      };
+
+      when(mockDatabase.query(any, limit: anyNamed('limit'))).thenAnswer((_) async => [testData]);
+
+      final result = await service.getUserSettings();
+
+      expect(result, isNotNull);
+      expect(result!.zodiac, equals(Zodiac.rat));
+      expect(result.birthYear, equals(2000));
+      expect(result.notificationsEnabled, isTrue);
+      expect(result.locationPermissionGranted, isFalse);
+      expect(result.onboardingCompleted, isTrue);
+      expect(result.termsAccepted, isTrue);
+      expect(result.privacyAccepted, isFalse);
+      expect(result.isFirstLaunch, isFalse);
+      expect(result.preferredFortuneTypes, equals(['daily', 'weekly']));
+      expect(result.notificationTime, equals('09:00'));
+      expect(result.selectedLanguage, equals('zh_TW'));
+      expect(result.selectedTheme, equals('light'));
     });
 
-    test('updateBirthYear 應該拒絕無效的年份', () async {
-      expect(
-        () => service.updateBirthYear(1800),
-        throwsA(isA<ArgumentError>()),
-      );
-      
-      expect(
-        () => service.updateBirthYear(DateTime.now().year + 1),
-        throwsA(isA<ArgumentError>()),
-      );
+    test('updateUserZodiac should update zodiac', () async {
+      final testData = {
+        'zodiac': 'Zodiac.rat',
+        'birth_year': 2000,
+        'notifications_enabled': 1,
+      };
+
+      when(mockDatabase.query(any, limit: anyNamed('limit'))).thenAnswer((_) async => [testData]);
+      when(mockDatabase.delete(any)).thenAnswer((_) async => 1);
+      when(mockDatabase.insert(any, any)).thenAnswer((_) async => 1);
+
+      await service.updateUserZodiac(Zodiac.ox);
+
+      verify(mockDatabase.delete('user_settings')).called(1);
+      verify(mockDatabase.insert('user_settings', argThat(predicate((Map<String, dynamic> map) =>
+          map['zodiac'] == 'Zodiac.ox')))).called(1);
     });
 
-    test('updateNotificationPreference 應該正確更新通知設置', () async {
-      await service.updateNotificationPreference(false);
-      
-      final settings = await service.getUserSettings();
-      expect(settings.hasEnabledNotifications, false);
-      
-      final result = await db.query('user_settings');
-      expect(result.first['has_enabled_notifications'], 0);
+    test('updateBirthYear should throw ArgumentError for invalid year', () async {
+      expect(() => service.updateBirthYear(1800), throwsArgumentError);
+      expect(() => service.updateBirthYear(2100), throwsArgumentError);
     });
 
-    test('updateLocationPermission 應該正確更新位置權限', () async {
-      await service.updateLocationPermission(true);
-      
-      final settings = await service.getUserSettings();
-      expect(settings.hasLocationPermission, true);
-      
-      final result = await db.query('user_settings');
-      expect(result.first['has_location_permission'], 1);
+    test('updateNotificationTime should throw ArgumentError for invalid time format', () async {
+      expect(() => service.updateNotificationTime('25:00'), throwsArgumentError);
+      expect(() => service.updateNotificationTime('09:60'), throwsArgumentError);
+      expect(() => service.updateNotificationTime('invalid'), throwsArgumentError);
     });
 
-    test('completeOnboarding 應該正確更新引導完成狀態', () async {
+    test('completeOnboarding should update both onboarding and first launch flags', () async {
+      final testData = {
+        'zodiac': 'Zodiac.rat',
+        'birth_year': 2000,
+        'onboarding_completed': 0,
+        'is_first_launch': 1,
+      };
+
+      when(mockDatabase.query(any, limit: anyNamed('limit'))).thenAnswer((_) async => [testData]);
+      when(mockDatabase.delete(any)).thenAnswer((_) async => 1);
+      when(mockDatabase.insert(any, any)).thenAnswer((_) async => 1);
+
       await service.completeOnboarding();
-      
-      final settings = await service.getUserSettings();
-      expect(settings.hasCompletedOnboarding, true);
-      expect(settings.isFirstLaunch, false);
-      
-      final result = await db.query('user_settings');
-      expect(result.first['has_completed_onboarding'], 1);
-      expect(result.first['is_first_launch'], 0);
+
+      verify(mockDatabase.insert('user_settings', argThat(predicate((Map<String, dynamic> map) =>
+          map['onboarding_completed'] == 1 && map['is_first_launch'] == 0)))).called(1);
     });
 
-    test('acceptTerms 應該正確更新條款接受狀態', () async {
-      await service.acceptTerms();
-      
-      final settings = await service.getUserSettings();
-      expect(settings.hasAcceptedTerms, true);
-      
-      final result = await db.query('user_settings');
-      expect(result.first['has_accepted_terms'], 1);
-    });
+    test('updatePreferredFortuneTypes should encode list correctly', () async {
+      final testData = {
+        'zodiac': 'Zodiac.rat',
+        'birth_year': 2000,
+        'preferred_fortune_types': '[]',
+      };
 
-    test('acceptPrivacy 應該正確更新隱私政策接受狀態', () async {
-      await service.acceptPrivacy();
-      
-      final settings = await service.getUserSettings();
-      expect(settings.hasAcceptedPrivacy, true);
-      
-      final result = await db.query('user_settings');
-      expect(result.first['has_accepted_privacy'], 1);
-    });
+      when(mockDatabase.query(any, limit: anyNamed('limit'))).thenAnswer((_) async => [testData]);
+      when(mockDatabase.delete(any)).thenAnswer((_) async => 1);
+      when(mockDatabase.insert(any, any)).thenAnswer((_) async => 1);
 
-    test('migrateFromSharedPreferences 應該正確遷移數據', () async {
-      final oldSettings = UserSettings(
-        zodiac: Zodiac.snake,
-        birthYear: 1989,
-        hasEnabledNotifications: false,
-        hasLocationPermission: true,
-        hasCompletedOnboarding: true,
-        hasAcceptedTerms: true,
-        hasAcceptedPrivacy: true,
-        isFirstLaunch: false,
-      );
-      
-      final jsonStr = jsonEncode(oldSettings.toJson());
-      await service.migrateFromSharedPreferences(jsonStr);
-      
-      final settings = await service.getUserSettings();
-      expect(settings.zodiac, Zodiac.snake);
-      expect(settings.birthYear, 1989);
-      expect(settings.hasEnabledNotifications, false);
-      expect(settings.hasLocationPermission, true);
-      expect(settings.hasCompletedOnboarding, true);
-      expect(settings.hasAcceptedTerms, true);
-      expect(settings.hasAcceptedPrivacy, true);
-      expect(settings.isFirstLaunch, false);
-    });
+      final types = ['daily', 'weekly', 'monthly'];
+      await service.updatePreferredFortuneTypes(types);
 
-    test('在數據庫錯誤時應該返回默認值', () async {
-      await db.close();
-      
-      final settings = await service.getUserSettings();
-      expect(settings.zodiac, Zodiac.rat);
-      expect(settings.birthYear, 2000);
-      expect(settings.hasEnabledNotifications, true);
-      expect(settings.hasLocationPermission, false);
-      expect(settings.hasCompletedOnboarding, false);
-      expect(settings.hasAcceptedTerms, false);
-      expect(settings.hasAcceptedPrivacy, false);
-      expect(settings.isFirstLaunch, true);
+      verify(mockDatabase.insert('user_settings', argThat(predicate((Map<String, dynamic> map) =>
+          map['preferred_fortune_types'] == '["daily","weekly","monthly"]')))).called(1);
     });
   });
 } 

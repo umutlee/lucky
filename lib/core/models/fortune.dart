@@ -5,6 +5,7 @@ import 'study_fortune.dart';
 import 'career_fortune.dart';
 import 'love_fortune.dart';
 import 'daily_fortune.dart';
+import 'zodiac.dart';
 
 part 'fortune.freezed.dart';
 part 'fortune.g.dart';
@@ -17,6 +18,7 @@ class Fortune with _$Fortune {
   const factory Fortune({
     required String id,
     required String type,
+    required String title,
     required int score,
     required String description,
     required DateTime date,
@@ -27,6 +29,15 @@ class Fortune with _$Fortune {
     required List<String> suggestions,
     required List<String> warnings,
     required DateTime createdAt,
+    @Default(false) bool isLuckyDay,
+    @Default([]) List<String> suitableActivities,
+    Zodiac? zodiac,
+    @Default(0) int zodiacAffinity,
+    @Default([]) List<String> recommendations,
+    StudyFortune? studyFortune,
+    CareerFortune? careerFortune,
+    LoveFortune? loveFortune,
+    DailyFortune? dailyFortune,
   }) = _Fortune;
 
   /// 從 JSON 創建
@@ -136,11 +147,11 @@ class Fortune with _$Fortune {
   /// 檢查是否為特定類型的運勢
   bool isType(FortuneType checkType) => type == checkType;
 
-  /// 檢查是否為基礎運勢類型
-  bool get isBasicType => type.isBasicType;
+  /// 檢查是否為基本運勢類型
+  bool get isBasicType => type == 'daily';
 
   /// 檢查是否為特殊運勢類型
-  bool get isSpecialType => type.isSpecialType;
+  bool get isSpecialType => ['study', 'career', 'love'].contains(type);
 }
 
 enum FortuneType {

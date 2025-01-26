@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'fortune.dart';
 
@@ -7,27 +8,26 @@ part 'filter_criteria.g.dart';
 enum SortField {
   date,
   score,
-  compatibility,
+  type
 }
 
 enum SortOrder {
   ascending,
-  descending,
+  descending
 }
 
 @freezed
 class FilterCriteria with _$FilterCriteria {
   const factory FilterCriteria({
-    FortuneType? fortuneType,
-    double? minScore,
-    double? maxScore,
-    bool? isLuckyDay,
-    List<String>? luckyDirections,
-    List<String>? recommendations,
     DateTime? startDate,
     DateTime? endDate,
+    String? type,
+    int? minScore,
+    int? maxScore,
+    bool? isLuckyDay,
+    List<String>? activities,
     @Default(SortField.date) SortField sortField,
-    @Default(SortOrder.ascending) SortOrder sortOrder,
+    @Default(SortOrder.descending) SortOrder sortOrder,
   }) = _FilterCriteria;
 
   factory FilterCriteria.fromJson(Map<String, dynamic> json) =>

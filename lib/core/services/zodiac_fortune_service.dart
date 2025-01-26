@@ -50,25 +50,71 @@ class ZodiacFortuneService {
     final baseScores = _baseAffinityScores[zodiac] ?? {};
     final relatedZodiacs = _getRelatedZodiacs(fortuneType);
     
-    // 創建完整的相性分數表
-    final Map<String, int> affinity = {};
-    final allZodiacs = ['鼠', '牛', '虎', '兔', '龍', '蛇', '馬', '羊', '猴', '雞', '狗', '豬'];
-    
-    for (final targetZodiac in allZodiacs) {
-      // 基礎分數
-      int score = baseScores[targetZodiac] ?? 70;
-      
-      // 如果目標生肖在相關生肖列表中，提高分數
-      if (relatedZodiacs.contains(targetZodiac)) {
-        score = (score * 1.2).round();
+    // 根據運勢類型調整分數
+    final adjustedScores = Map<String, int>.from(baseScores);
+    for (final relatedZodiac in relatedZodiacs) {
+      if (adjustedScores.containsKey(relatedZodiac)) {
+        adjustedScores[relatedZodiac] = 
+            (adjustedScores[relatedZodiac]! * 1.2).round(); // 提升20%
       }
-      
-      // 確保分數在合理範圍內
-      score = score.clamp(0, 100);
-      affinity[targetZodiac] = score;
     }
     
-    return affinity;
+    return adjustedScores;
+  }
+
+  Future<Fortune> getZodiacFortune(Zodiac zodiac, DateTime date) async {
+    try {
+      final response = await _apiClient.get(
+        '/zodiac/${zodiac.toString()}/fortune',
+        queryParameters: {'date': date.toIso8601String()},
+      );
+
+      final fortune = Fortune.fromJson(response.data);
+      final affinity = calculateZodiacAffinity(zodiac.toString(), fortune.type);
+      
+      return fortune.copyWith(
+        zodiac: zodiac,
+        zodiacAffinity: affinity.values.reduce((a, b) => a + b) ~/ affinity.length,
+        recommendations: _generateRecommendations(zodiac, fortune.type, affinity),
+      );
+    } catch (e) {
+      throw Exception('獲取生肖運勢失敗: $e');
+    }
+  }
+
+  List<String> _generateRecommendations(
+    Zodiac zodiac,
+    String fortuneType,
+    Map<String, int> affinity,
+  ) {
+    final recommendations = <String>[];
+    final sortedAffinity = affinity.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    // 添加相性建議
+    if (sortedAffinity.isNotEmpty) {
+      recommendations.add(
+        '今日最佳合作生肖：${sortedAffinity.first.key}（相性：${sortedAffinity.first.value}分）'
+      );
+    }
+
+    // 添加運勢類型相關建議
+    switch (fortuneType) {
+      case '事業':
+        recommendations.add('適合與${sortedAffinity.first.key}生肖的人共事或尋求指導');
+        break;
+      case '學習':
+        recommendations.add('建議向${sortedAffinity.first.key}生肖的人請教學習方法');
+        break;
+      case '財運':
+        recommendations.add('可以考慮與${sortedAffinity.first.key}生肖的人合作投資');
+        break;
+      case '人際':
+        recommendations.add('今日與${sortedAffinity.first.key}生肖的人互動會特別順利');
+        break;
+    }
+
+    return recommendations;
   }
 
   // 根據生肖和運勢類型生成建議

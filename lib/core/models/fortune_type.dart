@@ -1,3 +1,9 @@
+import 'package:flutter/foundation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'fortune_type.freezed.dart';
+part 'fortune_type.g.dart';
+
 /// 運勢類型枚舉
 enum FortuneType {
   // 日常決策
@@ -62,40 +68,23 @@ enum FortuneType {
     this == travel;
 
   /// 獲取運勢類型的圖標名稱
-  String get iconName {
-    switch (this) {
-      case FortuneType.daily:
-        return 'assets/icons/fortune_daily.png';
-      case FortuneType.timing:
-        return 'assets/icons/fortune_timing.png';
-      case FortuneType.activity:
-        return 'assets/icons/fortune_activity.png';
-      case FortuneType.direction:
-        return 'assets/icons/fortune_direction.png';
-      case FortuneType.study:
-        return 'assets/icons/fortune_study.png';
-      case FortuneType.work:
-        return 'assets/icons/fortune_work.png';
-      case FortuneType.programming:
-        return 'assets/icons/fortune_programming.png';
-      case FortuneType.creative:
-        return 'assets/icons/fortune_creative.png';
-      case FortuneType.social:
-        return 'assets/icons/fortune_social.png';
-      case FortuneType.relationship:
-        return 'assets/icons/fortune_relationship.png';
-      case FortuneType.cooperation:
-        return 'assets/icons/fortune_cooperation.png';
-      case FortuneType.health:
-        return 'assets/icons/fortune_health.png';
-      case FortuneType.entertainment:
-        return 'assets/icons/fortune_entertainment.png';
-      case FortuneType.shopping:
-        return 'assets/icons/fortune_shopping.png';
-      case FortuneType.travel:
-        return 'assets/icons/fortune_travel.png';
-    }
-  }
+  String get iconName => switch (this) {
+    FortuneType.daily => 'assets/icons/fortune_daily.png',
+    FortuneType.timing => 'assets/icons/fortune_timing.png',
+    FortuneType.activity => 'assets/icons/fortune_activity.png',
+    FortuneType.direction => 'assets/icons/fortune_direction.png',
+    FortuneType.study => 'assets/icons/fortune_study.png',
+    FortuneType.work => 'assets/icons/fortune_work.png',
+    FortuneType.programming => 'assets/icons/fortune_programming.png',
+    FortuneType.creative => 'assets/icons/fortune_creative.png',
+    FortuneType.social => 'assets/icons/fortune_social.png',
+    FortuneType.relationship => 'assets/icons/fortune_relationship.png',
+    FortuneType.cooperation => 'assets/icons/fortune_cooperation.png',
+    FortuneType.health => 'assets/icons/fortune_health.png',
+    FortuneType.entertainment => 'assets/icons/fortune_entertainment.png',
+    FortuneType.shopping => 'assets/icons/fortune_shopping.png',
+    FortuneType.travel => 'assets/icons/fortune_travel.png'
+  };
 
   /// 獲取運勢類型的分類名稱
   String get categoryName {
@@ -151,5 +140,34 @@ enum FortuneType {
     buffer.writeln('• 星座參考：當日星象');
     
     return buffer.toString().trim();
+  }
+
+  /// 從字符串創建運勢類型
+  static FortuneType? fromString(String value) {
+    try {
+      return FortuneType.values.firstWhere(
+        (type) => type.name.toLowerCase() == value.toLowerCase()
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+/// 運勢類型字符串擴展
+extension FortuneTypeExtension on String {
+  /// 檢查是否為基本運勢類型
+  bool get isBasicType {
+    return toLowerCase() == FortuneType.daily.name.toLowerCase();
+  }
+
+  /// 檢查是否為特殊運勢類型
+  bool get isSpecialType {
+    final lowerValue = toLowerCase();
+    return [
+      FortuneType.study.name.toLowerCase(),
+      FortuneType.work.name.toLowerCase(),
+      FortuneType.relationship.name.toLowerCase(),
+    ].contains(lowerValue);
   }
 } 

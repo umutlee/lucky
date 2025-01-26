@@ -3,25 +3,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:all_lucky/core/utils/page_transition_manager.dart';
 
 void main() {
-  late PageTransitionManager transitionManager;
-
-  setUp(() {
-    transitionManager = PageTransitionManager();
-  });
-
   group('PageTransitionManager', () {
     testWidgets('淡入淡出轉場效果測試', (tester) async {
-      final route = transitionManager.createRoute(
-        builder: (context) => const Scaffold(),
+      final route = PageTransitionManager.createRoute<void>(
+        page: const Scaffold(),
         type: PageTransitionType.fade,
       );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: route.buildPage(
-            context: tester.element(find.byType(MaterialApp)),
-            animation: const AlwaysStoppedAnimation(0),
-            secondaryAnimation: const AlwaysStoppedAnimation(0),
+          home: Builder(
+            builder: (context) => route.buildPage(
+              context: context,
+              animation: const AlwaysStoppedAnimation(0),
+              secondaryAnimation: const AlwaysStoppedAnimation(0),
+            ),
           ),
         ),
       );
@@ -30,18 +26,20 @@ void main() {
     });
 
     testWidgets('滑動轉場效果測試', (tester) async {
-      final route = transitionManager.createRoute(
-        builder: (context) => const Scaffold(),
+      final route = PageTransitionManager.createRoute<void>(
+        page: const Scaffold(),
         type: PageTransitionType.slide,
         direction: TransitionDirection.right,
       );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: route.buildPage(
-            context: tester.element(find.byType(MaterialApp)),
-            animation: const AlwaysStoppedAnimation(0),
-            secondaryAnimation: const AlwaysStoppedAnimation(0),
+          home: Builder(
+            builder: (context) => route.buildPage(
+              context: context,
+              animation: const AlwaysStoppedAnimation(0),
+              secondaryAnimation: const AlwaysStoppedAnimation(0),
+            ),
           ),
         ),
       );
@@ -50,17 +48,19 @@ void main() {
     });
 
     testWidgets('縮放轉場效果測試', (tester) async {
-      final route = transitionManager.createRoute(
-        builder: (context) => const Scaffold(),
+      final route = PageTransitionManager.createRoute<void>(
+        page: const Scaffold(),
         type: PageTransitionType.scale,
       );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: route.buildPage(
-            context: tester.element(find.byType(MaterialApp)),
-            animation: const AlwaysStoppedAnimation(0),
-            secondaryAnimation: const AlwaysStoppedAnimation(0),
+          home: Builder(
+            builder: (context) => route.buildPage(
+              context: context,
+              animation: const AlwaysStoppedAnimation(0),
+              secondaryAnimation: const AlwaysStoppedAnimation(0),
+            ),
           ),
         ),
       );
@@ -69,17 +69,19 @@ void main() {
     });
 
     testWidgets('旋轉轉場效果測試', (tester) async {
-      final route = transitionManager.createRoute(
-        builder: (context) => const Scaffold(),
+      final route = PageTransitionManager.createRoute<void>(
+        page: const Scaffold(),
         type: PageTransitionType.rotation,
       );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: route.buildPage(
-            context: tester.element(find.byType(MaterialApp)),
-            animation: const AlwaysStoppedAnimation(0),
-            secondaryAnimation: const AlwaysStoppedAnimation(0),
+          home: Builder(
+            builder: (context) => route.buildPage(
+              context: context,
+              animation: const AlwaysStoppedAnimation(0),
+              secondaryAnimation: const AlwaysStoppedAnimation(0),
+            ),
           ),
         ),
       );
@@ -88,18 +90,20 @@ void main() {
     });
 
     testWidgets('滑動並淡入淡出轉場效果測試', (tester) async {
-      final route = transitionManager.createRoute(
-        builder: (context) => const Scaffold(),
+      final route = PageTransitionManager.createRoute<void>(
+        page: const Scaffold(),
         type: PageTransitionType.slideAndFade,
         direction: TransitionDirection.left,
       );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: route.buildPage(
-            context: tester.element(find.byType(MaterialApp)),
-            animation: const AlwaysStoppedAnimation(0),
-            secondaryAnimation: const AlwaysStoppedAnimation(0),
+          home: Builder(
+            builder: (context) => route.buildPage(
+              context: context,
+              animation: const AlwaysStoppedAnimation(0),
+              secondaryAnimation: const AlwaysStoppedAnimation(0),
+            ),
           ),
         ),
       );
@@ -110,8 +114,8 @@ void main() {
 
     testWidgets('動畫持續時間測試', (tester) async {
       const duration = Duration(milliseconds: 500);
-      final route = transitionManager.createRoute(
-        builder: (context) => const Scaffold(),
+      final route = PageTransitionManager.createRoute<void>(
+        page: const Scaffold(),
         type: PageTransitionType.fade,
         duration: duration,
       );
@@ -121,18 +125,20 @@ void main() {
 
     testWidgets('動畫曲線測試', (tester) async {
       const curve = Curves.easeInOut;
-      final route = transitionManager.createRoute(
-        builder: (context) => const Scaffold(),
+      final route = PageTransitionManager.createRoute<void>(
+        page: const Scaffold(),
         type: PageTransitionType.fade,
         curve: curve,
       );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: route.buildPage(
-            context: tester.element(find.byType(MaterialApp)),
-            animation: const AlwaysStoppedAnimation(0),
-            secondaryAnimation: const AlwaysStoppedAnimation(0),
+          home: Builder(
+            builder: (context) => route.buildPage(
+              context: context,
+              animation: const AlwaysStoppedAnimation(0),
+              secondaryAnimation: const AlwaysStoppedAnimation(0),
+            ),
           ),
         ),
       );
@@ -145,18 +151,20 @@ void main() {
 
     testWidgets('滑動方向測試', (tester) async {
       for (final direction in TransitionDirection.values) {
-        final route = transitionManager.createRoute(
-          builder: (context) => const Scaffold(),
+        final route = PageTransitionManager.createRoute<void>(
+          page: const Scaffold(),
           type: PageTransitionType.slide,
           direction: direction,
         );
 
         await tester.pumpWidget(
           MaterialApp(
-            home: route.buildPage(
-              context: tester.element(find.byType(MaterialApp)),
-              animation: const AlwaysStoppedAnimation(0),
-              secondaryAnimation: const AlwaysStoppedAnimation(0),
+            home: Builder(
+              builder: (context) => route.buildPage(
+                context: context,
+                animation: const AlwaysStoppedAnimation(0),
+                secondaryAnimation: const AlwaysStoppedAnimation(0),
+              ),
             ),
           ),
         );
@@ -189,18 +197,20 @@ void main() {
 
     testWidgets('動畫完成回調測試', (tester) async {
       bool completed = false;
-      final route = transitionManager.createRoute(
-        builder: (context) => const Scaffold(),
+      final route = PageTransitionManager.createRoute<void>(
+        page: const Scaffold(),
         type: PageTransitionType.fade,
         onTransitionComplete: () => completed = true,
       );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: route.buildPage(
-            context: tester.element(find.byType(MaterialApp)),
-            animation: const AlwaysStoppedAnimation(1),
-            secondaryAnimation: const AlwaysStoppedAnimation(0),
+          home: Builder(
+            builder: (context) => route.buildPage(
+              context: context,
+              animation: const AlwaysStoppedAnimation(1),
+              secondaryAnimation: const AlwaysStoppedAnimation(0),
+            ),
           ),
         ),
       );

@@ -48,9 +48,22 @@ class CompassDirection with _$CompassDirection {
   static CompassDirection getDirection(double heading) {
     final normalizedHeading = heading % 360;
     return allDirections.reduce((a, b) {
-      final diffA = calculateAngleDifference(normalizedHeading, a.angle);
-      final diffB = calculateAngleDifference(normalizedHeading, b.angle);
+      final diffA = calculateAngleDifference(a.angle, normalizedHeading);
+      final diffB = calculateAngleDifference(b.angle, normalizedHeading);
       return diffA < diffB ? a : b;
     });
+  }
+
+  static CompassDirection fromDegrees(double degrees) {
+    return getDirection(degrees);
+  }
+
+  String get direction => name;
+
+  static CompassDirection fromName(String name) {
+    return allDirections.firstWhere(
+      (direction) => direction.name == name,
+      orElse: () => CompassDirection.north,
+    );
   }
 } 

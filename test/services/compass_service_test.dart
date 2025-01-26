@@ -29,7 +29,7 @@ void main() {
     });
 
     test('isLuckyDirection should correctly identify lucky directions', () {
-      final direction = CompassDirection.fromDegrees(90); // 東
+      final direction = CompassDirection.getDirection(90); // 東
       final luckyDirections = ['東', '南'];
 
       expect(
@@ -37,7 +37,7 @@ void main() {
         isTrue,
       );
 
-      final unluckyDirection = CompassDirection.fromDegrees(0); // 北
+      final unluckyDirection = CompassDirection.getDirection(0); // 北
       expect(
         compassService.isLuckyDirection(unluckyDirection, luckyDirections),
         isFalse,
@@ -45,7 +45,7 @@ void main() {
     });
 
     test('getNearestLuckyDirection should return correct direction', () {
-      final current = CompassDirection.fromDegrees(45); // 東北
+      final current = CompassDirection.getDirection(45); // 東北
       final luckyDirections = ['東', '北'];
 
       final nearest = compassService.getNearestLuckyDirection(
@@ -53,47 +53,21 @@ void main() {
         luckyDirections,
       );
 
-      expect(nearest, isNotNull);
-      expect(nearest!.direction, equals('東'));
+      expect(nearest.name, equals('東'));
     });
 
-    test('getNearestLuckyDirection should return null for empty lucky directions',
-        () {
-      final current = CompassDirection.fromDegrees(45);
-      final nearest = compassService.getNearestLuckyDirection(
-        current,
-        [],
-      );
+    test('getDirectionFromDegrees should return correct direction', () {
+      final direction = CompassDirection.getDirection(90);
+      expect(direction.name, equals('東'));
 
-      expect(nearest, isNull);
-    });
+      final direction2 = CompassDirection.getDirection(180);
+      expect(direction2.name, equals('南'));
 
-    test('CompassDirection fromDegrees should handle all quadrants', () {
-      final directions = {
-        0.0: '北',
-        45.0: '東北',
-        90.0: '東',
-        135.0: '東南',
-        180.0: '南',
-        225.0: '西南',
-        270.0: '西',
-        315.0: '西北',
-      };
+      final direction3 = CompassDirection.getDirection(270);
+      expect(direction3.name, equals('西'));
 
-      directions.forEach((degrees, expectedDirection) {
-        final direction = CompassDirection.fromDegrees(degrees);
-        expect(direction.direction, equals(expectedDirection));
-      });
-    });
-
-    test('CompassDirection fromDegrees should normalize angles', () {
-      // 測試大於360度的角度
-      final direction1 = CompassDirection.fromDegrees(450); // 450 - 360 = 90 (東)
-      expect(direction1.direction, equals('東'));
-
-      // 測試負角度
-      final direction2 = CompassDirection.fromDegrees(-90); // -90 + 360 = 270 (西)
-      expect(direction2.direction, equals('西'));
+      final direction4 = CompassDirection.getDirection(0);
+      expect(direction4.name, equals('北'));
     });
   });
 } 

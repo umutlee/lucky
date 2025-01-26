@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:all_lucky/core/models/zodiac.dart';
 import 'package:all_lucky/ui/widgets/zodiac_display.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() async {
+    // 設置資源綁定
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMessageHandler(
+      'flutter/assets',
+      (message) async => Uint8List(0),
+    );
+  });
+
   group('ZodiacDisplay', () {
     testWidgets('正確顯示生肖圖', (tester) async {
       await tester.pumpWidget(
@@ -49,9 +60,9 @@ void main() {
         ),
       );
 
-      final container = tester.widget<Container>(find.byType(Container));
-      expect(container.constraints?.maxWidth, size);
-      expect(container.constraints?.maxHeight, size);
+      final image = find.byType(Image).evaluate().first.widget as Image;
+      expect(image.width, equals(size));
+      expect(image.height, equals(size));
     });
   });
 } 
