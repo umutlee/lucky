@@ -3,10 +3,12 @@ import '../models/fortune.dart';
 import '../utils/zodiac_image_helper.dart';
 import 'package:all_lucky/core/models/zodiac.dart';
 import 'package:all_lucky/core/services/api_client.dart';
+import 'package:all_lucky/core/models/api_response.dart';
 
-final zodiacFortuneServiceProvider = Provider<ZodiacFortuneService>(
-  (ref) => ZodiacFortuneService(ref.read(apiClientProvider)),
-);
+final zodiacFortuneServiceProvider = Provider<ZodiacFortuneService>((ref) {
+  final apiClient = ref.read(apiClientProvider);
+  return ZodiacFortuneService(apiClient);
+});
 
 class ZodiacFortuneService {
   final ApiClient _apiClient;
@@ -64,16 +66,21 @@ class ZodiacFortuneService {
 
   Future<Fortune> getZodiacFortune(Zodiac zodiac, DateTime date) async {
     try {
-      final response = await _apiClient.get(
-        '/zodiac/${zodiac.toString()}/fortune',
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        '/zodiac/${zodiac.name}/fortune',
         queryParameters: {'date': date.toIso8601String()},
+        fromJson: (json) => json,
       );
 
-      final fortune = Fortune.fromJson(response.data);
-      final affinity = calculateZodiacAffinity(zodiac.toString(), fortune.type);
+      if (!response.isSuccess || response.data == null) {
+        throw Exception('獲取生肖運勢失敗：${response.message}');
+      }
+
+      final fortune = Fortune.fromJson(response.data!);
+      final affinity = calculateZodiacAffinity(zodiac.name, fortune.type);
       
       return fortune.copyWith(
-        zodiac: zodiac,
+        zodiac: zodiac.name,
         zodiacAffinity: affinity.values.reduce((a, b) => a + b) ~/ affinity.length,
         recommendations: _generateRecommendations(zodiac, fortune.type, affinity),
       );
@@ -147,13 +154,10 @@ class ZodiacFortuneService {
   }
 
   // 增強運勢對象
-  Fortune enhanceFortuneWithZodiac(Fortune fortune, String userZodiac) {
-    // 計算生肖相性
-    final zodiacAffinity = calculateZodiacAffinity(userZodiac, fortune.type);
-    
+  Fortune enhanceFortuneWithZodiac(Fortune fortune, Zodiac zodiac, Map<String, int> zodiacAffinity) {
     // 生成生肖相關建議
     final zodiacRecommendations = generateZodiacRecommendations(
-      userZodiac,
+      zodiac.name,
       fortune.type,
       fortune.score,
     );
@@ -166,7 +170,7 @@ class ZodiacFortuneService {
     
     // 返回增強後的運勢對象
     return fortune.copyWith(
-      zodiac: userZodiac,
+      zodiac: zodiac.name,
       zodiacAffinity: zodiacAffinity,
       recommendations: allRecommendations,
     );
@@ -174,19 +178,20 @@ class ZodiacFortuneService {
 
   Future<Fortune> getDailyFortune(Zodiac zodiac, DateTime date) async {
     try {
-      final response = await _apiClient.get(
+      final response = await _apiClient.get<Map<String, dynamic>>(
         '/fortune/daily',
         queryParameters: {
           'zodiac': zodiac.name,
           'date': date.toIso8601String(),
         },
+        fromJson: (json) => json,
       );
       
-      if (response.data == null) {
-        throw Exception('獲取每日運勢失敗：伺服器返回空數據');
+      if (!response.isSuccess || response.data == null) {
+        throw Exception('獲取每日運勢失敗：${response.message}');
       }
 
-      return Fortune.fromJson(response.data);
+      return Fortune.fromJson(response.data!);
     } catch (e) {
       print('獲取每日運勢失敗: $e');
       rethrow;
@@ -200,7 +205,7 @@ class ZodiacFortuneService {
     int limit = 7,
   }) async {
     try {
-      final response = await _apiClient.get(
+      final response = await _apiClient.get<List<dynamic>>(
         '/fortune/history',
         queryParameters: {
           'zodiac': zodiac.name,
@@ -208,14 +213,14 @@ class ZodiacFortuneService {
           'endDate': endDate.toIso8601String(),
           'limit': limit,
         },
+        fromJson: (json) => json as List<dynamic>,
       );
 
-      if (response.data == null) {
-        throw Exception('獲取運勢歷史失敗：伺服器返回空數據');
+      if (!response.isSuccess || response.data == null) {
+        throw Exception('獲取運勢歷史失敗：${response.message}');
       }
 
-      final List<dynamic> historyData = response.data;
-      return historyData.map((data) => Fortune.fromJson(data)).toList();
+      return response.data!.map((data) => Fortune.fromJson(data as Map<String, dynamic>)).toList();
     } catch (e) {
       print('獲取運勢歷史失敗: $e');
       rethrow;

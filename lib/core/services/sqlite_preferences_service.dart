@@ -198,33 +198,27 @@ class SQLitePreferencesService {
     }
   }
 
-  // 遷移數據方法
-  Future<bool> migrateFromSharedPreferences(Map<String, dynamic> oldData) async {
+  Future<List<String>> getKeys() async {
     try {
-      // 開始事務
-      await _databaseHelper.database.then((db) async {
-        await db.transaction((txn) async {
-          // 清空現有數據
-          await txn.delete('preferences');
-          
-          // 插入舊數據
-          for (var entry in oldData.entries) {
-            await txn.insert(
-              'preferences',
-              {
-                'key': entry.key,
-                'value': entry.value.toString(),
-                'updated_at': DateTime.now().toIso8601String(),
-              },
-            );
-          }
-        });
-      });
-      
-      _logger.info('從 SharedPreferences 遷移數據成功');
-      return true;
-    } catch (e, stack) {
-      _logger.error('從 SharedPreferences 遷移數據失敗', e, stack);
+      final result = await _databaseHelper.query('preferences', columns: ['key']);
+      return result.map((row) => row['key'] as String).toList();
+    } catch (e) {
+      _logger.error('Failed to get keys', e);
+      return [];
+    }
+  }
+
+  Future<bool> containsKey(String key) async {
+    try {
+      final result = await _databaseHelper.query(
+        'preferences',
+        columns: ['key'],
+        where: 'key = ?',
+        whereArgs: [key],
+      );
+      return result.isNotEmpty;
+    } catch (e) {
+      _logger.error('Failed to check key existence', e);
       return false;
     }
   }

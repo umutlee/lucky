@@ -1,83 +1,117 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:all_lucky/core/models/fortune.dart';
 import '../utils/logger.dart';
+import 'sqlite_preferences_service.dart';
 
-final storageServiceProvider = Provider<StorageService>((ref) => StorageService(ref.read(sharedPreferencesProvider), ref.read(loggerProvider)));
+final storageServiceProvider = Provider<StorageService>((ref) => 
+  StorageService(ref.read(sqlitePreferencesServiceProvider)));
 
 /// 本地存儲服務
 class StorageService {
+  static const String _tag = 'StorageService';
+  final _logger = Logger(_tag);
+  final SQLitePreferencesService _prefsService;
   static const String _keyPrefix = 'all_lucky_';
-  final SharedPreferences _prefs;
-  final Logger _logger;
-  
-  StorageService(this._prefs, this._logger);
+
+  StorageService(this._prefsService);
 
   Future<void> init() async {
-    // This method is now empty as the SharedPreferences instance is passed in the constructor
+    try {
+      await _prefsService.init();
+      _logger.info('儲存服務初始化成功');
+    } catch (e, stackTrace) {
+      _logger.error('儲存服務初始化失敗', e, stackTrace);
+      rethrow;
+    }
   }
 
-  /// 保存字符串
-  Future<bool> setString(String key, String value) async {
+  Future<bool> saveString(String key, String value) async {
     try {
-      await _prefs.setString(key, value);
-      return true;
+      return await _prefsService.setValue(key, value);
     } catch (e, stackTrace) {
       _logger.error('保存字符串失敗: $key', e, stackTrace);
       return false;
     }
   }
 
-  /// 獲取字符串
-  String? getString(String key) {
+  Future<String?> getString(String key) async {
     try {
-      return _prefs.getString(key);
+      return await _prefsService.getValue<String>(key);
     } catch (e, stackTrace) {
       _logger.error('獲取字符串失敗: $key', e, stackTrace);
       return null;
     }
   }
 
-  /// 保存布爾值
-  Future<bool> setBool(String key, bool value) async {
+  Future<bool> saveInt(String key, int value) async {
     try {
-      await _prefs.setBool(key, value);
-      return true;
+      return await _prefsService.setValue(key, value);
+    } catch (e, stackTrace) {
+      _logger.error('保存整數失敗: $key', e, stackTrace);
+      return false;
+    }
+  }
+
+  Future<int?> getInt(String key) async {
+    try {
+      return await _prefsService.getValue<int>(key);
+    } catch (e, stackTrace) {
+      _logger.error('獲取整數失敗: $key', e, stackTrace);
+      return null;
+    }
+  }
+
+  Future<bool> saveDouble(String key, double value) async {
+    try {
+      return await _prefsService.setValue(key, value);
+    } catch (e, stackTrace) {
+      _logger.error('保存浮點數失敗: $key', e, stackTrace);
+      return false;
+    }
+  }
+
+  Future<double?> getDouble(String key) async {
+    try {
+      return await _prefsService.getValue<double>(key);
+    } catch (e, stackTrace) {
+      _logger.error('獲取浮點數失敗: $key', e, stackTrace);
+      return null;
+    }
+  }
+
+  Future<bool> saveBool(String key, bool value) async {
+    try {
+      return await _prefsService.setValue(key, value);
     } catch (e, stackTrace) {
       _logger.error('保存布爾值失敗: $key', e, stackTrace);
       return false;
     }
   }
 
-  /// 獲取布爾值
-  bool? getBool(String key) {
+  Future<bool?> getBool(String key) async {
     try {
-      return _prefs.getBool(key);
+      return await _prefsService.getValue<bool>(key);
     } catch (e, stackTrace) {
       _logger.error('獲取布爾值失敗: $key', e, stackTrace);
       return null;
     }
   }
 
-  /// 刪除指定鍵的值
   Future<bool> remove(String key) async {
     try {
-      await _prefs.remove(key);
-      return true;
+      return await _prefsService.remove(key);
     } catch (e, stackTrace) {
       _logger.error('刪除值失敗: $key', e, stackTrace);
       return false;
     }
   }
 
-  /// 清除所有數據
   Future<bool> clear() async {
     try {
-      await _prefs.clear();
-      return true;
+      return await _prefsService.clear();
     } catch (e, stackTrace) {
-      _logger.error('清除所有數據失敗', e, stackTrace);
+      _logger.error('清除所有值失敗', e, stackTrace);
       return false;
     }
   }
@@ -86,25 +120,25 @@ class StorageService {
     final String fullKey = _keyPrefix + key;
     
     if (value is String) {
-      return await _prefs.setString(fullKey, value);
+      return await _prefsService.setValue(fullKey, value);
     } else if (value is bool) {
-      return await _prefs.setBool(fullKey, value);
+      return await _prefsService.setValue(fullKey, value);
     } else if (value is int) {
-      return await _prefs.setInt(fullKey, value);
+      return await _prefsService.setValue(fullKey, value);
     } else if (value is double) {
-      return await _prefs.setDouble(fullKey, value);
+      return await _prefsService.setValue(fullKey, value);
     } else if (value is List<String>) {
-      return await _prefs.setStringList(fullKey, value);
+      return await _prefsService.setValue(fullKey, value);
     } else {
       // 對於複雜對象,轉換為JSON字符串存儲
       final jsonString = json.encode(value);
-      return await _prefs.setString(fullKey, jsonString);
+      return await _prefsService.setValue(fullKey, jsonString);
     }
   }
 
   T? getData<T>(String key) {
     final String fullKey = _keyPrefix + key;
-    final value = _prefs.get(fullKey);
+    final value = _prefsService.getValue<T>(fullKey);
     
     if (value == null) {
       return null;
@@ -115,7 +149,7 @@ class StorageService {
     } else {
       // 對於複雜對象,從JSON字符串解析
       try {
-        final jsonString = _prefs.getString(fullKey);
+        final jsonString = _prefsService.getValue<String>(fullKey);
         if (jsonString == null) return null;
         return json.decode(jsonString) as T;
       } catch (e) {
@@ -127,15 +161,15 @@ class StorageService {
 
   Future<bool> removeData(String key) async {
     final String fullKey = _keyPrefix + key;
-    return await _prefs.remove(fullKey);
+    return await _prefsService.remove(fullKey);
   }
 
   Future<bool> clearAll() async {
-    final allKeys = _prefs.getKeys();
+    final allKeys = _prefsService.getKeys();
     final appKeys = allKeys.where((key) => key.startsWith(_keyPrefix));
     
     for (final key in appKeys) {
-      await _prefs.remove(key);
+      await _prefsService.remove(key);
     }
     
     return true;
@@ -143,11 +177,11 @@ class StorageService {
 
   bool hasKey(String key) {
     final String fullKey = _keyPrefix + key;
-    return _prefs.containsKey(fullKey);
+    return _prefsService.containsKey(fullKey);
   }
 
   Future<T?> getCachedFortune<T>(String key) async {
-    final jsonString = _prefs.getString(key);
+    final jsonString = _prefsService.getValue<String>(key);
     if (jsonString == null) return null;
     
     try {
@@ -168,16 +202,16 @@ class StorageService {
       final jsonString = data is Fortune 
           ? jsonEncode(data.toJson())
           : jsonEncode(data);
-      await _prefs.setString(key, jsonString);
+      await _prefsService.setValue(key, jsonString);
     } catch (e) {
       // 忽略序列化錯誤
     }
   }
 
   Future<void> clearAllCache() async {
-    final keys = _prefs.getKeys().where((key) => key.startsWith('fortune_'));
+    final keys = _prefsService.getKeys().where((key) => key.startsWith('fortune_'));
     for (final key in keys) {
-      await _prefs.remove(key);
+      await _prefsService.remove(key);
     }
   }
 
@@ -186,18 +220,18 @@ class StorageService {
     try {
       final String fullKey = _keyPrefix + key;
       if (value is String) {
-        return await _prefs.setString(fullKey, value);
+        return await _prefsService.setValue(fullKey, value);
       } else if (value is bool) {
-        return await _prefs.setBool(fullKey, value);
+        return await _prefsService.setValue(fullKey, value);
       } else if (value is int) {
-        return await _prefs.setInt(fullKey, value);
+        return await _prefsService.setValue(fullKey, value);
       } else if (value is double) {
-        return await _prefs.setDouble(fullKey, value);
+        return await _prefsService.setValue(fullKey, value);
       } else if (value is List<String>) {
-        return await _prefs.setStringList(fullKey, value);
+        return await _prefsService.setValue(fullKey, value);
       } else {
         final jsonString = json.encode(value);
-        return await _prefs.setString(fullKey, jsonString);
+        return await _prefsService.setValue(fullKey, jsonString);
       }
     } catch (e, stackTrace) {
       _logger.error('保存設置失敗: $key', e, stackTrace);
@@ -209,7 +243,7 @@ class StorageService {
   T? getSettings<T>(String key) {
     try {
       final String fullKey = _keyPrefix + key;
-      final value = _prefs.get(fullKey);
+      final value = _prefsService.getValue<T>(fullKey);
       
       if (value == null) {
         return null;
@@ -218,7 +252,7 @@ class StorageService {
       if (T == String || T == bool || T == int || T == double || T == List<String>) {
         return value as T;
       } else {
-        final jsonString = _prefs.getString(fullKey);
+        final jsonString = _prefsService.getValue<String>(fullKey);
         if (jsonString == null) return null;
         return json.decode(jsonString) as T;
       }

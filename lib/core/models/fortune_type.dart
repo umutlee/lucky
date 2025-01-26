@@ -1,8 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'fortune_type.freezed.dart';
-part 'fortune_type.g.dart';
 
 /// 運勢類型枚舉
 enum FortuneType {

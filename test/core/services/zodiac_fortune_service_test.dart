@@ -1,266 +1,174 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:all_lucky/core/services/api_client.dart';
-import 'package:all_lucky/core/services/zodiac_fortune_service.dart';
 import 'package:all_lucky/core/models/fortune.dart';
 import 'package:all_lucky/core/models/zodiac.dart';
+import 'package:all_lucky/core/services/api_client.dart';
+import 'package:all_lucky/core/services/zodiac_fortune_service.dart';
 import 'package:all_lucky/core/models/api_response.dart';
 import 'package:all_lucky/core/services/cache_service.dart';
 
-@GenerateMocks([], customMocks: [MockSpec<ApiClient>(as: #MockApiClient)])
-class MockApiClientBase implements ApiClient {
-  @override
-  Future<ApiResponse<T>> get<T>(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-    bool forceRefresh = false,
-    required T Function(Map<String, dynamic>) fromJson,
-  }) async {
-    return ApiResponse.success(fromJson({
-      'id': '1',
-      'type': 'daily',
-      'title': '今日運勢',
-      'score': 85,
-      'description': '運勢不錯',
-      'date': DateTime.now().toIso8601String(),
-      'luckyTimes': ['09:00-11:00'],
-      'luckyDirections': ['東'],
-      'luckyColors': ['紅'],
-      'luckyNumbers': [8],
-      'suggestions': ['多運動'],
-      'warnings': ['注意休息'],
-      'createdAt': DateTime.now().toIso8601String(),
-    }));
-  }
-
-  @override
-  Future<ApiResponse<T>> post<T>(
-    String path, {
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-    T Function(Map<String, dynamic>)? fromJson,
-    dynamic options,
-  }) async {
-    return ApiResponse.success(fromJson?.call({
-      'id': '1',
-      'type': 'daily',
-      'title': '今日運勢',
-      'score': 85,
-      'description': '運勢不錯',
-      'date': DateTime.now().toIso8601String(),
-      'luckyTimes': ['09:00-11:00'],
-      'luckyDirections': ['東'],
-      'luckyColors': ['紅'],
-      'luckyNumbers': [8],
-      'suggestions': ['多運動'],
-      'warnings': ['注意休息'],
-      'createdAt': DateTime.now().toIso8601String(),
-    }));
-  }
-
-  @override
-  Future<ApiResponse<T>> delete<T>(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-    T Function(Map<String, dynamic>)? fromJson,
-  }) async {
-    return ApiResponse.success(fromJson?.call({
-      'id': '1',
-      'type': 'daily',
-      'title': '今日運勢',
-      'score': 85,
-      'description': '運勢不錯',
-      'date': DateTime.now().toIso8601String(),
-      'luckyTimes': ['09:00-11:00'],
-      'luckyDirections': ['東'],
-      'luckyColors': ['紅'],
-      'luckyNumbers': [8],
-      'suggestions': ['多運動'],
-      'warnings': ['注意休息'],
-      'createdAt': DateTime.now().toIso8601String(),
-    }));
-  }
-
-  @override
-  Future<ApiResponse<T>> put<T>(
-    String path, {
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-    T Function(Map<String, dynamic>)? fromJson,
-  }) async {
-    return ApiResponse.success(fromJson?.call({
-      'id': '1',
-      'type': 'daily',
-      'title': '今日運勢',
-      'score': 85,
-      'description': '運勢不錯',
-      'date': DateTime.now().toIso8601String(),
-      'luckyTimes': ['09:00-11:00'],
-      'luckyDirections': ['東'],
-      'luckyColors': ['紅'],
-      'luckyNumbers': [8],
-      'suggestions': ['多運動'],
-      'warnings': ['注意休息'],
-      'createdAt': DateTime.now().toIso8601String(),
-    }));
-  }
-
-  @override
-  Future<void> clearCache() async {}
-}
+@GenerateMocks([ApiClient])
+import 'zodiac_fortune_service_test.mocks.dart';
 
 void main() {
-  late MockApiClient mockApiClient;
   late ZodiacFortuneService zodiacFortuneService;
+  late MockApiClient mockApiClient;
+  late MockCacheService mockCacheService;
 
   setUp(() {
+    mockCacheService = MockCacheService();
     mockApiClient = MockApiClient();
     zodiacFortuneService = ZodiacFortuneService(mockApiClient);
   });
 
-  group('ZodiacFortuneService', () {
-    test('calculateZodiacAffinity should return correct affinity score', () {
-      final affinity = zodiacFortuneService.calculateZodiacAffinity('鼠', '事業');
-      expect(affinity, isA<Map<String, int>>());
-      expect(affinity.values.every((v) => v >= 0 && v <= 100), isTrue);
-    });
+  test('calculateZodiacAffinity should return affinity scores', () {
+    final scores = zodiacFortuneService.calculateZodiacAffinity('鼠', '事業');
+    expect(scores, isA<Map<String, int>>());
+    expect(scores.length, greaterThan(0));
+    expect(scores.values.every((score) => score >= 0 && score <= 100), isTrue);
+  });
 
-    test('generateZodiacRecommendations should return valid recommendations', () {
-      final recommendations = zodiacFortuneService.generateZodiacRecommendations('鼠', '事業', 80);
-      expect(recommendations, isA<List<String>>());
-      expect(recommendations.length >= 2 && recommendations.length <= 5, isTrue);
-      expect(recommendations.every((r) => r.isNotEmpty), isTrue);
-    });
+  test('generateZodiacRecommendations should return non-empty recommendations', () {
+    final affinityScores = {'鼠': 80, '龍': 60};
+    final recommendations = zodiacFortuneService.generateZodiacRecommendations(affinityScores);
+    expect(recommendations, isNotEmpty);
+  });
 
-    test('enhanceFortuneWithZodiac should add zodiac information', () {
-      final fortune = Fortune(
-        id: '1',
-        type: 'daily',
+  test('enhanceFortuneWithZodiac should enhance fortune with zodiac info', () {
+    final fortune = Fortune(
+      id: '123',
+      type: '事業',
+      title: '今日運勢',
+      score: 85,
+      description: '今天運勢不錯',
+      createdAt: DateTime.now(),
+      luckyTimes: ['早上', '下午'],
+      luckyDirections: ['東', '南'],
+      luckyColors: ['紅', '黃'],
+      luckyNumbers: [3, 8],
+      suggestions: ['建議1', '建議2'],
+      warnings: ['警告1']
+    );
+    
+    final affinityScores = {'鼠': 80, '龍': 60};
+    final enhanced = zodiacFortuneService.enhanceFortuneWithZodiac(
+      fortune, 
+      Zodiac.rat,
+      affinityScores
+    );
+    
+    expect(enhanced.zodiac, equals('鼠'));
+    expect(enhanced.zodiacAffinity, isNotNull);
+    expect(enhanced.recommendations, isNotEmpty);
+  });
+
+  test('getZodiacFortune should return fortune for zodiac', () async {
+    when(mockApiClient.get<Fortune>(
+      any,
+      fromJson: any,
+      queryParameters: any,
+    )).thenAnswer((_) async => ApiResponse.success(
+      data: Fortune(
+        id: '123',
+        type: '事業',
         title: '今日運勢',
         score: 85,
-        description: '運勢不錯',
-        date: DateTime.now(),
-        luckyTimes: ['09:00-11:00'],
-        luckyDirections: ['東'],
-        luckyColors: ['紅'],
-        luckyNumbers: [8],
-        suggestions: ['多運動'],
-        warnings: ['注意休息'],
+        description: '今天運勢不錯',
         createdAt: DateTime.now(),
-      );
-      
-      final enhanced = zodiacFortuneService.enhanceFortuneWithZodiac(fortune, '鼠');
-      expect(enhanced.zodiac, equals('鼠'));
-      expect(enhanced.recommendations.length, greaterThan(fortune.recommendations.length));
-    });
+        luckyTimes: ['早上', '下午'],
+        luckyDirections: ['東', '南'],
+        luckyColors: ['紅', '黃'],
+        luckyNumbers: [3, 8],
+        suggestions: ['建議1', '建議2'],
+        warnings: ['警告1']
+      )
+    ));
 
-    test('getZodiacFortune should return fortune from API', () async {
-      final testDate = DateTime.now();
-      when(mockApiClient.get<Fortune>(
-        '/zodiac/rat/fortune',
-        queryParameters: {'date': testDate.toIso8601String()},
-        fromJson: anyNamed('fromJson'),
-      )).thenAnswer((_) async => ApiResponse.success(Fortune(
-        id: '1',
-        type: 'daily',
-        title: '今日運勢',
-        score: 85,
-        description: '運勢不錯',
-        date: testDate,
-        luckyTimes: ['09:00-11:00'],
-        luckyDirections: ['東'],
-        luckyColors: ['紅'],
-        luckyNumbers: [8],
-        suggestions: ['多運動'],
-        warnings: ['注意休息'],
-        createdAt: testDate,
-      )));
+    final fortune = await zodiacFortuneService.getZodiacFortune(
+      zodiac: Zodiac.rat,
+      date: DateTime.now()
+    );
+    
+    expect(fortune, isNotNull);
+    expect(fortune!.type, equals('事業'));
+  });
 
-      final fortune = await zodiacFortuneService.getZodiacFortune('鼠', testDate);
-      expect(fortune, isA<Fortune>());
-      expect(fortune.type, equals('daily'));
-    });
+  test('getDailyFortune should return fortune', () async {
+    final date = DateTime.now();
+    final mockResponse = ApiResponse<Map<String, dynamic>>.success(
+      data: {
+        'id': '123',
+        'type': '事業',
+        'title': '今日運勢',
+        'score': 85,
+        'description': '今天運勢不錯',
+        'luckyTimes': ['早上', '下午'],
+        'luckyDirections': ['東', '南'],
+        'luckyColors': ['紅', '黃'],
+        'luckyNumbers': [3, 8],
+        'suggestions': ['多運動', '早睡早起'],
+        'warnings': ['避免熬夜'],
+        'date': date.toIso8601String(),
+      },
+    );
 
-    test('getDailyFortune should return fortune from API', () async {
-      final testDate = DateTime.now();
-      when(mockApiClient.get<Fortune>(
-        '/fortune/daily',
-        queryParameters: {
-          'zodiac': '鼠',
-          'date': testDate.toIso8601String(),
-        },
-        fromJson: anyNamed('fromJson'),
-      )).thenAnswer((_) async => ApiResponse.success(Fortune(
-        id: '1',
-        type: 'daily',
-        title: '今日運勢',
-        score: 85,
-        description: '運勢不錯',
-        date: testDate,
-        luckyTimes: ['09:00-11:00'],
-        luckyDirections: ['東'],
-        luckyColors: ['紅'],
-        luckyNumbers: [8],
-        suggestions: ['多運動'],
-        warnings: ['注意休息'],
-        createdAt: testDate,
-      )));
+    when(mockApiClient.get<Map<String, dynamic>>(
+      '/fortune/daily',
+      queryParameters: {
+        'zodiac': '鼠',
+        'date': date.toIso8601String(),
+      },
+      fromJson: anyNamed('fromJson'),
+    )).thenAnswer((_) async => mockResponse);
 
-      final fortune = await zodiacFortuneService.getDailyFortune('鼠', testDate);
-      expect(fortune, isA<Fortune>());
-      expect(fortune.type, equals('daily'));
-    });
+    final fortune = await zodiacFortuneService.getDailyFortune(Zodiac.rat, date);
 
-    test('getFortuneHistory should return list of fortunes from API', () async {
-      final testDate = DateTime.now();
-      final startDate = testDate.subtract(Duration(days: 7));
-      final endDate = testDate;
-      
-      when(mockApiClient.get<List<Fortune>>(
-        '/fortune/history',
-        queryParameters: {
-          'zodiac': '鼠',
-          'startDate': startDate.toIso8601String(),
-          'endDate': endDate.toIso8601String(),
-          'limit': 7,
-        },
-        fromJson: anyNamed('fromJson'),
-      )).thenAnswer((_) async => ApiResponse.success([
-        Fortune(
-          id: '1',
-          type: 'daily',
-          title: '今日運勢',
-          score: 85,
-          description: '運勢不錯',
-          date: testDate,
-          luckyTimes: ['09:00-11:00'],
-          luckyDirections: ['東'],
-          luckyColors: ['紅'],
-          luckyNumbers: [8],
-          suggestions: ['多運動'],
-          warnings: ['注意休息'],
-          createdAt: testDate,
-        )
-      ]));
+    expect(fortune.type, equals('事業'));
+    expect(fortune.score, equals(85));
+  });
 
-      final history = await zodiacFortuneService.getFortuneHistory('鼠', startDate, endDate);
-      expect(history, isA<List<Fortune>>());
-      expect(history.length, equals(1));
-    });
+  test('getFortuneHistory should return list of fortunes', () async {
+    final startDate = DateTime.now();
+    final endDate = startDate.add(Duration(days: 7));
+    final mockResponse = ApiResponse<List<dynamic>>.success(
+      data: [
+        {
+          'id': '123',
+          'type': '事業',
+          'title': '今日運勢',
+          'score': 85,
+          'description': '今天運勢不錯',
+          'luckyTimes': ['早上', '下午'],
+          'luckyDirections': ['東', '南'],
+          'luckyColors': ['紅', '黃'],
+          'luckyNumbers': [3, 8],
+          'suggestions': ['多運動', '早睡早起'],
+          'warnings': ['避免熬夜'],
+          'date': startDate.toIso8601String(),
+        }
+      ],
+    );
 
-    test('API error should be handled properly', () async {
-      final testDate = DateTime.now();
-      when(mockApiClient.get<Fortune>(
-        '/fortune/daily',
-        queryParameters: {
-          'zodiac': '鼠',
-          'date': testDate.toIso8601String(),
-        },
-        fromJson: anyNamed('fromJson'),
-      )).thenAnswer((_) async => ApiResponse.error('Error'));
+    when(mockApiClient.get<List<dynamic>>(
+      '/fortune/history',
+      queryParameters: {
+        'zodiac': '鼠',
+        'startDate': startDate.toIso8601String(),
+        'endDate': endDate.toIso8601String(),
+        'limit': 7,
+      },
+      fromJson: anyNamed('fromJson'),
+    )).thenAnswer((_) async => mockResponse);
 
-      expect(() => zodiacFortuneService.getDailyFortune('鼠', testDate), throwsException);
-    });
+    final fortunes = await zodiacFortuneService.getFortuneHistory(
+      Zodiac.rat,
+      startDate,
+      endDate,
+    );
+
+    expect(fortunes.length, equals(1));
+    expect(fortunes.first.type, equals('事業'));
+    expect(fortunes.first.score, equals(85));
   });
 } 

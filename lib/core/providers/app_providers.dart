@@ -1,24 +1,29 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../services/api_client.dart';
+import '../services/sqlite_preferences_service.dart';
 import '../services/storage_service.dart';
 import '../services/user_settings_service.dart';
 import '../services/zodiac_fortune_service.dart';
+import '../services/api_client.dart';
+import '../services/cache_service.dart';
 
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError('需要在 main.dart 中初始化 SharedPreferences');
+final cacheServiceProvider = Provider<CacheService>((ref) => CacheService());
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final cacheService = ref.read(cacheServiceProvider);
+  return ApiClient(cacheService: cacheService);
 });
 
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
-
 final storageServiceProvider = Provider<StorageService>((ref) {
-  return StorageService(ref.read(sharedPreferencesProvider));
+  final prefsService = ref.read(sqlitePreferencesServiceProvider);
+  return StorageService(prefsService);
 });
 
 final userSettingsServiceProvider = Provider<UserSettingsService>((ref) {
-  return UserSettingsService(ref.read(sharedPreferencesProvider));
+  final prefsService = ref.read(sqlitePreferencesServiceProvider);
+  return UserSettingsService(prefsService);
 });
 
 final zodiacFortuneServiceProvider = Provider<ZodiacFortuneService>((ref) {
-  return ZodiacFortuneService(ref.read(apiClientProvider));
+  final apiClient = ref.read(apiClientProvider);
+  return ZodiacFortuneService(apiClient);
 }); 
