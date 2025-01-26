@@ -4,6 +4,7 @@ import '../utils/zodiac_image_helper.dart';
 import 'package:all_lucky/core/models/zodiac.dart';
 import 'package:all_lucky/core/services/api_client.dart';
 import 'package:all_lucky/core/models/api_response.dart';
+import 'package:all_lucky/core/models/fortune_type.dart';
 
 final zodiacFortuneServiceProvider = Provider<ZodiacFortuneService>((ref) {
   final apiClient = ref.read(apiClientProvider);
@@ -17,163 +18,160 @@ class ZodiacFortuneService {
 
   // 生肖相性表（基礎分數）
   final Map<String, Map<String, int>> _baseAffinityScores = {
-    '鼠': {'龍': 90, '猴': 85, '牛': 60, '虎': 40},
-    '牛': {'蛇': 90, '雞': 85, '鼠': 60, '羊': 40},
-    '虎': {'馬': 90, '狗': 85, '豬': 60, '猴': 40},
-    '兔': {'羊': 90, '豬': 85, '狗': 60, '雞': 40},
-    '龍': {'鼠': 90, '猴': 85, '雞': 60, '狗': 40},
-    '蛇': {'牛': 90, '雞': 85, '馬': 60, '豬': 40},
-    '馬': {'虎': 90, '狗': 85, '羊': 60, '兔': 40},
-    '羊': {'兔': 90, '豬': 85, '馬': 60, '牛': 40},
-    '猴': {'龍': 90, '鼠': 85, '蛇': 60, '虎': 40},
-    '雞': {'牛': 90, '蛇': 85, '龍': 60, '兔': 40},
-    '狗': {'虎': 90, '馬': 85, '兔': 60, '龍': 40},
-    '豬': {'兔': 90, '羊': 85, '虎': 60, '蛇': 40},
+    '鼠': {'鼠': 80, '牛': 60, '虎': 70, '兔': 50, '龍': 90, '蛇': 60, '馬': 50, '羊': 70, '猴': 80, '雞': 60, '狗': 70, '豬': 90},
+    '牛': {'鼠': 60, '牛': 80, '虎': 60, '兔': 70, '龍': 70, '蛇': 90, '馬': 60, '羊': 50, '猴': 60, '雞': 80, '狗': 70, '豬': 70},
+    '虎': {'鼠': 70, '牛': 60, '虎': 80, '兔': 80, '龍': 90, '蛇': 60, '馬': 70, '羊': 70, '猴': 50, '雞': 60, '狗': 90, '豬': 60},
+    '兔': {'鼠': 50, '牛': 70, '虎': 80, '兔': 80, '龍': 70, '蛇': 70, '馬': 80, '羊': 90, '猴': 60, '雞': 60, '狗': 70, '豬': 90},
+    '龍': {'鼠': 90, '牛': 70, '虎': 90, '兔': 70, '龍': 80, '蛇': 90, '馬': 70, '羊': 60, '猴': 80, '雞': 80, '狗': 60, '豬': 70},
+    '蛇': {'鼠': 60, '牛': 90, '虎': 60, '兔': 70, '龍': 90, '蛇': 80, '馬': 70, '羊': 70, '猴': 70, '雞': 90, '狗': 60, '豬': 50},
+    '馬': {'鼠': 50, '牛': 60, '虎': 70, '兔': 80, '龍': 70, '蛇': 70, '馬': 80, '羊': 90, '猴': 70, '雞': 70, '狗': 80, '豬': 60},
+    '羊': {'鼠': 70, '牛': 50, '虎': 70, '兔': 90, '龍': 60, '蛇': 70, '馬': 90, '羊': 80, '猴': 70, '雞': 70, '狗': 70, '豬': 80},
+    '猴': {'鼠': 80, '牛': 60, '虎': 50, '兔': 60, '龍': 80, '蛇': 70, '馬': 70, '羊': 70, '猴': 80, '雞': 80, '狗': 60, '豬': 70},
+    '雞': {'鼠': 60, '牛': 80, '虎': 60, '兔': 60, '龍': 80, '蛇': 90, '馬': 70, '羊': 70, '猴': 80, '雞': 80, '狗': 50, '豬': 60},
+    '狗': {'鼠': 70, '牛': 70, '虎': 90, '兔': 70, '龍': 60, '蛇': 60, '馬': 80, '羊': 70, '猴': 60, '雞': 50, '狗': 80, '豬': 80},
+    '豬': {'鼠': 90, '牛': 70, '虎': 60, '兔': 90, '龍': 70, '蛇': 50, '馬': 60, '羊': 80, '猴': 70, '雞': 60, '狗': 80, '豬': 80},
   };
 
   // 根據運勢類型獲取相關的生肖
-  List<String> _getRelatedZodiacs(String fortuneType) {
+  List<String> _getRelatedZodiacs(FortuneType fortuneType) {
     switch (fortuneType) {
-      case '事業':
-        return ['龍', '虎', '牛']; // 代表權威、力量和勤勉
-      case '學習':
-        return ['兔', '蛇', '猴']; // 代表智慧、耐心和靈活
-      case '財運':
-        return ['鼠', '龍', '猴']; // 代表機敏、威望和智慧
-      case '人際':
-        return ['馬', '羊', '豬']; // 代表活潑、溫和和善良
-      default:
-        return ['龍', '虎', '兔']; // 默認組合
+      case FortuneType.career:
+        return ['龍', '虎', '馬'];
+      case FortuneType.study:
+        return ['兔', '蛇', '雞'];
+      case FortuneType.love:
+        return ['羊', '豬', '兔'];
+      case FortuneType.daily:
+        return ['鼠', '龍', '猴'];
     }
   }
 
   // 計算生肖相性分數
-  Map<String, int> calculateZodiacAffinity(String zodiac, String fortuneType) {
-    final baseScores = _baseAffinityScores[zodiac] ?? {};
+  Map<String, int> calculateZodiacAffinity(String zodiac, FortuneType fortuneType) {
+    final baseScores = _baseAffinityScores[zodiac]!;
     final relatedZodiacs = _getRelatedZodiacs(fortuneType);
     
-    // 根據運勢類型調整分數
     final adjustedScores = Map<String, int>.from(baseScores);
     for (final relatedZodiac in relatedZodiacs) {
       if (adjustedScores.containsKey(relatedZodiac)) {
-        adjustedScores[relatedZodiac] = 
-            (adjustedScores[relatedZodiac]! * 1.2).round(); // 提升20%
+        adjustedScores[relatedZodiac] = (adjustedScores[relatedZodiac]! * 1.2).round();
       }
     }
     
     return adjustedScores;
   }
 
-  Future<Fortune> getZodiacFortune(Zodiac zodiac, DateTime date) async {
-    try {
-      final response = await _apiClient.get<Map<String, dynamic>>(
-        '/zodiac/${zodiac.name}/fortune',
-        queryParameters: {'date': date.toIso8601String()},
-        fromJson: (json) => json,
-      );
-
-      if (!response.isSuccess || response.data == null) {
-        throw Exception('獲取生肖運勢失敗：${response.message}');
-      }
-
+  Future<Fortune> getZodiacFortune(String zodiac, FortuneType fortuneType, DateTime date) async {
+    final response = await _apiClient.get(
+      '/fortunes/${fortuneType.name.toLowerCase()}',
+      queryParameters: {
+        'zodiac': zodiac,
+        'date': date.toIso8601String(),
+      },
+    );
+    
+    if (response.isSuccess && response.data != null) {
       final fortune = Fortune.fromJson(response.data!);
-      final affinity = calculateZodiacAffinity(zodiac.name, fortune.type);
+      final zodiacAffinity = calculateZodiacAffinity(zodiac, fortuneType);
+      final recommendations = generateZodiacRecommendations(zodiac, fortuneType, fortune.score);
       
       return fortune.copyWith(
-        zodiac: zodiac.name,
-        zodiacAffinity: affinity.values.reduce((a, b) => a + b) ~/ affinity.length,
-        recommendations: _generateRecommendations(zodiac, fortune.type, affinity),
-      );
-    } catch (e) {
-      throw Exception('獲取生肖運勢失敗: $e');
-    }
-  }
-
-  List<String> _generateRecommendations(
-    Zodiac zodiac,
-    String fortuneType,
-    Map<String, int> affinity,
-  ) {
-    final recommendations = <String>[];
-    final sortedAffinity = affinity.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    // 添加相性建議
-    if (sortedAffinity.isNotEmpty) {
-      recommendations.add(
-        '今日最佳合作生肖：${sortedAffinity.first.key}（相性：${sortedAffinity.first.value}分）'
+        zodiac: Zodiac.fromString(zodiac),
+        zodiacAffinity: zodiacAffinity.values.reduce((a, b) => a + b) ~/ zodiacAffinity.length,
+        recommendations: recommendations,
       );
     }
-
-    // 添加運勢類型相關建議
-    switch (fortuneType) {
-      case '事業':
-        recommendations.add('適合與${sortedAffinity.first.key}生肖的人共事或尋求指導');
-        break;
-      case '學習':
-        recommendations.add('建議向${sortedAffinity.first.key}生肖的人請教學習方法');
-        break;
-      case '財運':
-        recommendations.add('可以考慮與${sortedAffinity.first.key}生肖的人合作投資');
-        break;
-      case '人際':
-        recommendations.add('今日與${sortedAffinity.first.key}生肖的人互動會特別順利');
-        break;
-    }
-
-    return recommendations;
+    
+    throw Exception('Failed to get zodiac fortune: ${response.message}');
   }
 
-  // 根據生肖和運勢類型生成建議
-  List<String> generateZodiacRecommendations(String zodiac, String fortuneType, int score) {
+  List<String> generateZodiacRecommendations(String zodiac, FortuneType fortuneType, int score) {
     final recommendations = <String>[];
     final relatedZodiacs = _getRelatedZodiacs(fortuneType);
     
-    // 基於運勢分數的建議
-    if (score >= 80) {
-      recommendations.add('今天是屬$zodiac的你大展身手的好時機');
-      if (relatedZodiacs.contains(zodiac)) {
-        recommendations.add('你的生肖特質特別適合今天的$fortuneType相關活動');
-      }
-    } else if (score >= 60) {
-      recommendations.add('屬$zodiac的你今天保持平常心最重要');
-      if (relatedZodiacs.contains(zodiac)) {
-        recommendations.add('可以嘗試發揮你的生肖優勢來改善運勢');
-      }
-    } else {
-      recommendations.add('屬$zodiac的你今天需要多加小心');
-      final bestMatch = _baseAffinityScores[zodiac]?.entries
-          .reduce((a, b) => a.value > b.value ? a : b)
-          .key;
-      if (bestMatch != null) {
-        recommendations.add('建議可以尋求屬$bestMatch的朋友協助');
-      }
+    switch (fortuneType) {
+      case FortuneType.career:
+        if (score >= 80) {
+          recommendations.add('今日適合與${relatedZodiacs.join('、')}生肖的人合作，有助於事業發展。');
+          recommendations.add('可以主動尋求貴人相助，容易得到意外的工作機會。');
+        } else if (score >= 60) {
+          recommendations.add('工作中保持謹慎態度，避免衝動決策。');
+          recommendations.add('與${relatedZodiacs.first}生肖的人合作可能會有突破性進展。');
+        } else {
+          recommendations.add('今日事業運較低，建議專注於日常工作，暫緩重要決策。');
+          recommendations.add('可以向${relatedZodiacs.last}生肖的長輩請教意見。');
+        }
+        break;
+        
+      case FortuneType.study:
+        if (score >= 80) {
+          recommendations.add('今日學習效率極佳，適合挑戰困難的課題。');
+          recommendations.add('與${relatedZodiacs.join('、')}生肖的同學討論問題會有新的見解。');
+        } else if (score >= 60) {
+          recommendations.add('保持專注力，避免分心，可以事半功倍。');
+          recommendations.add('建議向${relatedZodiacs.first}生肖的人請教不懂的問題。');
+        } else {
+          recommendations.add('今日理解能力較弱，建議複習已掌握的內容。');
+          recommendations.add('可以找${relatedZodiacs.last}生肖的朋友一起學習，互相督促。');
+        }
+        break;
+        
+      case FortuneType.love:
+        if (score >= 80) {
+          recommendations.add('今日桃花運旺盛，易與${relatedZodiacs.join('、')}生肖的異性產生緣分。');
+          recommendations.add('適合參加社交活動，擴展人際圈。');
+        } else if (score >= 60) {
+          recommendations.add('感情運平穩，可以多關心對方，增進感情。');
+          recommendations.add('與${relatedZodiacs.first}生肖的人互動會有意外收穫。');
+        } else {
+          recommendations.add('今日感情運較差，建議避免衝動的感情決定。');
+          recommendations.add('可以向${relatedZodiacs.last}生肖的朋友傾訴心事。');
+        }
+        break;
+        
+      case FortuneType.daily:
+        if (score >= 80) {
+          recommendations.add('今日運勢極佳，適合嘗試新事物。');
+          recommendations.add('與${relatedZodiacs.join('、')}生肖的人互動會帶來好運。');
+        } else if (score >= 60) {
+          recommendations.add('保持樂觀心態，平穩度過一天。');
+          recommendations.add('可以尋求${relatedZodiacs.first}生肖朋友的建議。');
+        } else {
+          recommendations.add('今日運勢欠佳，凡事多加小心。');
+          recommendations.add('建議多與${relatedZodiacs.last}生肖的人交流，轉運添福。');
+        }
+        break;
     }
     
     return recommendations;
   }
 
-  // 增強運勢對象
-  Fortune enhanceFortuneWithZodiac(Fortune fortune, Zodiac zodiac, Map<String, int> zodiacAffinity) {
-    // 生成生肖相關建議
-    final zodiacRecommendations = generateZodiacRecommendations(
-      zodiac.name,
-      fortune.type,
-      fortune.score,
+  Future<List<Fortune>> getZodiacFortuneHistory(String zodiac, FortuneType fortuneType, DateTime startDate, DateTime endDate) async {
+    final response = await _apiClient.get(
+      '/fortunes/${fortuneType.name.toLowerCase()}/history',
+      queryParameters: {
+        'zodiac': zodiac,
+        'startDate': startDate.toIso8601String(),
+        'endDate': endDate.toIso8601String(),
+      },
     );
     
-    // 合併原有建議和生肖建議
-    final allRecommendations = [
-      ...fortune.recommendations,
-      ...zodiacRecommendations,
-    ];
+    if (response.isSuccess && response.data != null) {
+      final List<dynamic> fortuneList = response.data!;
+      return fortuneList.map((data) {
+        final fortune = Fortune.fromJson(data);
+        final zodiacAffinity = calculateZodiacAffinity(zodiac, fortuneType);
+        final recommendations = generateZodiacRecommendations(zodiac, fortuneType, fortune.score);
+        
+        return fortune.copyWith(
+          zodiac: Zodiac.fromString(zodiac),
+          zodiacAffinity: zodiacAffinity.values.reduce((a, b) => a + b) ~/ zodiacAffinity.length,
+          recommendations: recommendations,
+        );
+      }).toList();
+    }
     
-    // 返回增強後的運勢對象
-    return fortune.copyWith(
-      zodiac: zodiac.name,
-      zodiacAffinity: zodiacAffinity,
-      recommendations: allRecommendations,
-    );
+    throw Exception('Failed to get zodiac fortune history: ${response.message}');
   }
 
   Future<Fortune> getDailyFortune(Zodiac zodiac, DateTime date) async {

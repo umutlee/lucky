@@ -1,93 +1,47 @@
-import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
 
 /// 運勢類型枚舉
+@immutable
 enum FortuneType {
-  // 日常決策
-  daily('今日運勢', '今日綜合運勢預測'),
-  timing('時機運勢', '重要決策時機判斷'),
-  activity('活動運勢', '日常活動建議'),
-  direction('方位運勢', '行動方位建議'),
-  
-  // 學習職業
-  study('學習運勢', '學習發展指引'),
-  work('工作運勢', '職場發展指引'),
-  programming('編程運勢', '程式開發指引'),
-  creative('創作運勢', '創意發展指引'),
-  
-  // 人際互動
-  social('人際運勢', '社交互動指引'),
-  relationship('緣分運勢', '感情發展指引'),
-  cooperation('合作運勢', '團隊協作指引'),
-  
-  // 生活休閒
-  health('健康運勢', '健康生活指引'),
-  entertainment('娛樂運勢', '休閒活動指引'),
-  shopping('消費運勢', '消費決策指引'),
-  travel('旅行運勢', '出行建議指引');
+  daily('每日運勢', '每日綜合運勢預測'),    
+  study('學業運勢', '學習發展指引'),    
+  career('事業運勢', '職場發展指引'),   
+  love('感情運勢', '感情發展指引');     
 
-  final String name;
+  final String displayName;
   final String description;
-
-  const FortuneType(this.name, this.description);
-
-  /// 獲取運勢類型的顯示名稱
-  String get displayName => name;
+  const FortuneType(this.displayName, this.description);
 
   /// 獲取運勢類型的詳細描述
   String get detailedDescription => description;
 
   /// 檢查是否為日常決策類型
-  bool get isDaily => 
-    this == daily || 
-    this == timing || 
-    this == activity || 
-    this == direction;
+  bool get isDaily => this == daily;
 
   /// 檢查是否為學習職業類型
-  bool get isCareer =>
-    this == study ||
-    this == work ||
-    this == programming ||
-    this == creative;
+  bool get isCareer => this == career;
 
   /// 檢查是否為人際互動類型
-  bool get isSocial =>
-    this == social ||
-    this == relationship ||
-    this == cooperation;
+  bool get isSocial => this == love;
 
   /// 檢查是否為生活休閒類型
-  bool get isLifestyle =>
-    this == health ||
-    this == entertainment ||
-    this == shopping ||
-    this == travel;
+  bool get isLifestyle => this == study;
 
-  /// 獲取運勢類型的圖標名稱
-  String get iconName => switch (this) {
-    FortuneType.daily => 'assets/icons/fortune_daily.png',
-    FortuneType.timing => 'assets/icons/fortune_timing.png',
-    FortuneType.activity => 'assets/icons/fortune_activity.png',
-    FortuneType.direction => 'assets/icons/fortune_direction.png',
-    FortuneType.study => 'assets/icons/fortune_study.png',
-    FortuneType.work => 'assets/icons/fortune_work.png',
-    FortuneType.programming => 'assets/icons/fortune_programming.png',
-    FortuneType.creative => 'assets/icons/fortune_creative.png',
-    FortuneType.social => 'assets/icons/fortune_social.png',
-    FortuneType.relationship => 'assets/icons/fortune_relationship.png',
-    FortuneType.cooperation => 'assets/icons/fortune_cooperation.png',
-    FortuneType.health => 'assets/icons/fortune_health.png',
-    FortuneType.entertainment => 'assets/icons/fortune_entertainment.png',
-    FortuneType.shopping => 'assets/icons/fortune_shopping.png',
-    FortuneType.travel => 'assets/icons/fortune_travel.png'
-  };
+  /// 獲取運勢類型的圖標路徑
+  String get iconPath => 'assets/icons/fortune_${name.toLowerCase()}.png';
 
   /// 獲取運勢類型的分類名稱
   String get categoryName {
-    if (isDaily) return '日常決策';
-    if (isCareer) return '學習職業';
-    if (isSocial) return '人際互動';
-    return '生活休閒';
+    switch (this) {
+      case FortuneType.daily:
+        return '日常決策';
+      case FortuneType.career:
+        return '職場發展';
+      case FortuneType.study:
+        return '學習進修';
+      case FortuneType.love:
+        return '感情生活';
+    }
   }
 
   /// 獲取運勢建議的參考依據
@@ -101,34 +55,23 @@ enum FortuneType {
     // 根據類型添加特定依據
     switch (this) {
       case FortuneType.daily:
-      case FortuneType.timing:
-      case FortuneType.activity:
-      case FortuneType.direction:
         buffer.writeln('• 傳統宜忌');
         buffer.writeln('• 方位五行');
         break;
         
       case FortuneType.study:
-      case FortuneType.work:
-      case FortuneType.programming:
-      case FortuneType.creative:
         buffer.writeln('• 文昌位');
+        buffer.writeln('• 學業運勢');
+        break;
+        
+      case FortuneType.career:
         buffer.writeln('• 事業運勢');
+        buffer.writeln('• 財運指數');
         break;
         
-      case FortuneType.social:
-      case FortuneType.relationship:
-      case FortuneType.cooperation:
-        buffer.writeln('• 人緣方位');
-        buffer.writeln('• 貴人方位');
-        break;
-        
-      case FortuneType.health:
-      case FortuneType.entertainment:
-      case FortuneType.shopping:
-      case FortuneType.travel:
-        buffer.writeln('• 休閒宜忌');
-        buffer.writeln('• 財位方向');
+      case FortuneType.love:
+        buffer.writeln('• 桃花運勢');
+        buffer.writeln('• 姻緣指數');
         break;
     }
     
@@ -139,15 +82,15 @@ enum FortuneType {
   }
 
   /// 從字符串創建運勢類型
-  static FortuneType? fromString(String value) {
-    try {
-      return FortuneType.values.firstWhere(
-        (type) => type.name.toLowerCase() == value.toLowerCase()
-      );
-    } catch (_) {
-      return null;
-    }
+  static FortuneType fromString(String value) {
+    return FortuneType.values.firstWhere(
+      (type) => type.name.toLowerCase() == value.toLowerCase(),
+      orElse: () => FortuneType.daily,
+    );
   }
+
+  bool get isBasicType => this == daily;
+  bool get isSpecialType => this != daily;
 }
 
 /// 運勢類型字符串擴展
@@ -162,8 +105,8 @@ extension FortuneTypeExtension on String {
     final lowerValue = toLowerCase();
     return [
       FortuneType.study.name.toLowerCase(),
-      FortuneType.work.name.toLowerCase(),
-      FortuneType.relationship.name.toLowerCase(),
+      FortuneType.career.name.toLowerCase(),
+      FortuneType.love.name.toLowerCase(),
     ].contains(lowerValue);
   }
 } 

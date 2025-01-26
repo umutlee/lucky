@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'fortune_type.dart';
 import 'study_fortune.dart';
@@ -17,18 +17,18 @@ class Fortune with _$Fortune {
 
   const factory Fortune({
     required String id,
-    required String type,
+    required FortuneType type,
     required String title,
     required int score,
     required String description,
     required DateTime date,
+    required DateTime createdAt,
     required List<String> luckyTimes,
     required List<String> luckyDirections,
     required List<String> luckyColors,
     required List<int> luckyNumbers,
     required List<String> suggestions,
     required List<String> warnings,
-    required DateTime createdAt,
     @Default(false) bool isLuckyDay,
     @Default([]) List<String> suitableActivities,
     Zodiac? zodiac,
@@ -41,10 +41,35 @@ class Fortune with _$Fortune {
   }) = _Fortune;
 
   /// 從 JSON 創建
-  factory Fortune.fromJson(Map<String, dynamic> json) => _$FortuneFromJson(json);
+  factory Fortune.fromJson(Map<String, dynamic> json) {
+    return Fortune(
+      id: json['id'] as String,
+      type: FortuneType.fromString(json['type'] as String),
+      title: json['title'] as String,
+      score: json['score'] as int,
+      description: json['description'] as String,
+      date: DateTime.parse(json['date'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      luckyTimes: (json['luckyTimes'] as List<dynamic>).cast<String>(),
+      luckyDirections: (json['luckyDirections'] as List<dynamic>).cast<String>(),
+      luckyColors: (json['luckyColors'] as List<dynamic>).cast<String>(),
+      luckyNumbers: (json['luckyNumbers'] as List<dynamic>).cast<int>(),
+      suggestions: (json['suggestions'] as List<dynamic>).cast<String>(),
+      warnings: (json['warnings'] as List<dynamic>).cast<String>(),
+      isLuckyDay: json['isLuckyDay'] as bool? ?? false,
+      suitableActivities: (json['suitableActivities'] as List<dynamic>?)?.cast<String>() ?? [],
+      zodiac: json['zodiac'] != null ? Zodiac.fromJson(json['zodiac'] as Map<String, dynamic>) : null,
+      zodiacAffinity: json['zodiacAffinity'] as int? ?? 0,
+      recommendations: (json['recommendations'] as List<dynamic>?)?.cast<String>() ?? [],
+      studyFortune: json['studyFortune'] == null ? null : StudyFortune.fromJson(json['studyFortune'] as Map<String, dynamic>),
+      careerFortune: json['careerFortune'] == null ? null : CareerFortune.fromJson(json['careerFortune'] as Map<String, dynamic>),
+      loveFortune: json['loveFortune'] == null ? null : LoveFortune.fromJson(json['loveFortune'] as Map<String, dynamic>),
+      dailyFortune: json['dailyFortune'] == null ? null : DailyFortune.fromJson(json['dailyFortune'] as Map<String, dynamic>),
+    );
+  }
 
   /// 獲取運勢等級
-  static String getFortuneLevel(int score) {
+  String get level {
     if (score >= 90) return '大吉';
     if (score >= 80) return '中吉';
     if (score >= 70) return '小吉';
@@ -57,7 +82,7 @@ class Fortune with _$Fortune {
   List<String> get tags {
     final tags = <String>[];
     
-    tags.add(getFortuneLevel(score));
+    tags.add(level);
     
     if (luckyTimes.isNotEmpty) {
       tags.add('宜在 ${luckyTimes.join("、")} 行事');
@@ -79,59 +104,40 @@ class Fortune with _$Fortune {
   }
 
   /// 獲取詳細運勢描述
-  String getDetailedDescription() {
-    final StringBuffer buffer = StringBuffer();
+  String get detailedDescription {
+    final buffer = StringBuffer();
     
-    // 基本描述
-    buffer.writeln(description);
-    buffer.writeln();
+    buffer.writeln('【運勢指數】${score}分 - $level');
     
-    // 建議
-    if (suggestions.isNotEmpty) {
-      buffer.writeln('建議：');
-      for (final suggestion in suggestions) {
-        buffer.writeln('• $suggestion');
+    if (luckyColors.isNotEmpty) {
+      buffer.writeln('【幸運顏色】${luckyColors.join('、')}');
+    }
+    
+    if (luckyNumbers.isNotEmpty) {
+      buffer.writeln('【幸運數字】${luckyNumbers.join('、')}');
+    }
+    
+    if (zodiac != null) {
+      buffer.writeln('【生肖相性】${zodiac!.name} - ${_getAffinityLevel(zodiacAffinity)}');
+    }
+    
+    if (recommendations.isNotEmpty) {
+      buffer.writeln('\n【運勢建議】');
+      for (final recommendation in recommendations) {
+        buffer.writeln('• $recommendation');
       }
-      buffer.writeln();
     }
     
-    // 注意事項
-    if (warnings.isNotEmpty) {
-      buffer.writeln('注意事項：');
-      for (final warning in warnings) {
-        buffer.writeln('• $warning');
-      }
-      buffer.writeln();
-    }
-    
-    // 特定類型的詳細描述
-    switch (type) {
-      case FortuneType.study:
-        if (studyFortune != null) {
-          buffer.writeln('學業運勢詳解：');
-          buffer.writeln(studyFortune!.description);
-        }
-        break;
-      case FortuneType.career:
-        if (careerFortune != null) {
-          buffer.writeln('事業運勢詳解：');
-          buffer.writeln(careerFortune!.description);
-        }
-        break;
-      case FortuneType.love:
-        if (loveFortune != null) {
-          buffer.writeln('愛情運勢詳解：');
-          buffer.writeln(loveFortune!.description);
-        }
-        break;
-      default:
-        if (dailyFortune != null) {
-          buffer.writeln('每日運勢詳解：');
-          buffer.writeln(dailyFortune.toString());
-        }
-    }
-    
-    return buffer.toString().trim();
+    return buffer.toString();
+  }
+
+  String _getAffinityLevel(int affinity) {
+    if (affinity >= 90) return '極高';
+    if (affinity >= 80) return '很高';
+    if (affinity >= 70) return '較高';
+    if (affinity >= 60) return '一般';
+    if (affinity >= 50) return '較低';
+    return '很低';
   }
 
   /// 比較運勢
@@ -148,15 +154,8 @@ class Fortune with _$Fortune {
   bool isType(FortuneType checkType) => type == checkType;
 
   /// 檢查是否為基本運勢類型
-  bool get isBasicType => type == 'daily';
+  bool get isBasicType => type == FortuneType.daily;
 
   /// 檢查是否為特殊運勢類型
-  bool get isSpecialType => ['study', 'career', 'love'].contains(type);
-}
-
-enum FortuneType {
-  daily,    // 每日運勢
-  study,    // 學業運勢
-  career,   // 事業運勢
-  love,     // 感情運勢
+  bool get isSpecialType => [FortuneType.study, FortuneType.career, FortuneType.love].contains(type);
 } 

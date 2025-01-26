@@ -1,36 +1,32 @@
 /// API 響應模型
 class ApiResponse<T> {
   final bool isSuccess;
-  final T? data;
   final String? message;
+  final T? data;
   final int? code;
 
   ApiResponse({
     required this.isSuccess,
-    this.data,
     this.message,
+    this.data,
     this.code,
   });
 
   /// 創建成功響應
-  factory ApiResponse.success(T? data) {
+  factory ApiResponse.success(T? data, {String? message}) {
     return ApiResponse(
       isSuccess: true,
       data: data,
+      message: message,
     );
   }
 
   /// 創建錯誤響應
-  factory ApiResponse.error({
-    String? message,
-    int? code,
-    T? data,
-  }) {
+  factory ApiResponse.error(String message, {int? code}) {
     return ApiResponse(
       isSuccess: false,
       message: message,
       code: code,
-      data: data,
     );
   }
 
@@ -47,8 +43,8 @@ class ApiResponse<T> {
     if (success && data != null && fromJson != null) {
       if (data is! Map<String, dynamic>) {
         return ApiResponse.error(
-          message: 'Invalid response data format',
-          code: 1002,
+          'Invalid response data format',
+          code: code,
         );
       }
       return ApiResponse.success(fromJson(data));

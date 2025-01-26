@@ -1,27 +1,29 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/api_config.dart';
 import '../config/api_error_codes.dart';
 import '../exceptions/api_exception.dart';
 import '../interceptors/api_interceptor.dart';
 import '../models/api_response.dart';
 import 'storage_service.dart';
+import 'cache_service.dart';
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final storage = ref.read(storageServiceProvider);
+  final cacheService = ref.read(cacheServiceProvider);
+  return ApiClient(storage, cacheService: cacheService);
+});
 
 /// API 客戶端
 class ApiClient {
-  late final Dio _dio;
   final StorageService _storage;
   final ApiInterceptor _apiInterceptor;
+  final Dio _dio;
   
-  ApiClient(this._storage, {Dio? dio}) : _apiInterceptor = ApiInterceptor() {
-    _dio = dio ?? Dio(BaseOptions(
-      baseUrl: ApiConfig.baseUrl,
-      connectTimeout: ApiConfig.connectTimeout,
-      receiveTimeout: ApiConfig.receiveTimeout,
-      sendTimeout: ApiConfig.sendTimeout,
-    ));
-
-    // 添加攔截器
+  ApiClient(this._storage, {required CacheService cacheService, Dio? dio}) 
+      : _apiInterceptor = ApiInterceptor(cacheService: cacheService),
+        _dio = dio ?? Dio() {
     _dio.interceptors.add(_apiInterceptor);
 
     // 添加日誌攔截器（僅在調試模式下）

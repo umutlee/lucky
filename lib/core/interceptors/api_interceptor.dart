@@ -27,26 +27,25 @@ class ApiInterceptor extends Interceptor {
     RequestOptions options, 
     RequestInterceptorHandler handler,
   ) async {
-    // 檢查是否需要緩存
-    if (options.extra['useCache'] == true) {
-      final cacheKey = _generateCacheKey(options);
-      try {
-        final cached = await _cacheService.get<Map<String, dynamic>>(cacheKey);
-        if (cached != null) {
-          _logger.info('使用緩存數據: $cacheKey');
-          return handler.resolve(
-            Response(
-              requestOptions: options,
-              data: cached,
-              statusCode: 200,
-            ),
-          );
-        }
-      } catch (e) {
-        _logger.warning('讀取緩存失敗', e);
+    try {
+      // 檢查是否有緩存
+      final cacheKey = '${options.method}:${options.path}';
+      final cachedData = await _cacheService.get(cacheKey);
+      
+      if (cachedData != null) {
+        // 返回緩存數據
+        return handler.resolve(
+          Response(
+            requestOptions: options,
+            data: cachedData,
+            statusCode: 200,
+          ),
+        );
       }
+    } catch (e) {
+      _logger.warning('讀取緩存失敗: $e');
     }
-    
+
     // 添加通用請求頭
     options.headers.addAll(ApiConfig.headers);
     
@@ -63,22 +62,16 @@ class ApiInterceptor extends Interceptor {
     Response response,
     ResponseInterceptorHandler handler,
   ) async {
-    // 如果需要緩存響應
-    if (response.requestOptions.extra['useCache'] == true) {
-      final cacheKey = _generateCacheKey(response.requestOptions);
-      final duration = response.requestOptions.extra['cacheDuration'] as Duration? 
-          ?? const Duration(hours: 1);
-          
-      try {
-        await _cacheService.set(
-          cacheKey,
-          response.data,
-          expiration: duration,
-        );
-        _logger.info('緩存響應數據: $cacheKey');
-      } catch (e) {
-        _logger.warning('緩存響應失敗', e);
-      }
+    try {
+      // 緩存響應數據
+      final cacheKey = '${response.requestOptions.method}:${response.requestOptions.path}';
+      await _cacheService.set(
+        cacheKey,
+        response.data,
+        const Duration(minutes: 5),
+      );
+    } catch (e) {
+      _logger.warning('緩存響應失敗: $e');
     }
     
     // 重置重試計數
@@ -155,12 +148,5 @@ class ApiInterceptor extends Interceptor {
     } on SocketException catch (_) {
       return false;
     }
-  }
-
-  String _generateCacheKey(RequestOptions options) {
-    final uri = options.uri.toString();
-    final method = options.method;
-    final params = options.queryParameters.toString();
-    return '$method:$uri:$params';
   }
 } 
