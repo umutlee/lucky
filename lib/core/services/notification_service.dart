@@ -3,7 +3,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/logger.dart';
+
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService();
+});
 
 class NotificationService {
   static const String _tag = 'NotificationService';
@@ -58,6 +63,58 @@ class NotificationService {
       return true;
     } catch (e) {
       _logger.error('檢查通知權限失敗', e);
+      return false;
+    }
+  }
+
+  /// 顯示一般通知
+  Future<bool> showNotification({
+    required String title,
+    required String body,
+    String? payload,
+    String channelId = 'default',
+    String channelName = '一般通知',
+    String channelDescription = '應用通知',
+    NotificationDetails? details,
+  }) async {
+    if (!_isInitialized) {
+      _logger.warning('通知服務未初始化');
+      return false;
+    }
+
+    try {
+      final androidDetails = details?.android ?? AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: channelDescription,
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+      );
+
+      final iosDetails = details?.iOS ?? DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _notifications.show(
+        DateTime.now().millisecondsSinceEpoch % 2147483647,
+        title,
+        body,
+        notificationDetails,
+        payload: payload,
+      );
+
+      _logger.info('通知發送成功');
+      return true;
+    } catch (e, stackTrace) {
+      _logger.error('發送通知失敗', e, stackTrace);
       return false;
     }
   }
