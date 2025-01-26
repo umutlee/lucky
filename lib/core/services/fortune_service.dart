@@ -12,18 +12,21 @@ import 'package:http/http.dart' as http;
 import '../models/study_fortune.dart';
 import '../models/career_fortune.dart';
 import '../models/love_fortune.dart';
+import '../utils/error_handler.dart';
+import '../utils/retry.dart';
+import '../storage/cache/cache_manager.dart';
 
 final fortuneServiceProvider = Provider<FortuneService>((ref) {
   final zodiacFortuneService = ref.watch(zodiacFortuneServiceProvider);
   final userSettingsService = ref.watch(userSettingsServiceProvider);
-  final cacheService = ref.watch(cacheServiceProvider);
+  final cacheService = ref.watch(cacheManagerProvider);
   return FortuneService(zodiacFortuneService: zodiacFortuneService, userSettingsService: userSettingsService, cacheService: cacheService);
 });
 
 class FortuneService {
   final ZodiacFortuneService _zodiacFortuneService;
   final UserSettingsService _userSettingsService;
-  final CacheService _cacheService;
+  final CacheManager _cacheService;
   final _uuid = const Uuid();
   final _logger = Logger('FortuneService');
   static const _cacheDuration = Duration(hours: 12);
@@ -34,7 +37,7 @@ class FortuneService {
     http.Client? client,
     required ZodiacFortuneService zodiacFortuneService,
     required UserSettingsService userSettingsService,
-    required CacheService cacheService,
+    required CacheManager cacheService,
   }) : _zodiacFortuneService = zodiacFortuneService,
        _userSettingsService = userSettingsService,
        _cacheService = cacheService,
@@ -161,32 +164,43 @@ class FortuneService {
   }
 
   Future<Fortune?> getDailyFortune(String date, String zodiac, String constellation) async {
-    final cacheKey = 'fortune:daily:$date:$zodiac:$constellation';
+    final cacheKey = 'fortune:daily:$_cacheVersion:$date:$zodiac:$constellation';
     
     try {
-      // 嘗試從緩存獲取
+      // 檢查緩存
       final cached = await _cacheService.get<Map<String, dynamic>>(cacheKey);
       if (cached != null) {
-        _logger.info('緩存命中: $cacheKey');
+        _logger.info('命中緩存: $cacheKey');
         return Fortune.fromJson(cached);
       }
 
-      // 從 API 獲取數據
-      final fortune = await _fetchDailyFortune(date, zodiac, constellation);
+      // 使用重試機制調用 API
+      final fortune = await retry(
+        () => _fetchDailyFortune(date, zodiac, constellation),
+        maxAttempts: 3,
+        delayBetweenAttempts: const Duration(seconds: 2),
+      );
+
       if (fortune != null) {
-        // 存入緩存
+        // 使用自適應緩存時間
         await _cacheService.set(
           cacheKey,
           fortune.toJson(),
-          expiration: _cacheDuration,
+          expiration: _getAdaptiveCacheDuration('daily'),
         );
         _logger.info('緩存更新: $cacheKey');
       }
       
       return fortune;
     } catch (e, stack) {
-      _logger.error('獲取運勢失敗', e, stack);
-      return null;
+      final error = AppError(
+        type: _determineErrorType(e),
+        message: '獲取每日運勢失敗',
+        originalError: e,
+        stackTrace: stack,
+      );
+      _logger.error(error.message, error, stack);
+      throw error;
     }
   }
 
@@ -590,5 +604,253 @@ class FortuneService {
       // 命中率低,縮短緩存時間
       return const Duration(hours: 6);
     }
+  }
+
+  // 根據異常類型確定錯誤類型
+  ErrorType _determineErrorType(dynamic error) {
+    if (error is TimeoutException) {
+      return ErrorType.network;
+    } else if (error is FormatException) {
+      return ErrorType.dataFormat;
+    } else if (error is http.ClientException) {
+      return ErrorType.network;
+    } else {
+      return ErrorType.system;
+    }
+  }
+
+  // 增強的運勢計算邏輯
+  Future<int> _calculateFortuneScore(String date, String zodiac, String constellation) async {
+    try {
+      // 基礎分數
+      var score = await _zodiacFortuneService.getBaseScore(zodiac);
+      
+      // 考慮星座影響
+      score += await _zodiacFortuneService.getConstellationScore(constellation);
+      
+      // 特殊日期調整
+      final specialDayScore = await _calculateSpecialDayScore(date);
+      score = (score * specialDayScore).round();
+      
+      // 確保分數在有效範圍內
+      return score.clamp(0, 100);
+    } catch (e, stack) {
+      _logger.error('計算運勢分數失敗', e, stack);
+      throw AppError(
+        type: ErrorType.calculation,
+        message: '運勢計算失敗',
+        originalError: e,
+        stackTrace: stack,
+      );
+    }
+  }
+
+  // 計算特殊日期的影響
+  Future<double> _calculateSpecialDayScore(String date) async {
+    try {
+      final specialDays = await _zodiacFortuneService.getSpecialDays();
+      final dateObj = DateTime.parse(date);
+      
+      // 檢查是否為特殊日期
+      for (final day in specialDays) {
+        if (day.date.year == dateObj.year &&
+            day.date.month == dateObj.month &&
+            day.date.day == dateObj.day) {
+          return day.scoreMultiplier;
+        }
+      }
+      
+      return 1.0; // 普通日期返回 1.0
+    } catch (e, stack) {
+      _logger.error('計算特殊日期分數失敗', e, stack);
+      return 1.0; // 發生錯誤時使用默認值
+    }
+  }
+
+  // 智能推薦生成
+  List<String> _generateSmartRecommendations(
+    int score,
+    String fortuneType,
+    Map<String, dynamic> context,
+  ) {
+    final recommendations = <String>[];
+    
+    try {
+      // 根據分數段生成基礎建議
+      if (score >= 80) {
+        recommendations.addAll(_getHighScoreRecommendations(fortuneType));
+      } else if (score >= 60) {
+        recommendations.addAll(_getMediumScoreRecommendations(fortuneType));
+      } else {
+        recommendations.addAll(_getLowScoreRecommendations(fortuneType));
+      }
+      
+      // 根據上下文添加個性化建議
+      final personalizedRecs = _getPersonalizedRecommendations(
+        fortuneType,
+        score,
+        context,
+      );
+      recommendations.addAll(personalizedRecs);
+      
+      // 確保建議數量適中
+      if (recommendations.length > 5) {
+        recommendations.length = 5;
+      }
+      
+      return recommendations;
+    } catch (e, stack) {
+      _logger.error('生成推薦失敗', e, stack);
+      // 返回基礎建議
+      return _getDefaultRecommendations(fortuneType);
+    }
+  }
+
+  // 獲取高分段建議
+  List<String> _getHighScoreRecommendations(String fortuneType) {
+    switch (fortuneType) {
+      case '學習':
+        return [
+          '今天是學習效率最佳的時機',
+          '可以嘗試挑戰較難的課題',
+          '適合參加考試或競賽'
+        ];
+      case '事業':
+        return [
+          '把握機會展示自己的能力',
+          '適合談判或簽約',
+          '可以開展新項目'
+        ];
+      case '財運':
+        return [
+          '適合投資或理財',
+          '可能有意外收穫',
+          '注意把握商機'
+        ];
+      default:
+        return [
+          '今天運勢很好',
+          '可以大膽行動',
+          '把握良機'
+        ];
+    }
+  }
+
+  // 獲取中等分數建議
+  List<String> _getMediumScoreRecommendations(String fortuneType) {
+    switch (fortuneType) {
+      case '學習':
+        return [
+          '保持穩定的學習節奏',
+          '複習已學內容很有幫助',
+          '注意休息和效率的平衡'
+        ];
+      case '事業':
+        return [
+          '按部就班完成工作',
+          '與同事保持良好溝通',
+          '注意細節避免失誤'
+        ];
+      case '財運':
+        return [
+          '理性消費和投資',
+          '注意開源節流',
+          '避免衝動消費'
+        ];
+      default:
+        return [
+          '保持平常心',
+          '按計劃行事',
+          '注意細節'
+        ];
+    }
+  }
+
+  // 獲取低分段建議
+  List<String> _getLowScoreRecommendations(String fortuneType) {
+    switch (fortuneType) {
+      case '學習':
+        return [
+          '調整學習方法和計劃',
+          '注意休息和調整',
+          '避免過度勉強'
+        ];
+      case '事業':
+        return [
+          '謹慎處理重要事務',
+          '多做準備和檢查',
+          '保持耐心和冷靜'
+        ];
+      case '財運':
+        return [
+          '避免大額支出',
+          '謹慎投資理財',
+          '注意開源節流'
+        ];
+      default:
+        return [
+          '今天宜低調行事',
+          '避免冒險',
+          '注意休息調整'
+        ];
+    }
+  }
+
+  // 根據用戶上下文生成個性化建議
+  List<String> _getPersonalizedRecommendations(
+    String fortuneType,
+    int score,
+    Map<String, dynamic> context,
+  ) {
+    final recommendations = <String>[];
+    
+    try {
+      final userPreferences = context['preferences'] as Map<String, dynamic>?;
+      final recentHistory = context['recentHistory'] as List<dynamic>?;
+      
+      if (userPreferences != null) {
+        // 根據用戶偏好添加建議
+        final interests = userPreferences['interests'] as List<String>?;
+        if (interests != null && interests.isNotEmpty) {
+          recommendations.add('可以關注${interests.first}相關的機會');
+        }
+      }
+      
+      if (recentHistory != null && recentHistory.isNotEmpty) {
+        // 根據最近歷史添加建議
+        final trend = _analyzeTrend(recentHistory.cast<int>());
+        if (trend > 0) {
+          recommendations.add('運勢持續上升中,繼續保持');
+        } else if (trend < 0) {
+          recommendations.add('注意調整心態,保持耐心');
+        }
+      }
+      
+      return recommendations;
+    } catch (e, stack) {
+      _logger.error('生成個性化建議失敗', e, stack);
+      return [];
+    }
+  }
+
+  // 分析運勢趨勢
+  double _analyzeTrend(List<int> history) {
+    if (history.length < 2) return 0;
+    
+    var sum = 0.0;
+    for (var i = 1; i < history.length; i++) {
+      sum += history[i] - history[i - 1];
+    }
+    
+    return sum / (history.length - 1);
+  }
+
+  // 獲取默認建議
+  List<String> _getDefaultRecommendations(String fortuneType) {
+    return [
+      '保持平常心',
+      '按計劃行事',
+      '注意休息'
+    ];
   }
 } 
