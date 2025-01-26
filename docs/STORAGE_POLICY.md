@@ -27,4 +27,4 @@
 3. 定期檢查代碼，確保沒有誤用其他儲存方案
 
 ## 遷移歷史
-- 2024-03-XX: 完全移除 SharedPreferences，統一使用 SQLite 
+- 2025-03-XX: 完全移除 SharedPreferences，統一使用 SQLite 
