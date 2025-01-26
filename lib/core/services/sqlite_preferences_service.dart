@@ -13,11 +13,17 @@ class SQLitePreferencesService {
   final _logger = Logger(_tag);
   final DatabaseHelper _databaseHelper;
 
-  SQLitePreferencesService(this._databaseHelper);
+  SQLitePreferencesService(DatabaseHelper databaseHelper) : _databaseHelper = databaseHelper;
 
   Future<bool> init() async {
     try {
       await _databaseHelper.init();
+      
+      // 檢查是否有任何偏好設置
+      if (!await _hasAnyPreference()) {
+        await _initializeDefaultValues();
+      }
+      
       return true;
     } catch (e, stackTrace) {
       _logger.error('SQLite 偏好設置服務初始化失敗', e, stackTrace);
@@ -77,6 +83,7 @@ class SQLitePreferencesService {
   Future<bool> clear() async {
     try {
       await _databaseHelper.delete('preferences');
+      await _initializeDefaultValues();
       return true;
     } catch (e, stackTrace) {
       _logger.error('清除設置失敗', e, stackTrace);
@@ -101,29 +108,27 @@ class SQLitePreferencesService {
 
   Future<bool?> getDailyNotification() async {
     try {
-      final db = await _databaseHelper.database;
-      final result = await db.query(
+      final result = await _databaseHelper.query(
         'preferences',
         columns: ['value'],
         where: 'key = ?',
-        whereArgs: ['notification_enabled'],
+        whereArgs: ['daily_notification'],
       );
 
       if (result.isEmpty) {
-        return null;
+        return true; // 默認值
       }
 
-      return result.first['value'] == '1';
+      return result.first['value'] == 'true';
     } catch (e, stack) {
       _logger.error('獲取每日通知設置失敗', e, stack);
-      return null;
+      return true; // 錯誤時返回默認值
     }
   }
 
   Future<String?> getNotificationTime() async {
     try {
-      final db = await _databaseHelper.database;
-      final result = await db.query(
+      final result = await _databaseHelper.query(
         'preferences',
         columns: ['value'],
         where: 'key = ?',
@@ -131,24 +136,24 @@ class SQLitePreferencesService {
       );
 
       if (result.isEmpty) {
-        return null;
+        return '08:00'; // 默認值
       }
 
-      return result.first['value'] as String?;
+      return result.first['value'] as String;
     } catch (e, stack) {
       _logger.error('獲取通知時間設置失敗', e, stack);
-      return null;
+      return '08:00'; // 錯誤時返回默認值
     }
   }
 
   Future<void> setDailyNotification(bool enabled) async {
     try {
-      final db = await _databaseHelper.database;
-      await db.insert(
+      await _databaseHelper.insert(
         'preferences',
         {
-          'key': 'notification_enabled',
-          'value': enabled ? '1' : '0',
+          'key': 'daily_notification',
+          'value': enabled.toString(),
+          'type': 'bool',
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -160,12 +165,12 @@ class SQLitePreferencesService {
 
   Future<void> setNotificationTime(String time) async {
     try {
-      final db = await _databaseHelper.database;
-      await db.insert(
+      await _databaseHelper.insert(
         'preferences',
         {
           'key': 'notification_time',
           'value': time,
+          'type': 'string',
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -184,7 +189,7 @@ class SQLitePreferencesService {
     try {
       await Future.wait([
         setDailyNotification(true),
-        setNotificationTime('08:00'),
+        setNotificationTime('09:00'),
       ]);
       _logger.info('默認偏好設置初始化成功');
     } catch (e, stack) {

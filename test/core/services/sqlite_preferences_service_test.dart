@@ -3,130 +3,176 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:path/path.dart';
-import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:matcher/matcher.dart' as matcher;
 import '../../../lib/core/database/database_helper.dart';
 import '../../../lib/core/services/sqlite_preferences_service.dart';
 import 'sqlite_preferences_service_test.mocks.dart';
 
-@GenerateMocks([Database])
-class MockDatabaseHelper extends Mock implements DatabaseHelper {}
+class MockDatabaseHelperBase implements DatabaseHelper {
+  @override
+  Future<Database> get database => throw UnimplementedError();
 
+  @override
+  Future<int> delete(String table, {String? where, List<Object?>? whereArgs}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> execute(String sql, [List<Object?>? arguments]) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> init() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<int> insert(String table, Map<String, dynamic> values, {ConflictAlgorithm? conflictAlgorithm}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> query(String table, {bool? distinct, List<String>? columns, String? where, List<Object?>? whereArgs, String? groupBy, String? having, String? orderBy, int? limit, int? offset}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<int> update(String table, Map<String, dynamic> values, {String? where, List<Object?>? whereArgs}) {
+    throw UnimplementedError();
+  }
+}
+
+@GenerateMocks([MockDatabaseHelperBase])
 void main() {
   late SQLitePreferencesService service;
-  late MockDatabaseHelper mockDatabaseHelper;
-  late MockDatabase mockDatabase;
+  late MockMockDatabaseHelperBase mockDatabaseHelper;
 
   setUp(() {
-    mockDatabaseHelper = MockDatabaseHelper();
-    mockDatabase = MockDatabase();
-    when(mockDatabaseHelper.database).thenAnswer((_) async => mockDatabase);
+    mockDatabaseHelper = MockMockDatabaseHelperBase();
     service = SQLitePreferencesService(mockDatabaseHelper);
+
+    // 設置基本的 mock 行為
+    when(mockDatabaseHelper.init()).thenAnswer((_) async => true);
+    when(mockDatabaseHelper.insert(
+      any,
+      any,
+      conflictAlgorithm: anyNamed('conflictAlgorithm'),
+    )).thenAnswer((_) async => 1);
+    when(mockDatabaseHelper.query(
+      any,
+      distinct: anyNamed('distinct'),
+      columns: anyNamed('columns'),
+      where: anyNamed('where'),
+      whereArgs: anyNamed('whereArgs'),
+      groupBy: anyNamed('groupBy'),
+      having: anyNamed('having'),
+      orderBy: anyNamed('orderBy'),
+      limit: anyNamed('limit'),
+      offset: anyNamed('offset'),
+    )).thenAnswer((_) async => []);
   });
 
   group('SQLitePreferencesService', () {
     test('初始化時應該設置默認值', () async {
-      when(mockDatabaseHelper.execute(argThat(isA<String>())))
+      when(mockDatabaseHelper.execute(any))
           .thenAnswer((_) async {});
       when(mockDatabaseHelper.query(
-        argThat(equals('preferences')),
-        where: anyNamed('where'),
-        whereArgs: anyNamed('whereArgs'),
+        'preferences',
+        limit: 1,
       )).thenAnswer((_) async => []);
-      when(mockDatabaseHelper.insert(
-        argThat(equals('preferences')),
-        argThat(isA<Map<String, dynamic>>()),
-      )).thenAnswer((_) async => 1);
 
       await service.init();
 
-      verify(mockDatabaseHelper.execute(argThat(contains('CREATE TABLE IF NOT EXISTS preferences')))).called(1);
+      verify(mockDatabaseHelper.init()).called(1);
       verify(mockDatabaseHelper.query(
         'preferences',
-        where: 'key = ?',
-        whereArgs: ['daily_notification'],
+        limit: 1,
       )).called(1);
-      verify(mockDatabaseHelper.insert('preferences', argThat(isA<Map<String, dynamic>>()))).called(2);
+      verify(mockDatabaseHelper.insert(
+        'preferences',
+        {
+          'key': 'daily_notification',
+          'value': 'true',
+          'type': 'bool',
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      )).called(1);
+      verify(mockDatabaseHelper.insert(
+        'preferences',
+        {
+          'key': 'notification_time',
+          'value': '09:00',
+          'type': 'string',
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      )).called(1);
     });
 
     test('setDailyNotification 應該正確保存值', () async {
-      when(mockDatabaseHelper.query(
-        argThat(equals('preferences')),
-        where: anyNamed('where'),
-        whereArgs: anyNamed('whereArgs'),
-      )).thenAnswer((_) async => []);
-      when(mockDatabaseHelper.insert(
-        argThat(equals('preferences')),
-        argThat(isA<Map<String, dynamic>>()),
-      )).thenAnswer((_) async => 1);
-
       await service.setDailyNotification(false);
 
-      verify(mockDatabaseHelper.insert('preferences', {
-        'key': 'daily_notification',
-        'value': 'false',
-        'type': 'bool',
-        'updated_at': any,
-      })).called(1);
+      verify(mockDatabaseHelper.insert(
+        'preferences',
+        {
+          'key': 'daily_notification',
+          'value': 'false',
+          'type': 'bool',
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      )).called(1);
     });
 
     test('setNotificationTime 應該正確保存值', () async {
       const testTime = '10:30';
-      when(mockDatabaseHelper.query(
-        argThat(equals('preferences')),
-        where: anyNamed('where'),
-        whereArgs: anyNamed('whereArgs'),
-      )).thenAnswer((_) async => []);
-      when(mockDatabaseHelper.insert(
-        argThat(equals('preferences')),
-        argThat(isA<Map<String, dynamic>>()),
-      )).thenAnswer((_) async => 1);
-
       await service.setNotificationTime(testTime);
 
-      verify(mockDatabaseHelper.insert('preferences', {
-        'key': 'notification_time',
-        'value': testTime,
-        'type': 'string',
-        'updated_at': any,
-      })).called(1);
+      verify(mockDatabaseHelper.insert(
+        'preferences',
+        {
+          'key': 'notification_time',
+          'value': testTime,
+          'type': 'string',
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      )).called(1);
     });
 
     test('clear 應該清除所有設置', () async {
-      when(mockDatabaseHelper.delete(argThat(equals('preferences'))))
+      when(mockDatabaseHelper.delete(any))
           .thenAnswer((_) async => 1);
-      when(mockDatabaseHelper.insert(
-        argThat(equals('preferences')),
-        argThat(isA<Map<String, dynamic>>()),
-      )).thenAnswer((_) async => 1);
 
       await service.clear();
 
       verify(mockDatabaseHelper.delete('preferences')).called(1);
-      verify(mockDatabaseHelper.insert('preferences', {
-        'key': 'daily_notification',
-        'value': 'true',
-        'type': 'bool',
-        'updated_at': any,
-      })).called(1);
-      verify(mockDatabaseHelper.insert('preferences', {
-        'key': 'notification_time',
-        'value': '09:00',
-        'type': 'string',
-        'updated_at': any,
-      })).called(1);
+      verify(mockDatabaseHelper.insert(
+        'preferences',
+        {
+          'key': 'daily_notification',
+          'value': 'true',
+          'type': 'bool',
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      )).called(1);
+      verify(mockDatabaseHelper.insert(
+        'preferences',
+        {
+          'key': 'notification_time',
+          'value': '09:00',
+          'type': 'string',
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      )).called(1);
     });
 
     test('getDailyNotification 應該返回正確的值', () async {
       when(mockDatabaseHelper.query(
         'preferences',
-        where: anyNamed('where'),
-        whereArgs: anyNamed('whereArgs'),
+        columns: ['value'],
+        where: 'key = ?',
+        whereArgs: ['daily_notification'],
       )).thenAnswer((_) async => [{
-        'key': 'daily_notification',
         'value': 'false',
-        'type': 'bool',
       }]);
 
       final result = await service.getDailyNotification();
@@ -136,12 +182,11 @@ void main() {
     test('getNotificationTime 應該返回正確的值', () async {
       when(mockDatabaseHelper.query(
         'preferences',
-        where: anyNamed('where'),
-        whereArgs: anyNamed('whereArgs'),
+        columns: ['value'],
+        where: 'key = ?',
+        whereArgs: ['notification_time'],
       )).thenAnswer((_) async => [{
-        'key': 'notification_time',
         'value': '10:30',
-        'type': 'string',
       }]);
 
       final result = await service.getNotificationTime();
@@ -151,8 +196,16 @@ void main() {
     test('在數據庫錯誤時應該返回默認值', () async {
       when(mockDatabaseHelper.query(
         'preferences',
-        where: anyNamed('where'),
-        whereArgs: anyNamed('whereArgs'),
+        columns: ['value'],
+        where: 'key = ?',
+        whereArgs: ['daily_notification'],
+      )).thenThrow(Exception('Database error'));
+
+      when(mockDatabaseHelper.query(
+        'preferences',
+        columns: ['value'],
+        where: 'key = ?',
+        whereArgs: ['notification_time'],
       )).thenThrow(Exception('Database error'));
 
       expect(await service.getDailyNotification(), true);

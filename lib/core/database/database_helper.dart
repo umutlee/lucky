@@ -1,7 +1,7 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:all_lucky/core/utils/logger.dart';
+import '../utils/logger.dart';
 
 /// 數據庫幫助類提供者
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
@@ -17,7 +17,7 @@ abstract class DatabaseHelper {
   Future<bool> init();
 
   /// 插入數據
-  Future<int> insert(String table, Map<String, dynamic> values);
+  Future<int> insert(String table, Map<String, dynamic> values, {ConflictAlgorithm? conflictAlgorithm});
 
   /// 更新數據
   Future<int> update(String table, Map<String, dynamic> values, {String? where, List<Object?>? whereArgs});
@@ -124,15 +124,11 @@ class DatabaseHelperImpl implements DatabaseHelper {
   }
 
   @override
-  Future<int> insert(String table, Map<String, dynamic> values) async {
+  Future<int> insert(String table, Map<String, dynamic> values, {ConflictAlgorithm? conflictAlgorithm}) async {
     try {
       final db = await database;
       values['updated_at'] = DateTime.now().toIso8601String();
-      return await db.insert(
-        table,
-        values,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      return await db.insert(table, values, conflictAlgorithm: conflictAlgorithm);
     } catch (e, stackTrace) {
       _logger.error('插入數據失敗', e, stackTrace);
       rethrow;
