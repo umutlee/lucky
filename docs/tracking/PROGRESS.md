@@ -26,19 +26,31 @@
 
 ## 更新歷史
 
-### 2024-03-21
-- ✅ 完成測試文件編寫
-  - 推送通知功能測試
-  - 數據加密測試
-  - 內存使用測試
-  - 端到端測試
-  - 性能測試
-- ⏳ 待執行測試驗證
-  - 推送通知功能
-  - 數據加密功能
-  - 內存使用情況
-  - 端到端流程
-  - 性能指標
+### 2024-01-26
+- ✅ 完成數據庫抽象層重構
+  - 修改 `DatabaseHelper` 類為抽象接口
+  - 實現 `DatabaseHelperImpl` 具體實現類
+  - 相關文件：`lib/core/database/database_helper.dart`
+
+- ✅ 完成用戶設置服務重構
+  - 更新 `UserSettings` 模型
+  - 修改 `SQLiteUserSettingsService` 實現
+  - 相關文件：
+    - `lib/core/models/user_settings.dart`
+    - `lib/core/services/sqlite_user_settings_service.dart`
+
+- ✅ 完成測試框架升級
+  - 從 `test` 包遷移到 `flutter_test`
+  - 更新所有測試用例
+  - 相關文件：
+    - `test/core/services/study_fortune_service_test.dart`
+    - `test/core/services/sqlite_preferences_service_test.dart`
+    - `test/core/services/sqlite_user_settings_service_test.dart`
+
+- ✅ 完成文檔結構重組
+  - 重組 `/docs` 目錄結構
+  - 整理和合併重複文檔
+  - 創建文檔導航和維護規範
 
 ## 測試覆蓋情況
 ### 已完成測試文件
