@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/fortune.dart';
 import '../models/compass_direction.dart';
 import '../models/filter_criteria.dart';
+import '../models/fortune_type.dart';
 import '../utils/logger.dart';
 
 final filterServiceProvider = Provider<FilterService>((ref) => FilterService());
@@ -29,8 +30,8 @@ class FilterService {
       var filtered = List<Fortune>.from(fortunes);
 
       // 按類型過濾
-      if (criteria.type != null) {
-        filtered = filtered.where((f) => f.type == criteria.type).toList();
+      if (criteria.fortuneType != null) {
+        filtered = filtered.where((f) => f.type == criteria.fortuneType).toList();
       }
 
       // 按分數範圍過濾
@@ -60,10 +61,24 @@ class FilterService {
         ).toList();
       }
 
+      // 按方位過濾
+      if (criteria.luckyDirections != null && criteria.luckyDirections!.isNotEmpty) {
+        filtered = filtered.where((f) => 
+          f.luckyDirections.any((d) => criteria.luckyDirections!.contains(d))
+        ).toList();
+      }
+
       // 按活動過濾
       if (criteria.activities != null && criteria.activities!.isNotEmpty) {
         filtered = filtered.where((f) => 
           f.suitableActivities.any((a) => criteria.activities!.contains(a))
+        ).toList();
+      }
+
+      // 按推薦過濾
+      if (criteria.recommendations != null && criteria.recommendations!.isNotEmpty) {
+        filtered = filtered.where((f) => 
+          f.recommendations.any((r) => criteria.recommendations!.contains(r))
         ).toList();
       }
 
@@ -72,7 +87,7 @@ class FilterService {
         final result = switch (criteria.sortField) {
           SortField.date => a.date.compareTo(b.date),
           SortField.score => a.score.compareTo(b.score),
-          SortField.type => a.type.compareTo(b.type),
+          SortField.type => a.type.name.compareTo(b.type.name),
         };
         return criteria.sortOrder == SortOrder.ascending ? result : -result;
       });
@@ -107,13 +122,15 @@ class FilterService {
   String _generateCacheKey(List<Fortune> fortunes, FilterCriteria criteria) {
     return [
       fortunes.map((f) => f.id).join(','),
-      criteria.type ?? 'noType',
+      criteria.fortuneType?.name ?? 'noType',
       criteria.minScore?.toString() ?? 'noMinScore',
       criteria.maxScore?.toString() ?? 'noMaxScore',
       criteria.isLuckyDay?.toString() ?? 'noLuckyDay',
       criteria.startDate?.toIso8601String() ?? 'noStartDate',
       criteria.endDate?.toIso8601String() ?? 'noEndDate',
+      criteria.luckyDirections?.join(',') ?? 'noDirections',
       criteria.activities?.join(',') ?? 'noActivities',
+      criteria.recommendations?.join(',') ?? 'noRecommendations',
       criteria.sortField.toString(),
       criteria.sortOrder.toString(),
     ].join('|');

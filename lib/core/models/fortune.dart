@@ -41,32 +41,7 @@ class Fortune with _$Fortune {
   }) = _Fortune;
 
   /// 從 JSON 創建
-  factory Fortune.fromJson(Map<String, dynamic> json) {
-    return Fortune(
-      id: json['id'] as String,
-      type: FortuneType.fromString(json['type'] as String),
-      title: json['title'] as String,
-      score: json['score'] as int,
-      description: json['description'] as String,
-      date: DateTime.parse(json['date'] as String),
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      luckyTimes: (json['luckyTimes'] as List<dynamic>).cast<String>(),
-      luckyDirections: (json['luckyDirections'] as List<dynamic>).cast<String>(),
-      luckyColors: (json['luckyColors'] as List<dynamic>).cast<String>(),
-      luckyNumbers: (json['luckyNumbers'] as List<dynamic>).cast<int>(),
-      suggestions: (json['suggestions'] as List<dynamic>).cast<String>(),
-      warnings: (json['warnings'] as List<dynamic>).cast<String>(),
-      isLuckyDay: json['isLuckyDay'] as bool? ?? false,
-      suitableActivities: (json['suitableActivities'] as List<dynamic>?)?.cast<String>() ?? [],
-      zodiac: json['zodiac'] != null ? Zodiac.fromJson(json['zodiac'] as Map<String, dynamic>) : null,
-      zodiacAffinity: json['zodiacAffinity'] as int? ?? 0,
-      recommendations: (json['recommendations'] as List<dynamic>?)?.cast<String>() ?? [],
-      studyFortune: json['studyFortune'] == null ? null : StudyFortune.fromJson(json['studyFortune'] as Map<String, dynamic>),
-      careerFortune: json['careerFortune'] == null ? null : CareerFortune.fromJson(json['careerFortune'] as Map<String, dynamic>),
-      loveFortune: json['loveFortune'] == null ? null : LoveFortune.fromJson(json['loveFortune'] as Map<String, dynamic>),
-      dailyFortune: json['dailyFortune'] == null ? null : DailyFortune.fromJson(json['dailyFortune'] as Map<String, dynamic>),
-    );
-  }
+  factory Fortune.fromJson(Map<String, dynamic> json) => _$FortuneFromJson(json);
 
   /// 獲取運勢等級
   String get level {
