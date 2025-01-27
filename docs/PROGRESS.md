@@ -126,7 +126,7 @@
 - 測試覆蓋：70%
 - 資料管理：90%
 - 多語言：95%
-- 用戶介面：30%
+- 用戶介面：45%
 - 後端服務：85%
 - 錯誤處理：100%
 - 日誌系統：100%
@@ -206,10 +206,25 @@
 - [x] 完成後端服務測試
 
 ### 介面開發 (中優先級)
-- [ ] 設計主頁面佈局
-- [ ] 實現運勢展示元件
+- [x] 設計主頁面佈局
+- [x] 實現運勢展示元件
 - [ ] 添加場景選擇介面
 - [ ] 實現指南針功能
+
+- ✅ 完成主要介面元件
+  - 實現首頁佈局（HomeScreen）
+  - 添加萬年曆視圖（CalendarView）
+  - 實現運勢卡片（FortuneCard）
+  - 完成生肖區塊（ZodiacSection）
+  - 完成星座區塊（HoroscopeSection）
+  - 添加錯誤邊界和日誌查看器
+  - 涉及文件：
+    - `lib/ui/screens/home/home_screen.dart`
+    - `lib/ui/widgets/calendar_view.dart`
+    - `lib/ui/widgets/fortune_card.dart`
+    - `lib/ui/widgets/zodiac_section.dart`
+    - `lib/ui/widgets/horoscope_section.dart`
+    - `lib/ui/screens/debug/log_viewer_screen.dart`
 
 ### 文檔更新 (中優先級)
 - [x] 更新技術文檔
