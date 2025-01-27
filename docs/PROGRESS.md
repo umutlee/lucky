@@ -1,6 +1,6 @@
 # 專案進度記錄
 
-> 最後更新時間：2025-01-27 17:30 (UTC+8)
+> 最後更新時間：2025-01-27 18:30 (UTC+8)
 
 ## 更新歷史
 
@@ -65,6 +65,14 @@
     - `lib/core/services/notification_service.dart`
     - `lib/features/settings/screens/notification_settings_screen.dart`
 
+- ✅ 實現性能測試框架
+  - 創建性能測試基礎設施
+  - 實現運勢計算性能測試
+  - 添加性能指標監控
+  - 涉及文件：
+    - `test/performance/performance_test_framework.dart`
+    - `test/performance/fortune_calculation_performance_test.dart`
+
 ### 2025-01-26 (昨日)
 - ✅ 更新所有模型類以適應新版Flutter
 - ✅ 優化API響應處理機制
@@ -91,6 +99,7 @@
 6. 運勢類型描述系統
 7. 數據安全保障系統
 8. 推送通知系統
+9. 性能測試框架
 
 ### 進行中功能 ⏳
 1. 用戶界面優化
@@ -106,6 +115,7 @@
 - 用戶界面：60%
 - 數據安全：95%
 - 推送通知：100%
+- 性能優化：80%
 
 ### 技術實現細節
 1. 使用 `chinese_lunar_calendar` 庫實現天文計算
@@ -122,8 +132,8 @@
 
 ### 測試計劃
 1. ✅ 單元測試覆蓋
-2. ⏳ 集成測試編寫
-3. ⏳ 性能測試
+2. ✅ 性能測試框架
+3. ⏳ 集成測試編寫（進行中）
 4. ⏳ 用戶界面測試
 
 ### 已知問題
