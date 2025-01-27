@@ -1,11 +1,13 @@
 import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/key_management_service.dart';
 import '../utils/logger.dart';
 
 /// 數據庫幫助類提供者
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
-  return DatabaseHelperImpl();
+  final keyManagementService = ref.watch(keyManagementServiceProvider);
+  return DatabaseHelperImpl(keyManagementService);
 });
 
 /// 數據庫幫助類基類
@@ -15,6 +17,9 @@ abstract class DatabaseHelper {
 
   /// 初始化數據庫
   Future<bool> init();
+
+  /// 重新加密數據庫
+  Future<bool> reencrypt();
 
   /// 插入數據
   Future<int> insert(String table, Map<String, dynamic> values, {ConflictAlgorithm? conflictAlgorithm});
@@ -46,7 +51,10 @@ abstract class DatabaseHelper {
 class DatabaseHelperImpl implements DatabaseHelper {
   static const String _tag = 'DatabaseHelper';
   final _logger = Logger(_tag);
+  final KeyManagementService _keyManagementService;
   Database? _database;
+
+  DatabaseHelperImpl(this._keyManagementService);
 
   @override
   Future<Database> get database async {
@@ -65,6 +73,28 @@ class DatabaseHelperImpl implements DatabaseHelper {
     }
   }
 
+  @override
+  Future<bool> reencrypt() async {
+    try {
+      // 關閉現有數據庫連接
+      if (_database != null) {
+        await _database!.close();
+        _database = null;
+      }
+
+      // 生成新密鑰
+      final newKey = await _keyManagementService.generateNewKey();
+      
+      // 重新打開數據庫
+      _database = await _initDatabase();
+      
+      return true;
+    } catch (e, stackTrace) {
+      _logger.error('重新加密數據庫失敗', e, stackTrace);
+      return false;
+    }
+  }
+
   /// 初始化數據庫
   Future<Database> _initDatabase() async {
     try {
@@ -73,9 +103,13 @@ class DatabaseHelperImpl implements DatabaseHelper {
       
       _logger.info('初始化數據庫: $path');
       
+      // 獲取加密密鑰
+      final key = await _keyManagementService.getDatabaseKey();
+      
       return await openDatabase(
         path,
         version: 1,
+        password: key, // 使用加密密鑰
         onCreate: (db, version) async {
           _logger.info('創建數據庫表');
           

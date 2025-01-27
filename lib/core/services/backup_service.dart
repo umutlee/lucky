@@ -5,162 +5,215 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:all_lucky/core/utils/logger.dart';
 import 'package:all_lucky/core/services/encryption_service.dart';
+import 'package:path/path.dart';
+import '../database/database_helper.dart';
 
+/// 備份服務提供者
 final backupServiceProvider = Provider<BackupService>((ref) {
-  final encryptionService = ref.watch(encryptionServiceProvider);
-  return BackupService(encryptionService);
+  final databaseHelper = ref.watch(databaseHelperProvider);
+  return BackupServiceImpl(databaseHelper);
 });
 
-class BackupService {
+/// 備份服務基類
+abstract class BackupService {
+  /// 創建備份
+  Future<String> createBackup();
+  
+  /// 從備份恢復
+  Future<bool> restoreFromBackup(String backupPath);
+  
+  /// 獲取所有備份
+  Future<List<String>> getBackups();
+  
+  /// 刪除備份
+  Future<bool> deleteBackup(String backupPath);
+  
+  /// 自動備份
+  Future<bool> autoBackup();
+}
+
+/// 備份服務實現
+class BackupServiceImpl implements BackupService {
   static const String _tag = 'BackupService';
   final _logger = Logger(_tag);
-  static const String _backupFileName = 'preferences_backup.enc';
-  static const String _hashFileName = 'preferences_backup.hash';
+  final DatabaseHelper _databaseHelper;
   
-  final EncryptionService _encryptionService;
+  BackupServiceImpl(this._databaseHelper);
   
-  BackupService(this._encryptionService);
-  
-  Future<bool> createBackup() async {
+  @override
+  Future<String> createBackup() async {
     try {
-      _logger.info('開始創建數據備份');
+      // 確保數據庫已關閉
+      final db = await _databaseHelper.database;
+      await db.close();
       
-      // 獲取 SharedPreferences 實例
-      final prefs = await SharedPreferences.getInstance();
+      // 獲取數據庫文件路徑
+      final dbPath = join((await getDatabasesPath()), 'all_lucky.db');
       
-      // 獲取所有數據
-      final Map<String, dynamic> data = {};
-      final keys = prefs.getKeys();
-      for (final key in keys) {
-        data[key] = prefs.get(key);
+      // 創建備份目錄
+      final backupDir = await _getBackupDirectory();
+      if (!await backupDir.exists()) {
+        await backupDir.create(recursive: true);
       }
       
-      // 將數據轉換為 JSON 並加密
-      final jsonData = jsonEncode(data);
-      final encryptedData = _encryptionService.encrypt(jsonData);
+      // 生成備份文件名
+      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+      final backupPath = join(backupDir.path, 'backup_$timestamp.db');
       
-      // 生成數據哈希
-      final hash = _encryptionService.generateHash(encryptedData);
+      // 複製數據庫文件
+      await File(dbPath).copy(backupPath);
       
-      // 獲取備份文件路徑
-      final backupFile = await _getBackupFile();
-      final hashFile = await _getHashFile();
+      _logger.info('創建備份成功: $backupPath');
+      return backupPath;
+    } catch (e, stackTrace) {
+      _logger.error('創建備份失敗', e, stackTrace);
+      rethrow;
+    }
+  }
+  
+  @override
+  Future<bool> restoreFromBackup(String backupPath) async {
+    try {
+      // 確保數據庫已關閉
+      final db = await _databaseHelper.database;
+      await db.close();
       
-      // 寫入加密數據和哈希
-      await backupFile.writeAsString(encryptedData);
-      await hashFile.writeAsString(hash);
+      // 獲取當前數據庫路徑
+      final dbPath = join((await getDatabasesPath()), 'all_lucky.db');
       
-      _logger.info('數據備份創建成功');
+      // 複製備份文件到數據庫位置
+      await File(backupPath).copy(dbPath);
+      
+      _logger.info('從備份恢復成功');
       return true;
     } catch (e, stackTrace) {
-      _logger.error('創建數據備份失敗', e, stackTrace);
+      _logger.error('從備份恢復失敗', e, stackTrace);
       return false;
     }
   }
   
-  Future<bool> restoreFromBackup() async {
+  @override
+  Future<List<String>> getBackups() async {
     try {
-      _logger.info('開始從備份恢復數據');
-      
-      // 獲取備份文件
-      final backupFile = await _getBackupFile();
-      final hashFile = await _getHashFile();
-      
-      // 檢查備份文件是否存在
-      if (!await backupFile.exists() || !await hashFile.exists()) {
-        _logger.error('備份文件不存在');
-        return false;
+      final backupDir = await _getBackupDirectory();
+      if (!await backupDir.exists()) {
+        return [];
       }
       
-      // 讀取加密數據和哈希
-      final encryptedData = await backupFile.readAsString();
-      final hash = await hashFile.readAsString();
+      final files = await backupDir
+          .list()
+          .where((entity) => entity is File && entity.path.endsWith('.db'))
+          .map((entity) => entity.path)
+          .toList();
       
-      // 驗證數據完整性
-      if (!_encryptionService.verifyIntegrity(encryptedData, hash)) {
-        _logger.error('備份數據完整性驗證失敗');
-        return false;
-      }
-      
-      // 解密數據
-      final jsonData = _encryptionService.decrypt(encryptedData);
-      final Map<String, dynamic> data = jsonDecode(jsonData);
-      
-      // 獲取 SharedPreferences 實例
-      final prefs = await SharedPreferences.getInstance();
-      
-      // 清除當前數據
-      await prefs.clear();
-      
-      // 恢復數據
-      for (final entry in data.entries) {
-        final key = entry.key;
-        final value = entry.value;
-        
-        if (value is bool) {
-          await prefs.setBool(key, value);
-        } else if (value is int) {
-          await prefs.setInt(key, value);
-        } else if (value is double) {
-          await prefs.setDouble(key, value);
-        } else if (value is String) {
-          await prefs.setString(key, value);
-        } else if (value is List<String>) {
-          await prefs.setStringList(key, value);
-        }
-      }
-      
-      _logger.info('數據恢復成功');
-      return true;
+      return files;
     } catch (e, stackTrace) {
-      _logger.error('恢復數據失敗', e, stackTrace);
-      return false;
+      _logger.error('獲取備份列表失敗', e, stackTrace);
+      return [];
     }
   }
   
-  Future<bool> deleteBackup() async {
+  @override
+  Future<bool> deleteBackup(String backupPath) async {
     try {
-      _logger.info('開始刪除備份');
-      
-      final backupFile = await _getBackupFile();
-      final hashFile = await _getHashFile();
-      
-      bool success = true;
-      
-      if (await backupFile.exists()) {
-        await backupFile.delete();
+      final file = File(backupPath);
+      if (await file.exists()) {
+        await file.delete();
+        _logger.info('刪除備份成功: $backupPath');
+        return true;
       }
-      
-      if (await hashFile.exists()) {
-        await hashFile.delete();
-      }
-      
-      _logger.info('備份刪除成功');
-      return success;
+      return false;
     } catch (e, stackTrace) {
       _logger.error('刪除備份失敗', e, stackTrace);
       return false;
     }
   }
   
-  Future<bool> hasBackup() async {
+  @override
+  Future<bool> autoBackup() async {
     try {
-      final backupFile = await _getBackupFile();
-      final hashFile = await _getHashFile();
-      return await backupFile.exists() && await hashFile.exists();
+      // 檢查上次備份時間
+      final lastBackupTime = await _getLastBackupTime();
+      final now = DateTime.now();
+      
+      // 如果距離上次備份不足24小時，跳過
+      if (lastBackupTime != null &&
+          now.difference(lastBackupTime).inHours < 24) {
+        return true;
+      }
+      
+      // 創建新備份
+      await createBackup();
+      
+      // 更新上次備份時間
+      await _updateLastBackupTime(now);
+      
+      // 清理舊備份（保留最近7天的備份）
+      await _cleanOldBackups();
+      
+      return true;
     } catch (e, stackTrace) {
-      _logger.error('檢查備份存在性失敗', e, stackTrace);
+      _logger.error('自動備份失敗', e, stackTrace);
       return false;
     }
   }
-
-  Future<File> _getBackupFile() async {
-    final directory = await getApplicationDocumentsDirectory();
-    return File('${directory.path}/$_backupFileName');
+  
+  /// 獲取備份目錄
+  Future<Directory> _getBackupDirectory() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    return Directory(join(appDir.path, 'backups'));
   }
   
-  Future<File> _getHashFile() async {
-    final directory = await getApplicationDocumentsDirectory();
-    return File('${directory.path}/$_hashFileName');
+  /// 獲取上次備份時間
+  Future<DateTime?> _getLastBackupTime() async {
+    try {
+      final results = await _databaseHelper.query(
+        'preferences',
+        where: 'key = ?',
+        whereArgs: ['last_backup_time'],
+      );
+      
+      if (results.isNotEmpty) {
+        return DateTime.parse(results.first['value'] as String);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  /// 更新上次備份時間
+  Future<void> _updateLastBackupTime(DateTime time) async {
+    await _databaseHelper.insert(
+      'preferences',
+      {
+        'key': 'last_backup_time',
+        'value': time.toIso8601String(),
+        'type': 'datetime',
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+  
+  /// 清理舊備份
+  Future<void> _cleanOldBackups() async {
+    try {
+      final backups = await getBackups();
+      final now = DateTime.now();
+      
+      for (final backup in backups) {
+        final fileName = basename(backup);
+        // 從文件名中提取時間戳
+        final timestamp = fileName.substring(7, fileName.length - 3);
+        final backupTime = DateTime.parse(timestamp.replaceAll('-', ':'));
+        
+        // 如果備份超過7天，刪除
+        if (now.difference(backupTime).inDays > 7) {
+          await deleteBackup(backup);
+        }
+      }
+    } catch (e, stackTrace) {
+      _logger.error('清理舊備份失敗', e, stackTrace);
+    }
   }
 } 

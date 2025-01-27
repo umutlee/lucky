@@ -19,6 +19,9 @@ dependencies:
   freezed_annotation: ^2.4.1
   json_annotation: ^4.8.1
   chinese_lunar_calendar: ^1.0.4
+  sqflite_sqlcipher: ^2.3.0
+  flutter_secure_storage: ^9.0.0
+  path_provider: ^2.1.2
 
 dev_dependencies:
   flutter_test:
