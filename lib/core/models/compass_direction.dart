@@ -4,6 +4,100 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'compass_direction.freezed.dart';
 part 'compass_direction.g.dart';
 
+enum CompassDirection {
+  north,
+  northEast,
+  east,
+  southEast,
+  south,
+  southWest,
+  west,
+  northWest;
+
+  @override
+  String toString() {
+    switch (this) {
+      case CompassDirection.north:
+        return '北';
+      case CompassDirection.northEast:
+        return '東北';
+      case CompassDirection.east:
+        return '東';
+      case CompassDirection.southEast:
+        return '東南';
+      case CompassDirection.south:
+        return '南';
+      case CompassDirection.southWest:
+        return '西南';
+      case CompassDirection.west:
+        return '西';
+      case CompassDirection.northWest:
+        return '西北';
+    }
+  }
+}
+
+@immutable
+class CompassState {
+  final double heading;
+  final CompassDirection currentDirection;
+  final String? directionDescription;
+  final List<String>? auspiciousDirections;
+  final bool isLoading;
+  final String? error;
+
+  const CompassState({
+    this.heading = 0.0,
+    this.currentDirection = CompassDirection.north,
+    this.directionDescription,
+    this.auspiciousDirections,
+    this.isLoading = false,
+    this.error,
+  });
+
+  CompassState copyWith({
+    double? heading,
+    CompassDirection? currentDirection,
+    String? directionDescription,
+    List<String>? auspiciousDirections,
+    bool? isLoading,
+    String? error,
+  }) {
+    return CompassState(
+      heading: heading ?? this.heading,
+      currentDirection: currentDirection ?? this.currentDirection,
+      directionDescription: directionDescription ?? this.directionDescription,
+      auspiciousDirections: auspiciousDirections ?? this.auspiciousDirections,
+      isLoading: isLoading ?? this.isLoading,
+      error: error ?? this.error,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is CompassState &&
+        other.heading == heading &&
+        other.currentDirection == currentDirection &&
+        other.directionDescription == directionDescription &&
+        listEquals(other.auspiciousDirections, auspiciousDirections) &&
+        other.isLoading == isLoading &&
+        other.error == error;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      heading,
+      currentDirection,
+      directionDescription,
+      Object.hashAll(auspiciousDirections ?? []),
+      isLoading,
+      error,
+    );
+  }
+}
+
 @freezed
 class CompassDirection with _$CompassDirection {
   const factory CompassDirection({
