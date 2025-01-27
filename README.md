@@ -1,133 +1,140 @@
-# All Lucky
+# All Lucky - 現代化運勢指南
 
-一個基於 Dart 的高性能緩存和數據管理系統。
+一款為年輕人打造的運勢諮詢應用，將傳統東方智慧以現代化方式呈現，幫助你在日常生活中做出更好的選擇。
 
-## 功能特點
+## 主要特色
 
-### 數據庫管理
-- SQLite 數據庫操作
-- 數據庫加密
-- 完整的 CRUD 操作
-- 事務支持
+### 運勢計算核心 ✅
+- 基礎運勢計算
+- 生肖運勢計算
+- 時間因素計算
+- 運勢趨勢分析
+- 運勢建議生成
 
-### 緩存系統
-- 內存緩存
-- 持久化緩存
-- 緩存過期機制
-- 緩存統計
+### 資料管理系統 ✅
+- API 資料獲取
+- 本地緩存管理
+- 資料預加載
+- 錯誤處理機制
 
-### 安全功能
-- 數據庫加密
-- 密鑰管理
-- 安全審計
+### 多語言支持 ✅
+- 傳統文字風格
+- 年輕人用語
+- 場景化描述
 
-### 性能監控
-- 操作計時
-- 資源使用監控
-- 性能報告
+### 每日運勢解讀 ⏳
+- 黃曆日期查詢（現代化解讀）
+- 今日宜忌指南（實用建議）
+- 運勢提醒（工作、學習、愛情）
+- 時間規劃建議
 
-## 快速開始
+### 個人運勢分析 ⏳
+- 生辰八字速查
+- 流年運勢預測
+- 星座運勢指南
+- 生日密碼解析
 
-### 安裝
-```yaml
-dependencies:
-  sqlite3: ^2.0.0
-  path: ^1.8.0
-  logging: ^1.2.0
-```
+### 生活指南 ⏳
+- 考試選日助手
+- 戀愛桃花指南
+- 面試時機推薦
+- 創業良機提示
 
-### 基本使用
-```dart
-// 初始化數據庫
-final keyManagementService = KeyManagementServiceFactory.create();
-final databaseHelper = DatabaseHelperFactory.create(keyManagementService);
-await databaseHelper.init();
+### 互動功能 ⏳
+- 運勢分享牆
+- 好友互動系統
+- 運勢打卡
+- 心得交流
 
-// 使用緩存服務
-final cacheService = CacheServiceFactory.create(databaseHelper);
+## 特色亮點
 
-// 設置緩存
-await cacheService.set('key', 'value');
+- 現代化解讀：用淺顯易懂的方式詮釋傳統文化
+- 實用建議：針對學習、工作、感情等現代生活場景
+- 精美介面：年輕化的設計風格
+- 社交互動：分享、討論的社群功能
+- 隱私保護：嚴格的用戶資料保護機制
 
-// 獲取緩存
-final value = await cacheService.get<String>('key', (json) => json as String);
+## 開始使用
 
-// 清理緩存
-await cacheService.clear();
-```
+1. 下載安裝
+- App Store：[開發中]
+- Google Play：[開發中]
 
-## 項目結構
+2. 快速上手
+- 註冊登入
+- 填寫基本資料（生日等）
+- 獲取個人運勢報告
+- 探索更多功能
+
+## 技術特點
+
+### 已完成 ✅
+- Flutter 跨平台開發
+- 智能緩存預取
+- 運勢計算引擎
+- 場景匹配系統
+- 多語言風格支持
+- 資料加密與同步
+
+### 開發中 ⏳
+- Material You 設計風格
+- 離線運算支持
+- 動態指南針效果
+- 深色模式支持
+
+## 專案結構
 
 ```
 lib/
   ├── core/           # 核心功能
-  │   ├── database/   # 數據庫相關
-  │   ├── services/   # 服務實現
-  │   └── utils/      # 工具類
-  ├── features/       # 功能模塊
-  └── shared/         # 共享組件
-
-test/
-  ├── core/           # 核心功能測試
-  ├── features/       # 功能模塊測試
-  └── integration/    # 集成測試
+  │   ├── calendar/   # 黃曆相關
+  │   ├── fortune/    # 運勢演算
+  │   ├── services/   # 核心服務
+  │   └── models/     # 資料模型
+  ├── features/       # 功能模組
+  │   ├── daily/      # 每日運勢
+  │   ├── personal/   # 個人分析
+  │   └── scenes/     # 場景功能
+  └── ui/            # 使用者介面
+      ├── theme/      # 主題設計
+      └── widgets/    # 共用元件
 ```
 
 ## 開發指南
 
-### 環境要求
-- Dart SDK: >=3.0.0 <4.0.0
-- SQLite: ^3.0.0
+### 環境配置
+- Flutter SDK: >=3.0.0
+- Dart SDK: >=3.0.0
+- Android Studio / VS Code
 
-### 開發設置
-1. 克隆倉庫
+### 開發流程
+1. 克隆專案
 ```bash
 git clone https://github.com/username/all-lucky.git
 ```
 
 2. 安裝依賴
 ```bash
-dart pub get
+flutter pub get
 ```
 
-3. 運行測試
+3. 運行專案
 ```bash
-dart test
+dart run
 ```
 
-### 代碼風格
-- 遵循 [Effective Dart](https://dart.dev/guides/language/effective-dart) 指南
-- 使用 `dartfmt` 格式化代碼
-- 添加適當的代碼註釋
+## 文件
 
-## 測試
-
-### 運行測試
-```bash
-# 運行所有測試
-dart test
-
-# 運行特定測試
-dart test test/core/services/cache_service_test.dart
-```
-
-### 測試覆蓋率
-```bash
-dart test --coverage=coverage
-dart pub global run coverage:format_coverage --packages=.packages --report-on=lib --lcov -o coverage/lcov.info -i coverage
-```
-
-## 文檔
-
+- [使用指南](docs/guides/README.md)
 - [API 文檔](docs/api/README.md)
-- [開發指南](docs/guides/README.md)
-- [MVP 計劃](docs/mvp/README.md)
-- [進度記錄](docs/PROGRESS.md)
+- [開發計劃](docs/mvp/README.md)
+- [更新記錄](docs/PROGRESS.md)
+- [儲存策略](docs/STORAGE_POLICY.md)
 
-## 貢獻
+## 參與貢獻
 
-請查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解如何貢獻代碼。
+歡迎提交 Issue 和 Pull Request，請參考 [貢獻指南](CONTRIBUTING.md)。
 
-## 許可證
+## 授權協議
 
-本項目採用 MIT 許可證 - 查看 [LICENSE](LICENSE) 文件了解詳情。 
+本專案採用 MIT 授權 - 詳見 [LICENSE](LICENSE) 文件。 
