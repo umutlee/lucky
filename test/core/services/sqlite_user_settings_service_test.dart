@@ -1,9 +1,8 @@
 import 'dart:convert';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:path/path.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -13,18 +12,18 @@ import '../../../lib/core/models/user_settings.dart';
 import '../../../lib/core/models/zodiac.dart';
 import 'sqlite_user_settings_service_test.mocks.dart';
 
-@GenerateMocks([Database])
-class MockDatabaseHelper extends Mock implements DatabaseHelper {}
-
+@GenerateMocks([], customMocks: [
+  MockSpec<DatabaseHelper>(
+    as: #MockDatabaseHelper,
+    onMissingStub: OnMissingStub.returnDefault,
+  ),
+])
 void main() {
   late SQLiteUserSettingsService service;
   late MockDatabaseHelper mockDatabaseHelper;
-  late MockDatabase mockDatabase;
 
   setUp(() {
     mockDatabaseHelper = MockDatabaseHelper();
-    mockDatabase = MockDatabase();
-    when(mockDatabaseHelper.database).thenAnswer((_) async => mockDatabase);
     service = SQLiteUserSettingsService(mockDatabaseHelper);
   });
 

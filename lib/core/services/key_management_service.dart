@@ -1,13 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as path;
 import '../utils/logger.dart';
 
-/// 密鑰管理服務提供者
-final keyManagementServiceProvider = Provider<KeyManagementService>((ref) {
-  return KeyManagementServiceImpl();
-});
+/// 密鑰管理服務工廠
+class KeyManagementServiceFactory {
+  static KeyManagementService create() {
+    return KeyManagementServiceImpl();
+  }
+}
 
 /// 密鑰管理服務基類
 abstract class KeyManagementService {
@@ -15,7 +17,7 @@ abstract class KeyManagementService {
   Future<String> getDatabaseKey();
   
   /// 生成新的加密密鑰
-  Future<String> generateNewKey();
+  Future<String> generateDatabaseKey();
   
   /// 重置加密密鑰
   Future<void> resetKey();
@@ -23,25 +25,29 @@ abstract class KeyManagementService {
 
 /// 密鑰管理服務實現
 class KeyManagementServiceImpl implements KeyManagementService {
-  static const String _tag = 'KeyManagementService';
-  final _logger = Logger(_tag);
+  final _logger = Logger();
   
-  static const String _keyStorageKey = 'database_encryption_key';
-  final _secureStorage = const FlutterSecureStorage();
+  static const String _keyFileName = '.encryption_key';
+  late final String _keyFilePath;
+  
+  KeyManagementServiceImpl() {
+    final appDir = Directory.current;
+    _keyFilePath = path.join(appDir.path, _keyFileName);
+  }
   
   @override
   Future<String> getDatabaseKey() async {
     try {
-      // 嘗試獲取現有密鑰
-      String? key = await _secureStorage.read(key: _keyStorageKey);
+      final file = File(_keyFilePath);
       
-      // 如果沒有密鑰，生成新的
-      if (key == null) {
-        key = await generateNewKey();
-        await _secureStorage.write(key: _keyStorageKey, value: key);
+      // 如果密鑰文件不存在，生成新的密鑰
+      if (!await file.exists()) {
+        return await generateDatabaseKey();
       }
       
-      return key;
+      // 讀取並解密密鑰
+      final encrypted = await file.readAsString();
+      return _decryptKey(encrypted);
     } catch (e, stackTrace) {
       _logger.error('獲取數據庫密鑰失敗', e, stackTrace);
       rethrow;
@@ -49,16 +55,18 @@ class KeyManagementServiceImpl implements KeyManagementService {
   }
   
   @override
-  Future<String> generateNewKey() async {
+  Future<String> generateDatabaseKey() async {
     try {
-      final random = Random.secure();
-      final values = List<int>.generate(32, (i) => random.nextInt(256));
-      final key = base64Url.encode(values);
+      final key = _generateRandomKey();
+      final encrypted = _encryptKey(key);
       
-      await _secureStorage.write(key: _keyStorageKey, value: key);
+      // 保存加密後的密鑰
+      final file = File(_keyFilePath);
+      await file.writeAsString(encrypted);
+      
       return key;
     } catch (e, stackTrace) {
-      _logger.error('生成新密鑰失敗', e, stackTrace);
+      _logger.error('生成數據庫密鑰失敗', e, stackTrace);
       rethrow;
     }
   }
@@ -66,10 +74,29 @@ class KeyManagementServiceImpl implements KeyManagementService {
   @override
   Future<void> resetKey() async {
     try {
-      await _secureStorage.delete(key: _keyStorageKey);
+      final file = File(_keyFilePath);
+      if (await file.exists()) {
+        await file.delete();
+      }
     } catch (e, stackTrace) {
       _logger.error('重置密鑰失敗', e, stackTrace);
       rethrow;
     }
+  }
+  
+  String _generateRandomKey() {
+    final random = Random.secure();
+    final values = List<int>.generate(32, (i) => random.nextInt(256));
+    return base64Url.encode(values);
+  }
+  
+  String _encryptKey(String key) {
+    // TODO: 實現密鑰加密
+    return key;
+  }
+  
+  String _decryptKey(String encrypted) {
+    // TODO: 實現密鑰解密
+    return encrypted;
   }
 } 

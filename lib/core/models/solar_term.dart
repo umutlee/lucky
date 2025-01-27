@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:json_annotation/json_annotation.dart';
 
-@immutable
+part 'solar_term.g.dart';
+
+@JsonSerializable()
 class SolarTerm {
   final String name;
   final DateTime date;
@@ -12,21 +15,9 @@ class SolarTerm {
     this.description,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'date': date.toIso8601String(),
-      'description': description,
-    };
-  }
+  Map<String, dynamic> toJson() => _$SolarTermToJson(this);
 
-  factory SolarTerm.fromJson(Map<String, dynamic> json) {
-    return SolarTerm(
-      name: json['name'] as String,
-      date: DateTime.parse(json['date'] as String),
-      description: json['description'] as String?,
-    );
-  }
+  factory SolarTerm.fromJson(Map<String, dynamic> json) => _$SolarTermFromJson(json);
 
   @override
   bool operator ==(Object other) =>

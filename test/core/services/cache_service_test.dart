@@ -1,216 +1,210 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:all_lucky/core/services/cache_service.dart';
-import 'package:all_lucky/core/services/database_service.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:test/test.dart';
+import 'package:mockito/mockito.dart';
+import 'package:mockito/annotations.dart';
+import 'package:sqlite3/sqlite3.dart';
+import '../../../lib/core/database/database_helper.dart';
+import '../../../lib/core/services/cache_service.dart';
+import '../../../lib/core/models/fortune.dart';
+import '../../../lib/core/models/fortune_type.dart';
+import '../../../lib/core/utils/logger.dart';
+import 'cache_service_test.mocks.dart';
 
+@GenerateMocks([DatabaseHelper])
 void main() {
-  late DatabaseService databaseService;
+  late MockDatabaseHelper mockDatabaseHelper;
   late CacheService cacheService;
+  late DateTime fixedTime;
 
-  setUpAll(() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+  setUp(() {
+    mockDatabaseHelper = MockDatabaseHelper();
+    cacheService = CacheServiceFactory.create(mockDatabaseHelper);
+    fixedTime = DateTime.now();
   });
 
-  setUp(() async {
-    databaseService = DatabaseService();
-    await databaseService.init();
-    cacheService = CacheService(databaseService);
-  });
+  group('CacheService', () {
+    test('should set and get cache', () async {
+      const key = 'test_key';
+      const value = 'test_value';
 
-  tearDown(() async {
-    await databaseService.dispose();
-  });
+      await cacheService.set(key, value);
+      final result = await cacheService.get<String>(key, (json) => json as String);
 
-  group('CacheService - 基本操作', () {
-    test('設置和獲取緩存', () async {
-      await cacheService.set('test_key', 'test_value');
-      final value = await cacheService.get<String>('test_key');
-      expect(value, 'test_value');
+      expect(result, value);
     });
 
-    test('設置帶過期時間的緩存', () async {
-      await cacheService.set(
-        'expiring_key',
-        'expiring_value',
-        expiration: Duration(milliseconds: 100),
-      );
+    test('should get persistent cache from database', () async {
+      const key = 'test_key';
+      const value = 'test_value';
+      final config = CacheConfig(isPersistent: true);
 
-      final immediateValue = await cacheService.get<String>('expiring_key');
-      expect(immediateValue, 'expiring_value');
+      when(mockDatabaseHelper.query(
+        'cache',
+        where: anyNamed('where'),
+        whereArgs: anyNamed('whereArgs'),
+      )).thenAnswer((_) async => [
+        {
+          'value': '{"data":"test_value","expiresAt":"${fixedTime.add(const Duration(hours: 1)).toIso8601String()}","createdAt":"${fixedTime.toIso8601String()}","lastAccessedAt":"${fixedTime.toIso8601String()}","accessCount":0}',
+        },
+      ]);
 
-      await Future.delayed(Duration(milliseconds: 150));
+      when(mockDatabaseHelper.insert(
+        'cache',
+        any,
+        conflictResolution: 'REPLACE',
+      )).thenAnswer((_) async => 1);
 
-      final expiredValue = await cacheService.get<String>('expiring_key');
-      expect(expiredValue, null);
+      await cacheService.set(key, value, config: config);
+      final result = await cacheService.get<String>(key, (json) => json as String, config: config);
+
+      expect(result, value);
+      verify(mockDatabaseHelper.query(
+        'cache',
+        where: anyNamed('where'),
+        whereArgs: anyNamed('whereArgs'),
+      )).called(1);
     });
 
-    test('檢查緩存是否存在', () async {
-      await cacheService.set('existing_key', 'value');
-      expect(await cacheService.has('existing_key'), true);
-      expect(await cacheService.has('non_existing_key'), false);
+    test('should remove cache', () async {
+      const key = 'test_key';
+      const value = 'test_value';
+
+      when(mockDatabaseHelper.delete(
+        'cache',
+        where: anyNamed('where'),
+        whereArgs: anyNamed('whereArgs'),
+      )).thenAnswer((_) async => 1);
+
+      await cacheService.set(key, value);
+      await cacheService.remove(key);
+      final result = await cacheService.get<String>(key, (json) => json as String);
+
+      expect(result, null);
     });
 
-    test('刪除緩存', () async {
-      await cacheService.set('delete_key', 'value');
-      await cacheService.remove('delete_key');
-      expect(await cacheService.has('delete_key'), false);
-    });
+    test('should clear all cache', () async {
+      const key1 = 'test_key1';
+      const key2 = 'test_key2';
+      const value = 'test_value';
 
-    test('清空緩存', () async {
-      await cacheService.set('key1', 'value1');
-      await cacheService.set('key2', 'value2');
+      when(mockDatabaseHelper.delete('cache')).thenAnswer((_) async => 1);
+
+      await cacheService.set(key1, value);
+      await cacheService.set(key2, value);
       await cacheService.clear();
-      expect(await cacheService.has('key1'), false);
-      expect(await cacheService.has('key2'), false);
-    });
-  });
 
-  group('CacheService - 批量操作', () {
-    test('批量設置和獲取緩存', () async {
-      final entries = {
-        'key1': 'value1',
-        'key2': 'value2',
-        'key3': 'value3',
-      };
+      final result1 = await cacheService.get<String>(key1, (json) => json as String);
+      final result2 = await cacheService.get<String>(key2, (json) => json as String);
 
-      await cacheService.setMultiple(entries);
-
-      final values = await cacheService.getMultiple<String>(entries.keys.toList());
-      expect(values, entries);
+      expect(result1, null);
+      expect(result2, null);
     });
 
-    test('批量設置帶過期時間的緩存', () async {
-      final entries = {
-        'exp_key1': 'value1',
-        'exp_key2': 'value2',
-      };
+    test('should get cache statistics', () async {
+      const key1 = 'test_key1';
+      const key2 = 'test_key2';
+      const value = 'test_value';
+      final config = CacheConfig(isPersistent: true);
 
-      await cacheService.setMultiple(
-        entries,
-        expiration: Duration(milliseconds: 100),
+      when(mockDatabaseHelper.query('cache')).thenAnswer((_) async => [
+        {
+          'key': key1,
+          'value': '{"data":"test_value","expiresAt":"${fixedTime.add(const Duration(hours: 1)).toIso8601String()}","createdAt":"${fixedTime.toIso8601String()}","lastAccessedAt":"${fixedTime.toIso8601String()}","accessCount":1}',
+        },
+        {
+          'key': key2,
+          'value': '{"data":"test_value","expiresAt":"${fixedTime.add(const Duration(hours: 1)).toIso8601String()}","createdAt":"${fixedTime.toIso8601String()}","lastAccessedAt":"${fixedTime.toIso8601String()}","accessCount":2}',
+        },
+      ]);
+
+      when(mockDatabaseHelper.insert(
+        'cache',
+        any,
+        conflictResolution: 'REPLACE',
+      )).thenAnswer((_) async => 1);
+
+      await cacheService.set(key1, value, config: config);
+      await cacheService.set(key2, value, config: config);
+
+      final stats = await cacheService.getStats();
+
+      expect(stats['volatile'], 2);
+      expect(stats['persistent'], 2);
+      expect(stats['total'], 4);
+      expect(stats['total_access_count'], 3);
+    });
+
+    test('should handle complex objects', () async {
+      const key = 'test_fortune';
+      final fortune = Fortune(
+        id: '123456789',
+        type: FortuneType.daily,
+        title: '今日運勢',
+        score: 85,
+        description: '今天是個好日子',
+        date: DateTime(2024, 1, 1),
+        createdAt: DateTime(2024, 1, 1),
+        luckyTimes: const ['早上', '下午'],
+        luckyDirections: const ['東', '南'],
+        luckyColors: const ['紅', '黃'],
+        luckyNumbers: const [1, 8],
+        suggestions: const ['多運動', '早睡早起'],
+        warnings: const ['避免熬夜'],
       );
 
-      final immediateValues = await cacheService.getMultiple<String>(entries.keys.toList());
-      expect(immediateValues, entries);
+      await cacheService.set(key, fortune);
+      final result = await cacheService.get<Fortune>(
+        key,
+        (json) => Fortune.fromJson(json as Map<String, dynamic>),
+      );
 
-      await Future.delayed(Duration(milliseconds: 150));
-
-      final expiredValues = await cacheService.getMultiple<String>(entries.keys.toList());
-      expect(expiredValues.values.every((v) => v == null), true);
+      expect(result?.id, fortune.id);
+      expect(result?.type, fortune.type);
+      expect(result?.score, fortune.score);
     });
 
-    test('批量刪除緩存', () async {
-      await cacheService.setMultiple({
-        'del_key1': 'value1',
-        'del_key2': 'value2',
-      });
+    test('should handle cache expiration', () async {
+      const key = 'test_key';
+      const value = 'test_value';
+      final config = CacheConfig(expiration: const Duration(milliseconds: 100));
 
-      await cacheService.removeMultiple(['del_key1', 'del_key2']);
+      await cacheService.set(key, value, config: config);
+      await Future.delayed(const Duration(milliseconds: 150));
+      final result = await cacheService.get<String>(key, (json) => json as String);
 
-      final values = await cacheService.getMultiple<String>(['del_key1', 'del_key2']);
-      expect(values.values.every((v) => v == null), true);
-    });
-  });
-
-  group('CacheService - 內存緩存', () {
-    test('優先使用內存緩存', () async {
-      await cacheService.set('memory_key', 'memory_value');
-      
-      // 第一次獲取會從數據庫讀取
-      final firstValue = await cacheService.get<String>('memory_key');
-      expect(firstValue, 'memory_value');
-
-      // 第二次獲取應該從內存讀取
-      final stats1 = cacheService.getStats();
-      final secondValue = await cacheService.get<String>('memory_key');
-      final stats2 = cacheService.getStats();
-
-      expect(secondValue, 'memory_value');
-      expect(stats2['memoryHits']! - stats1['memoryHits']!, 1);
+      expect(result, null);
     });
 
-    test('禁用內存緩存', () async {
-      await cacheService.set('disk_key', 'disk_value', useMemoryCache: false);
-      
-      final stats1 = cacheService.getStats();
-      final value = await cacheService.get<String>('disk_key', useMemoryCache: false);
-      final stats2 = cacheService.getStats();
+    test('should enforce max items limit', () async {
+      const maxItems = 2;
+      final config = CacheConfig(maxItems: maxItems);
 
-      expect(value, 'disk_value');
-      expect(stats2['diskHits']! - stats1['diskHits']!, 1);
-      expect(stats2['memoryHits'], stats1['memoryHits']);
-    });
-  });
+      when(mockDatabaseHelper.delete(
+        'cache',
+        where: anyNamed('where'),
+        whereArgs: anyNamed('whereArgs'),
+      )).thenAnswer((_) async => 1);
 
-  group('CacheService - 性能統計', () {
-    test('統計命中率', () async {
-      // 設置一些測試數據
-      await cacheService.setMultiple({
-        'stat_key1': 'value1',
-        'stat_key2': 'value2',
-      });
+      for (var i = 0; i < maxItems + 1; i++) {
+        await cacheService.set('key$i', 'value$i', config: config);
+      }
 
-      // 進行一些緩存操作
-      await cacheService.get<String>('stat_key1'); // 磁盤命中
-      await cacheService.get<String>('stat_key1'); // 內存命中
-      await cacheService.get<String>('non_existent'); // 未命中
-
-      final stats = cacheService.getStats();
-      expect(stats['memoryHits'], 1);
-      expect(stats['diskHits'], 1);
-      expect(stats['misses'], 1);
-      expect(stats['hitRatio'], 67); // (1 + 1) / (1 + 1 + 1) * 100 ≈ 67%
+      final result = await cacheService.get<String>('key0', (json) => json as String);
+      expect(result, null);
     });
 
-    test('重置統計信息', () async {
-      await cacheService.set('reset_key', 'value');
-      await cacheService.get<String>('reset_key');
-      await cacheService.get<String>('reset_key');
+    test('should handle database errors gracefully', () async {
+      const key = 'test_key';
+      const value = 'test_value';
+      final config = CacheConfig(isPersistent: true);
 
-      final stats1 = cacheService.getStats();
-      expect(stats1['totalHits']! > 0, true);
+      when(mockDatabaseHelper.query(
+        'cache',
+        where: anyNamed('where'),
+        whereArgs: anyNamed('whereArgs'),
+      )).thenThrow(Exception('Database error'));
 
-      await cacheService.clear(); // 清空緩存同時重置統計信息
-
-      final stats2 = cacheService.getStats();
-      expect(stats2['memoryHits'], 0);
-      expect(stats2['diskHits'], 0);
-      expect(stats2['misses'], 0);
-      expect(stats2['writes'], 0);
-    });
-  });
-
-  group('CacheService - 錯誤處理', () {
-    test('獲取不存在的緩存', () async {
-      final value = await cacheService.get<String>('non_existent_key');
-      expect(value, null);
-
-      final stats = cacheService.getStats();
-      expect(stats['misses']! > 0, true);
-    });
-
-    test('設置無效的緩存值', () async {
-      // 測試設置無效的 JSON 值
-      final invalidObject = Object();
-      expect(() async {
-        await cacheService.set('invalid_key', invalidObject);
-      }, throwsException);
-    });
-
-    test('批量操作部分失敗', () async {
-      final entries = {
-        'valid_key': 'valid_value',
-        'invalid_key': Object(), // 無效的 JSON 值
-      };
-
-      expect(() async {
-        await cacheService.setMultiple(entries);
-      }, throwsException);
-
-      // 確保沒有部分寫入
-      final value = await cacheService.get<String>('valid_key');
-      expect(value, null);
+      final result = await cacheService.get<String>(key, (json) => json as String, config: config);
+      expect(result, null);
     });
   });
 } 

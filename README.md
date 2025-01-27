@@ -1,198 +1,133 @@
-# All Lucky - 運勢預測應用
+# All Lucky
 
-一款基於 Flutter 開發的運勢預測應用，提供每日運勢查詢、方位指南和通知提醒功能。
-
-## 當前版本狀態
-
-- 版本：MVP 1.0.0（開發中）
-- 進度：90%
-- 預計發布：2024-04
-
-### 完成功能
-- ✅ 運勢查詢核心功能
-- ✅ 用戶身份設置
-- ✅ 基礎日曆功能
-- ✅ 通知系統
-- ✅ 錯誤處理機制
-- ✅ 載入提示系統
-- ✅ 頁面切換優化
-- ✅ 運勢過濾系統
-- ✅ 生肖配對算法
-- ✅ 天文計算服務
-
-### 進行中功能
-- ⏳ 數據安全保障（90%）
-- ⏳ 推送通知功能（85%）
-- ⏳ 性能優化和測試（95%）
+一個基於 Dart 的高性能緩存和數據管理系統。
 
 ## 功能特點
 
-### 1. 運勢預測
-- 支持多種運勢類型（總體運勢、愛情運勢、事業運勢、財運）
-- 提供每日運勢評分和詳細解讀
-- 支持日期選擇和歷史記錄查詢
+### 數據庫管理
+- SQLite 數據庫操作
+- 數據庫加密
+- 完整的 CRUD 操作
+- 事務支持
 
-### 2. 方位指南
-- 實時顯示當前方位
-- 提供吉利方位提示
-- 支持方位解讀和建議
+### 緩存系統
+- 內存緩存
+- 持久化緩存
+- 緩存過期機制
+- 緩存統計
 
-### 3. 推送通知
-- 支持每日運勢提醒
-- 可自定義通知時間
-- 支持即時通知和定時通知
-- 提供通知管理功能
+### 安全功能
+- 數據庫加密
+- 密鑰管理
+- 安全審計
 
-## 技術特點
+### 性能監控
+- 操作計時
+- 資源使用監控
+- 性能報告
 
-- 使用 Flutter 3.x 最新版本開發
-- 採用 Clean Architecture 架構
-- 使用 Riverpod 進行狀態管理
-- 實現響應式設計，支持多種設備尺寸
-- 使用 SQLite 進行本地數據存儲
-- 集成推送通知功能
-- 實現完整的錯誤處理和日誌記錄
+## 快速開始
 
-## 開發環境要求
-
-### 必要條件
-- Flutter 3.x
-- Dart 3.x
-- Android Studio / VS Code
-- iOS 13.0+ / Android 5.0+
-- Git
-- SQLite
-
-### 測試環境配置
-1. 安裝必要工具
-```bash
-flutter pub global activate coverage
-flutter pub global activate test_coverage
+### 安裝
+```yaml
+dependencies:
+  sqlite3: ^2.0.0
+  path: ^1.8.0
+  logging: ^1.2.0
 ```
 
-2. 配置環境變量
-```bash
-export VM_SERVICE_URL="http://127.0.0.1:8181/"
-```
+### 基本使用
+```dart
+// 初始化數據庫
+final keyManagementService = KeyManagementServiceFactory.create();
+final databaseHelper = DatabaseHelperFactory.create(keyManagementService);
+await databaseHelper.init();
 
-3. 安裝測試依賴
-```bash
-flutter pub add --dev mockito
-flutter pub add --dev build_runner
-```
+// 使用緩存服務
+final cacheService = CacheServiceFactory.create(databaseHelper);
 
-## 安裝說明
+// 設置緩存
+await cacheService.set('key', 'value');
 
-1. 克隆項目
-```bash
-git clone https://github.com/umutlee/lucky.git
-```
+// 獲取緩存
+final value = await cacheService.get<String>('key', (json) => json as String);
 
-2. 安裝依賴
-```bash
-flutter pub get
-```
-
-3. 生成必要文件
-```bash
-flutter pub run build_runner build --delete-conflicting-outputs
-```
-
-4. 運行測試
-```bash
-flutter test
-```
-
-5. 運行應用
-```bash
-flutter run
+// 清理緩存
+await cacheService.clear();
 ```
 
 ## 項目結構
 
 ```
 lib/
-  ├── core/                 # 核心功能
-  │   ├── services/        # 服務層
-  │   ├── utils/           # 工具類
-  │   └── widgets/         # 共用組件
-  ├── features/            # 功能模塊
-  │   ├── fortune/         # 運勢預測
-  │   ├── compass/         # 方位指南
-  │   └── notification/    # 推送通知
-  └── main.dart            # 入口文件
+  ├── core/           # 核心功能
+  │   ├── database/   # 數據庫相關
+  │   ├── services/   # 服務實現
+  │   └── utils/      # 工具類
+  ├── features/       # 功能模塊
+  └── shared/         # 共享組件
 
 test/
-  ├── unit/               # 單元測試
-  ├── integration/        # 集成測試
-  └── performance/        # 性能測試
+  ├── core/           # 核心功能測試
+  ├── features/       # 功能模塊測試
+  └── integration/    # 集成測試
 ```
 
-## 使用說明
+## 開發指南
 
-### 運勢預測
-1. 在首頁選擇想要查詢的運勢類型
-2. 選擇日期（默認為當天）
-3. 查看運勢評分和詳細解讀
+### 環境要求
+- Dart SDK: >=3.0.0 <4.0.0
+- SQLite: ^3.0.0
 
-### 方位指南
-1. 進入方位指南頁面
-2. 保持手機水平以獲取準確的方位數據
-3. 查看當前方位和吉利方位提示
+### 開發設置
+1. 克隆倉庫
+```bash
+git clone https://github.com/username/all-lucky.git
+```
 
-### 推送通知
-1. 首次使用時會請求通知權限
-2. 在設置中可以自定義通知時間
-3. 可以開啟/關閉每日運勢提醒
-4. 支持手動清除所有通知
+2. 安裝依賴
+```bash
+dart pub get
+```
 
-## 開發指引
+3. 運行測試
+```bash
+dart test
+```
 
-### 文檔閱讀順序
-在開始任何開發工作前，請按照以下順序閱讀相關文檔：
+### 代碼風格
+- 遵循 [Effective Dart](https://dart.dev/guides/language/effective-dart) 指南
+- 使用 `dartfmt` 格式化代碼
+- 添加適當的代碼註釋
 
-1. **核心原則** (`/docs/CORE_PRINCIPLES.md`)
-2. **架構文檔** (`/docs/ARCHITECTURE.md`)
-3. **API 文檔** (`/docs/api/API.md`)
-4. **開發指南** (`/docs/DEVELOPMENT_GUIDE.md`)
-5. **測試文檔** (`/docs/TESTING.md`)
-6. **進度記錄** (`/docs/PROGRESS.md`)
+## 測試
 
-### MVP 版本發布檢查清單
-- [ ] 完成所有核心功能測試
-- [ ] 驗證性能指標達標
-- [ ] 確認安全性要求
-- [ ] 完成文檔更新
-- [ ] 準備發布材料
+### 運行測試
+```bash
+# 運行所有測試
+dart test
 
-## 注意事項
+# 運行特定測試
+dart test test/core/services/cache_service_test.dart
+```
 
-- 方位指南功能需要設備支持磁力計
-- 推送通知需要系統授權
-- 建議保持網絡連接以獲取最新數據
+### 測試覆蓋率
+```bash
+dart test --coverage=coverage
+dart pub global run coverage:format_coverage --packages=.packages --report-on=lib --lcov -o coverage/lcov.info -i coverage
+```
 
-## 貢獻指南
+## 文檔
 
-歡迎提交 Issue 和 Pull Request 來改進項目。
+- [API 文檔](docs/api/README.md)
+- [開發指南](docs/guides/README.md)
+- [MVP 計劃](docs/mvp/README.md)
+- [進度記錄](docs/PROGRESS.md)
+
+## 貢獻
+
+請查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解如何貢獻代碼。
 
 ## 許可證
 
-本項目基於 MIT 許可證開源。
-
-## 更新記錄
-
-### 2024-03-21
-- 更新 MVP 版本進度
-- 添加測試環境配置說明
-- 完善安裝步驟
-- 添加發布檢查清單
-
-## 技術架構
-
-### 本地儲存
-- 採用 SQLite 作為唯一的本地儲存方案
-- 嚴格禁止使用其他儲存方式（如 SharedPreferences）
-- 詳細規範請參考 `/docs/STORAGE_POLICY.md`
-
-### 主要功能
-// ... existing code ... 
+本項目採用 MIT 許可證 - 查看 [LICENSE](LICENSE) 文件了解詳情。 

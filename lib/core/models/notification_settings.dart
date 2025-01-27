@@ -1,11 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show TimeOfDay;
+import 'package:json_annotation/json_annotation.dart';
 
-@immutable
+part 'notification_settings.g.dart';
+
+@JsonSerializable()
 class NotificationSettings {
   final bool enableDailyFortune;
+  @JsonKey(toJson: _timeOfDayToJson, fromJson: _timeOfDayFromJson)
   final TimeOfDay dailyNotificationTime;
   final bool enableSolarTerm;
+  @JsonKey(toJson: _durationToJson, fromJson: _durationFromJson)
   final Duration solarTermPreNotifyDuration;
   final bool enableLuckyDay;
 
@@ -33,32 +38,23 @@ class NotificationSettings {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'enableDailyFortune': enableDailyFortune,
-      'dailyNotificationTime': {
-        'hour': dailyNotificationTime.hour,
-        'minute': dailyNotificationTime.minute,
-      },
-      'enableSolarTerm': enableSolarTerm,
-      'solarTermPreNotifyDuration': solarTermPreNotifyDuration.inDays,
-      'enableLuckyDay': enableLuckyDay,
-    };
-  }
+  Map<String, dynamic> toJson() => _$NotificationSettingsToJson(this);
 
-  factory NotificationSettings.fromJson(Map<String, dynamic> json) {
-    final timeJson = json['dailyNotificationTime'] as Map<String, dynamic>;
-    return NotificationSettings(
-      enableDailyFortune: json['enableDailyFortune'] as bool? ?? true,
-      dailyNotificationTime: TimeOfDay(
-        hour: timeJson['hour'] as int? ?? 8,
-        minute: timeJson['minute'] as int? ?? 0,
-      ),
-      enableSolarTerm: json['enableSolarTerm'] as bool? ?? true,
-      solarTermPreNotifyDuration: Duration(days: json['solarTermPreNotifyDuration'] as int? ?? 1),
-      enableLuckyDay: json['enableLuckyDay'] as bool? ?? true,
-    );
-  }
+  factory NotificationSettings.fromJson(Map<String, dynamic> json) => _$NotificationSettingsFromJson(json);
+
+  static Map<String, int> _timeOfDayToJson(TimeOfDay time) => {
+    'hour': time.hour,
+    'minute': time.minute,
+  };
+
+  static TimeOfDay _timeOfDayFromJson(Map<String, dynamic> json) => TimeOfDay(
+    hour: json['hour'] as int,
+    minute: json['minute'] as int,
+  );
+
+  static int _durationToJson(Duration duration) => duration.inDays;
+
+  static Duration _durationFromJson(int days) => Duration(days: days);
 
   @override
   bool operator ==(Object other) =>

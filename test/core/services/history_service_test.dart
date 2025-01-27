@@ -1,41 +1,34 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:all_lucky/core/services/database_service.dart';
+import 'package:sqlite3/sqlite3.dart';
+import 'package:all_lucky/core/database/database_helper.dart';
 import 'package:all_lucky/core/services/history_service.dart';
 import 'package:all_lucky/core/models/history_record.dart';
 import 'history_service_test.mocks.dart';
 
 @GenerateMocks([], customMocks: [
-  MockSpec<DatabaseService>(
-    as: #MockDatabaseService,
-    onMissingStub: OnMissingStub.returnDefault,
-  ),
-  MockSpec<Database>(
-    as: #MockDatabase,
+  MockSpec<DatabaseHelper>(
+    as: #MockDatabaseHelper,
     onMissingStub: OnMissingStub.returnDefault,
   ),
 ])
 void main() {
-  late MockDatabaseService mockDatabaseService;
-  late MockDatabase mockDatabase;
+  late MockDatabaseHelper mockDatabaseHelper;
   late HistoryService historyService;
 
   setUp(() {
-    mockDatabaseService = MockDatabaseService();
-    mockDatabase = MockDatabase();
-    when(mockDatabaseService.database).thenAnswer((_) async => mockDatabase);
-    historyService = HistoryService(mockDatabaseService);
+    mockDatabaseHelper = MockDatabaseHelper();
+    historyService = HistoryService(mockDatabaseHelper);
   });
 
   group('HistoryService', () {
     test('初始化應該創建表', () async {
-      when(mockDatabase.execute(any)).thenAnswer((_) async => {});
+      when(mockDatabaseHelper.execute(any)).thenAnswer((_) async => {});
 
       await historyService.init();
 
-      verify(mockDatabase.execute(argThat(contains('CREATE TABLE IF NOT EXISTS history_records')))).called(1);
+      verify(mockDatabaseHelper.execute(argThat(contains('CREATE TABLE IF NOT EXISTS history_records')))).called(1);
     });
 
     test('添加記錄應該返回新ID', () async {
@@ -46,12 +39,12 @@ void main() {
         fortuneResult: '大吉',
       );
 
-      when(mockDatabase.insert(any, any)).thenAnswer((_) async => 1);
+      when(mockDatabaseHelper.insert(any, any)).thenAnswer((_) async => 1);
 
       final id = await historyService.addRecord(record);
 
       expect(id, isNotEmpty);
-      verify(mockDatabase.insert('history_records', any)).called(1);
+      verify(mockDatabaseHelper.insert('history_records', any)).called(1);
     });
 
     test('獲取記錄應該正確轉換數據', () async {
@@ -65,7 +58,7 @@ void main() {
         'is_favorite': 1,
       }];
 
-      when(mockDatabase.query(
+      when(mockDatabaseHelper.query(
         any,
         where: anyNamed('where'),
         orderBy: anyNamed('orderBy'),
@@ -94,7 +87,7 @@ void main() {
         isFavorite: true,
       );
 
-      when(mockDatabase.update(
+      when(mockDatabaseHelper.update(
         any,
         any,
         where: anyNamed('where'),
@@ -104,7 +97,7 @@ void main() {
       final success = await historyService.updateRecord(record);
 
       expect(success, true);
-      verify(mockDatabase.update(
+      verify(mockDatabaseHelper.update(
         'history_records',
         any,
         where: 'id = ?',
@@ -113,7 +106,7 @@ void main() {
     });
 
     test('刪除記錄應該返回成功', () async {
-      when(mockDatabase.delete(
+      when(mockDatabaseHelper.delete(
         any,
         where: anyNamed('where'),
         whereArgs: anyNamed('whereArgs'),
@@ -122,7 +115,7 @@ void main() {
       final success = await historyService.deleteRecord('test-id');
 
       expect(success, true);
-      verify(mockDatabase.delete(
+      verify(mockDatabaseHelper.delete(
         'history_records',
         where: 'id = ?',
         whereArgs: ['test-id'],
@@ -130,15 +123,15 @@ void main() {
     });
 
     test('清空記錄應該執行刪除操作', () async {
-      when(mockDatabase.delete(any)).thenAnswer((_) async => 0);
+      when(mockDatabaseHelper.delete(any)).thenAnswer((_) async => 0);
 
       await historyService.clear();
 
-      verify(mockDatabase.delete('history_records')).called(1);
+      verify(mockDatabaseHelper.delete('history_records')).called(1);
     });
 
     test('獲取收藏記錄應該使用正確的查詢條件', () async {
-      when(mockDatabase.query(
+      when(mockDatabaseHelper.query(
         any,
         where: anyNamed('where'),
         orderBy: anyNamed('orderBy'),
@@ -148,7 +141,7 @@ void main() {
 
       await historyService.getRecords(favoritesOnly: true);
 
-      verify(mockDatabase.query(
+      verify(mockDatabaseHelper.query(
         'history_records',
         where: 'is_favorite = 1',
         orderBy: 'timestamp DESC',

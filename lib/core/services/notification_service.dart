@@ -67,6 +67,12 @@ abstract class NotificationService {
   Future<void> cancelDailyFortuneReminder();
 }
 
+/// 處理後台消息
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // 在後台處理消息
+  print('收到後台消息: ${message.messageId}');
+}
+
 /// 通知服務實現
 class NotificationServiceImpl implements NotificationService {
   static const String _tag = 'NotificationService';
@@ -259,7 +265,7 @@ class NotificationServiceImpl implements NotificationService {
         body,
         tz.TZDateTime.from(scheduledDate, tz.local),
         details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidAllowWhileIdle: true,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: payload,
@@ -303,12 +309,12 @@ class NotificationServiceImpl implements NotificationService {
   @override
   Future<void> setDailyFortuneReminder(TimeOfDay time) async {
     try {
-      // 取消現有的每日提醒
+      // 取消現有的提醒
       await cancelDailyFortuneReminder();
       
       // 計算下一次提醒時間
       final now = DateTime.now();
-      var scheduledDate = DateTime(
+      var reminderTime = DateTime(
         now.year,
         now.month,
         now.day,
@@ -316,28 +322,26 @@ class NotificationServiceImpl implements NotificationService {
         time.minute,
       );
       
-      // 如果時間已過，設置為明天
-      if (scheduledDate.isBefore(now)) {
-        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      if (reminderTime.isBefore(now)) {
+        reminderTime = reminderTime.add(const Duration(days: 1));
       }
       
       // 設置新的提醒
       await scheduleNotification(
         title: '每日運勢提醒',
         body: '今天的運勢如何？點擊查看詳情',
-        scheduledDate: scheduledDate,
+        scheduledDate: reminderTime,
         type: NotificationType.dailyFortune,
       );
       
       // 保存提醒時間
-      await _databaseHelper.insert(
-        'preferences',
+      await _databaseHelper.update(
+        'user_settings',
         {
-          'key': 'daily_fortune_reminder_time',
-          'value': '${time.hour}:${time.minute}',
-          'type': 'time',
+          'daily_reminder_hour': time.hour,
+          'daily_reminder_minute': time.minute,
         },
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        where: 'id = 1',
       );
     } catch (e, stackTrace) {
       _logger.error('設置每日運勢提醒失敗', e, stackTrace);
@@ -347,16 +351,17 @@ class NotificationServiceImpl implements NotificationService {
   @override
   Future<void> cancelDailyFortuneReminder() async {
     try {
-      // 刪除提醒時間設置
-      await _databaseHelper.delete(
-        'preferences',
-        where: 'key = ?',
-        whereArgs: ['daily_fortune_reminder_time'],
+      // 清除提醒時間
+      await _databaseHelper.update(
+        'user_settings',
+        {
+          'daily_reminder_hour': null,
+          'daily_reminder_minute': null,
+        },
+        where: 'id = 1',
       );
       
       // 取消所有每日運勢提醒
-      // 注意：這裡可能需要更精確的取消方式，
-      // 目前是取消所有通知，實際應用中應該只取消特定類型的通知
       await cancelAllNotifications();
     } catch (e, stackTrace) {
       _logger.error('取消每日運勢提醒失敗', e, stackTrace);
@@ -365,7 +370,8 @@ class NotificationServiceImpl implements NotificationService {
   
   /// 處理通知點擊
   void _onNotificationTapped(NotificationResponse response) {
-    // TODO: 實現通知點擊處理邏輯
+    // TODO: 處理通知點擊事件
+    print('通知被點擊: ${response.payload}');
   }
   
   /// 處理前台消息
@@ -379,12 +385,7 @@ class NotificationServiceImpl implements NotificationService {
   
   /// 處理通知點擊
   void _handleNotificationOpen(RemoteMessage message) {
-    // TODO: 實現遠程通知點擊處理邏輯
+    // TODO: 處理通知點擊事件
+    print('通知被點擊: ${message.messageId}');
   }
-}
-
-/// 處理後台消息
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // TODO: 實現後台消息處理邏輯
-} 
 } 

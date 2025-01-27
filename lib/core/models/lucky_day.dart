@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:json_annotation/json_annotation.dart';
 
-@immutable
+part 'lucky_day.g.dart';
+
+@JsonSerializable()
 class LuckyDay {
   final DateTime date;
   final String description;
@@ -16,29 +19,9 @@ class LuckyDay {
     this.score,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'date': date.toIso8601String(),
-      'description': description,
-      'suitableActivities': suitableActivities,
-      'luckyDirections': luckyDirections,
-      'score': score,
-    };
-  }
+  Map<String, dynamic> toJson() => _$LuckyDayToJson(this);
 
-  factory LuckyDay.fromJson(Map<String, dynamic> json) {
-    return LuckyDay(
-      date: DateTime.parse(json['date'] as String),
-      description: json['description'] as String,
-      suitableActivities: (json['suitableActivities'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
-      luckyDirections: (json['luckyDirections'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
-      score: json['score'] as int?,
-    );
-  }
+  factory LuckyDay.fromJson(Map<String, dynamic> json) => _$LuckyDayFromJson(json);
 
   @override
   bool operator ==(Object other) =>
