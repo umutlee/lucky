@@ -1,6 +1,6 @@
 # 專案進度記錄
 
-> 最後更新時間：2025-01-27 16:30 (UTC+8)
+> 最後更新時間：2025-01-27 17:30 (UTC+8)
 
 ## 更新歷史
 
@@ -57,6 +57,14 @@
     - `lib/core/services/key_management_service.dart`
     - `lib/core/services/backup_service.dart`
 
+- ✅ 完成推送通知功能
+  - 實現本地通知和遠程推送功能
+  - 添加通知設置界面
+  - 實現每日運勢提醒功能
+  - 涉及文件：
+    - `lib/core/services/notification_service.dart`
+    - `lib/features/settings/screens/notification_settings_screen.dart`
+
 ### 2025-01-26 (昨日)
 - ✅ 更新所有模型類以適應新版Flutter
 - ✅ 優化API響應處理機制
@@ -82,6 +90,7 @@
 5. 運勢推薦系統
 6. 運勢類型描述系統
 7. 數據安全保障系統
+8. 推送通知系統
 
 ### 進行中功能 ⏳
 1. 用戶界面優化
@@ -96,6 +105,7 @@
 - 運勢描述：100%
 - 用戶界面：60%
 - 數據安全：95%
+- 推送通知：100%
 
 ### 技術實現細節
 1. 使用 `chinese_lunar_calendar` 庫實現天文計算
