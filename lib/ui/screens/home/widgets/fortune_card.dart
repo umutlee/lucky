@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/fortune_provider.dart';
 import '../../../../core/models/fortune.dart';
+import '../../../../core/models/fortune_type.dart';
 
 class FortuneCard extends ConsumerWidget {
   final VoidCallback? onTap;
@@ -18,104 +19,129 @@ class FortuneCard extends ConsumerWidget {
 
     return Card(
       clipBehavior: Clip.antiAlias,
+      elevation: 0,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 運勢標題
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '今日運勢',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getLevelColor(fortuneState.level, theme),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      fortuneState.level.toString(),
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.onPrimary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // 運勢描述
-              Text(
-                fortuneState.description,
-                style: theme.textTheme.bodyLarge,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // 幸運提示
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _buildLuckyItem(
-                    context,
-                    icon: Icons.color_lens,
-                    label: '幸運色',
-                    value: fortuneState.luckyColor,
-                  ),
-                  _buildLuckyItem(
-                    context,
-                    icon: Icons.format_list_numbered,
-                    label: '幸運數字',
-                    value: fortuneState.luckyNumber.toString(),
-                  ),
-                  _buildLuckyItem(
-                    context,
-                    icon: Icons.explore,
-                    label: '幸運方位',
-                    value: fortuneState.luckyDirection,
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // 運勢建議
-              Text(
-                '今日建議',
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              ...fortuneState.recommendations.map((recommendation) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.primaryContainer,
+                theme.colorScheme.primary.withOpacity(0.1),
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
                     Icon(
-                      Icons.check_circle_outline,
-                      size: 16,
+                      Icons.auto_awesome,
                       color: theme.colorScheme.primary,
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(recommendation),
+                    Text(
+                      '今日運勢',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
+                    const Spacer(),
+                    _buildScoreChip(theme),
                   ],
                 ),
-              )),
-            ],
+                const SizedBox(height: 16),
+                _buildFortuneTypes(theme),
+                const SizedBox(height: 16),
+                Text(
+                  '點擊查看詳細運勢分析',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildScoreChip(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '88',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.onPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '分',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFortuneTypes(ThemeData theme) {
+    final types = [
+      (FortuneType.study, Icons.school, '學業運勢'),
+      (FortuneType.career, Icons.work, '事業運勢'),
+      (FortuneType.love, Icons.favorite, '感情運勢'),
+    ];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: types.map((type) {
+        return Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(
+                type.$2,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              type.$3,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ],
+        );
+      }).toList(),
     );
   }
 

@@ -1,45 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/scene.dart';
-import '../../../core/providers/scene_provider.dart';
+import '../../../core/services/fortune_score_service.dart';
+import '../../widgets/fortune_chart.dart';
 import '../../widgets/error_boundary.dart';
 import '../../widgets/loading_indicator.dart';
 
 class SceneDetailScreen extends ConsumerWidget {
   final Scene scene;
 
-  const SceneDetailScreen({super.key, required this.scene});
+  const SceneDetailScreen({
+    super.key,
+    required this.scene,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final fortuneScore = ref.watch(
+      fortuneScoreProvider(
+        type: scene.fortuneType,
+        date: DateTime.now(),
+      ),
+    );
 
     return Scaffold(
       body: ErrorBoundary(
         child: CustomScrollView(
           slivers: [
-            // 頂部圖片和標題
-            SliverAppBar(
-              expandedHeight: 200,
-              pinned: true,
-              flexibleSpace: FlexibleSpaceBar(
-                title: Text(scene.name),
-                background: Stack(
-                  fit: StackFit.expand,
+            _buildAppBar(context, theme),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Image.asset(
-                      scene.imageAsset,
-                      fit: BoxFit.cover,
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            theme.colorScheme.surface.withOpacity(0.8),
-                          ],
+                    _buildDescription(theme),
+                    const SizedBox(height: 24),
+                    fortuneScore.when(
+                      data: (data) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FortuneChart(
+                            factors: data.factors,
+                            overallScore: data.score,
+                            type: scene.fortuneType,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildSuggestions(theme, data.suggestions),
+                          const SizedBox(height: 24),
+                          _buildLuckyTimes(theme),
+                        ],
+                      ),
+                      loading: () => const LoadingIndicator(),
+                      error: (error, stack) => Center(
+                        child: Text(
+                          '載入失敗: $error',
+                          style: theme.textTheme.bodyLarge,
                         ),
                       ),
                     ),
@@ -47,57 +64,94 @@ class SceneDetailScreen extends ConsumerWidget {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // TODO: 實現分享功能
+        },
+        icon: const Icon(Icons.share),
+        label: const Text('分享運勢'),
+      ),
+    );
+  }
 
-            // 場景描述
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '場景描述',
-                      style: theme.textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      scene.description,
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // 運勢分析按鈕
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () {
-                          // TODO: 開始運勢分析
-                        },
-                        icon: const Icon(Icons.auto_awesome),
-                        label: const Text('開始運勢分析'),
-                      ),
-                    ),
-                  ],
-                ),
+  Widget _buildAppBar(BuildContext context, ThemeData theme) {
+    return SliverAppBar.large(
+      expandedHeight: 200,
+      pinned: true,
+      flexibleSpace: FlexibleSpaceBar(
+        title: Hero(
+          tag: 'scene_${scene.id}_title',
+          child: Text(
+            scene.name,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+        ),
+        background: Hero(
+          tag: 'scene_${scene.id}',
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  theme.colorScheme.primaryContainer,
+                  theme.colorScheme.primary.withOpacity(0.1),
+                ],
               ),
             ),
-
-            // 相關建議
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '相關建議',
-                      style: theme.textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSuggestionList(theme),
-                  ],
+            child: Stack(
+              children: [
+                Positioned(
+                  right: 24,
+                  bottom: 24,
+                  child: Icon(
+                    scene.icon,
+                    size: 64,
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                  ),
                 ),
-              ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDescription(ThemeData theme) {
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '場景說明',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              scene.description,
+              style: theme.textTheme.bodyLarge,
             ),
           ],
         ),
@@ -105,74 +159,96 @@ class SceneDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSuggestionList(ThemeData theme) {
-    final suggestions = _getSuggestions();
-    
-    return Column(
-      children: suggestions.map((suggestion) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: Icon(
-              suggestion.icon,
-              color: theme.colorScheme.primary,
+  Widget _buildSuggestions(ThemeData theme, List<String> suggestions) {
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.tips_and_updates,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '運勢建議',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
             ),
-            title: Text(suggestion.title),
-            subtitle: Text(suggestion.description),
-          ),
-        );
-      }).toList(),
+            const SizedBox(height: 16),
+            ...suggestions.map((suggestion) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: theme.colorScheme.primary,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(suggestion),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
     );
   }
 
-  List<SceneSuggestion> _getSuggestions() {
-    switch (scene.type) {
-      case 'study':
-        return [
-          SceneSuggestion(
-            icon: Icons.school,
-            title: '選擇適當的學習時間',
-            description: '根據你的運勢，建議在上午進行重要的學習任務',
-          ),
-          SceneSuggestion(
-            icon: Icons.book,
-            title: '複習重點科目',
-            description: '今日特別適合複習數學和科學相關科目',
-          ),
-        ];
-      case 'career':
-        return [
-          SceneSuggestion(
-            icon: Icons.work,
-            title: '把握商務機會',
-            description: '今日適合進行重要的商務談判或提出新想法',
-          ),
-          SceneSuggestion(
-            icon: Icons.trending_up,
-            title: '職業發展機會',
-            description: '可以考慮更新個人簡歷或參加專業培訓',
-          ),
-        ];
-      default:
-        return [
-          SceneSuggestion(
-            icon: Icons.tips_and_updates,
-            title: '保持積極心態',
-            description: '相信自己，保持樂觀正面的態度',
-          ),
-        ];
-    }
+  Widget _buildLuckyTimes(ThemeData theme) {
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.schedule,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '吉時提示',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                '寅時 (3-5點)',
+                '卯時 (5-7點)',
+                '辰時 (7-9點)',
+              ].map((time) => Chip(
+                label: Text(time),
+                avatar: const Icon(Icons.star, size: 16),
+              )).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-}
-
-class SceneSuggestion {
-  final IconData icon;
-  final String title;
-  final String description;
-
-  SceneSuggestion({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
 } 
