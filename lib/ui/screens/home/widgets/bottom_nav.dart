@@ -24,14 +24,9 @@ class BottomNav extends StatelessWidget {
           label: '首頁',
         ),
         NavigationDestination(
-          icon: Icon(Icons.calendar_today_outlined),
-          selectedIcon: Icon(Icons.calendar_today),
-          label: '萬年曆',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.explore_outlined),
-          selectedIcon: Icon(Icons.explore),
-          label: '指南針',
+          icon: Icon(Icons.auto_awesome_outlined),
+          selectedIcon: Icon(Icons.auto_awesome),
+          label: '場景',
         ),
         NavigationDestination(
           icon: Icon(Icons.person_outline),

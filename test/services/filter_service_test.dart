@@ -13,11 +13,11 @@ void main() {
 
   group('Fortune Filtering Tests', () {
     final testFortune1 = Fortune(
-      id: '1',
+        id: '1',
       type: 'career',
-      score: 85,
+        score: 85,
       description: 'Good day for career',
-      date: DateTime.now(),
+        date: DateTime.now(),
       luckyTimes: ['Morning', 'Evening'],
       luckyDirections: ['North', 'South'],
       luckyColors: ['Red', 'Blue'],
@@ -25,7 +25,7 @@ void main() {
       suggestions: ['Focus on work'],
       warnings: ['Avoid conflicts'],
       createdAt: DateTime.now(),
-      isLuckyDay: true,
+        isLuckyDay: true,
       suitableActivities: ['Meeting', 'Planning'],
       zodiac: Zodiac.dragon,
       zodiacAffinity: 80,
@@ -33,11 +33,11 @@ void main() {
     );
 
     final testFortune2 = Fortune(
-      id: '2',
+        id: '2',
       type: 'love',
       score: 75,
       description: 'Average day for love',
-      date: DateTime.now(),
+        date: DateTime.now(),
       luckyTimes: ['Afternoon'],
       luckyDirections: ['East'],
       luckyColors: ['Pink'],
@@ -45,7 +45,7 @@ void main() {
       suggestions: ['Be patient'],
       warnings: ['Don\'t rush'],
       createdAt: DateTime.now(),
-      isLuckyDay: false,
+        isLuckyDay: false,
       suitableActivities: ['Dating'],
       zodiac: Zodiac.rabbit,
       zodiacAffinity: 70,
@@ -113,7 +113,7 @@ void main() {
       final now = DateTime.now();
       final yesterday = now.subtract(Duration(days: 1));
       final tomorrow = now.add(Duration(days: 1));
-      
+
       final criteria = FilterCriteria(
         startDate: yesterday,
         endDate: tomorrow,
