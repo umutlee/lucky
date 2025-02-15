@@ -1,16 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/fortune_type.dart';
-import 'logger_service.dart';
+import '../utils/logger.dart';
 
 /// 時間因素計算服務
 final timeFactorServiceProvider = Provider<TimeFactorService>((ref) {
-  final logger = ref.watch(loggerServiceProvider);
+  final logger = Logger('TimeFactorService');
   return TimeFactorService(logger);
 });
 
 /// 時間因素服務類，用於計算各種時間因素對運勢的影響
 class TimeFactorService {
-  final LoggerService _logger;
+  final Logger _logger;
 
   TimeFactorService(this._logger);
 

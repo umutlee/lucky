@@ -4,12 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter/services.dart';
 import 'package:all_lucky/core/utils/logger.dart';
-import 'package:all_lucky/ui/app.dart';
-import 'core/initialization/app_initializer.dart';
-import 'core/services/sqlite_preferences_service.dart';
-import 'core/router/router.dart';
-import 'core/theme/app_theme.dart';
-import 'core/providers/settings_provider.dart';
+import 'package:all_lucky/core/providers/theme_provider.dart';
+import 'package:all_lucky/core/routes/app_router.dart';
+import 'package:all_lucky/core/theme/app_theme.dart';
+import 'package:all_lucky/core/services/storage_service.dart';
 
 final _logger = Logger('Main');
 
@@ -32,17 +30,13 @@ Future<void> main() async {
     
     final container = ProviderContainer();
     
-    // 初始化 SQLite 服務
-    final sqlitePrefs = container.read(sqlitePreferencesServiceProvider);
-    await sqlitePrefs.init();
-    
-    // 初始化應用
-    await container.read(appInitializerProvider).initialize();
+    // 初始化存儲服務
+    await container.read(storageServiceProvider).init();
     
     runApp(
       UncontrolledProviderScope(
         container: container,
-        child: const App(),
+        child: const MyApp(),
       ),
     );
   } catch (e, stack) {
@@ -97,14 +91,25 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeModeProvider);
-    final router = ref.watch(routerProvider);
 
-    return MaterialApp.router(
+    return MaterialApp(
       title: '運勢預測',
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      routerConfig: router,
+      onGenerateRoute: AppRouter.generateRoute,
     );
   }
 } 

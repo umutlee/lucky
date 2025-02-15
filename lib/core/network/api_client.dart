@@ -1,42 +1,41 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../utils/logger.dart';
+import '../services/storage_service.dart';
+import '../config/api_config.dart';
+import '../exceptions/api_exception.dart';
 
 /// API 客戶端提供者
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(
-    baseUrl: 'https://api.alllucky.com/v1',
-    dio: Dio(),
+    ref.read(storageServiceProvider),
   );
 });
 
 /// API 客戶端
 class ApiClient {
-  final String baseUrl;
+  final StorageService _storage;
   final Dio _dio;
-  final _logger = Logger('ApiClient');
 
-  ApiClient({
-    required this.baseUrl,
-    required Dio dio,
-  }) : _dio = dio {
-    _dio.options.baseUrl = baseUrl;
-    _dio.options.connectTimeout = const Duration(seconds: 5);
-    _dio.options.receiveTimeout = const Duration(seconds: 3);
+  ApiClient(
+    this._storage, {
+    Dio? dio,
+    String? baseUrl,
+  }) : _dio = dio ?? Dio() {
+    _dio.options.baseUrl = baseUrl ?? ApiConfig.baseUrl;
+    _dio.options.connectTimeout = const Duration(seconds: 30);
+    _dio.options.receiveTimeout = const Duration(seconds: 30);
     
-    _dio.interceptors.add(LogInterceptor(
-      request: true,
-      requestHeader: true,
-      requestBody: true,
-      responseHeader: true,
-      responseBody: true,
-      error: true,
-      logPrint: (object) => _logger.debug(object.toString()),
-    ));
+    _dio.interceptors.add(
+      LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        error: true,
+      ),
+    );
   }
 
   /// 發送 GET 請求
-  Future<Response<T>> get<T>(
+  Future<T> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
     Options? options,
@@ -47,19 +46,24 @@ class ApiClient {
       final response = await _dio.get<T>(
         path,
         queryParameters: queryParameters,
-        options: options,
+        options: options ?? Options(headers: ApiConfig.headers),
         cancelToken: cancelToken,
         onReceiveProgress: onReceiveProgress,
       );
-      return response;
+      
+      return response.data as T;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
     } catch (e) {
-      _logger.error('GET 請求失敗: $path', e);
-      rethrow;
+      throw ApiException(
+        message: e.toString(),
+        statusCode: 500,
+      );
     }
   }
 
   /// 發送 POST 請求
-  Future<Response<T>> post<T>(
+  Future<T> post<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
@@ -73,20 +77,25 @@ class ApiClient {
         path,
         data: data,
         queryParameters: queryParameters,
-        options: options,
+        options: options ?? Options(headers: ApiConfig.headers),
         cancelToken: cancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
       );
-      return response;
+      
+      return response.data as T;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
     } catch (e) {
-      _logger.error('POST 請求失敗: $path', e);
-      rethrow;
+      throw ApiException(
+        message: e.toString(),
+        statusCode: 500,
+      );
     }
   }
 
   /// 發送 PUT 請求
-  Future<Response<T>> put<T>(
+  Future<T> put<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
@@ -100,20 +109,25 @@ class ApiClient {
         path,
         data: data,
         queryParameters: queryParameters,
-        options: options,
+        options: options ?? Options(headers: ApiConfig.headers),
         cancelToken: cancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
       );
-      return response;
+      
+      return response.data as T;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
     } catch (e) {
-      _logger.error('PUT 請求失敗: $path', e);
-      rethrow;
+      throw ApiException(
+        message: e.toString(),
+        statusCode: 500,
+      );
     }
   }
 
   /// 發送 DELETE 請求
-  Future<Response<T>> delete<T>(
+  Future<T> delete<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
@@ -125,13 +139,31 @@ class ApiClient {
         path,
         data: data,
         queryParameters: queryParameters,
-        options: options,
+        options: options ?? Options(headers: ApiConfig.headers),
         cancelToken: cancelToken,
       );
-      return response;
+      
+      return response.data as T;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
     } catch (e) {
-      _logger.error('DELETE 請求失敗: $path', e);
-      rethrow;
+      throw ApiException(
+        message: e.toString(),
+        statusCode: 500,
+      );
     }
+  }
+
+  Future<bool> isConnected() async {
+    try {
+      final response = await _dio.get('/ping');
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  void close() {
+    _dio.close();
   }
 } 

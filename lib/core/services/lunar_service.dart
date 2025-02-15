@@ -1,41 +1,42 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tyme4dart/tyme4dart.dart';
+import 'package:chinese_lunar_calendar/chinese_lunar_calendar.dart';
 import '../models/lunar_date.dart';
 
 final lunarServiceProvider = Provider<LunarService>((ref) => LunarService());
 
 class LunarService {
-  final _lunar = Lunar();
+  final _lunar = ChineseLunarCalendar();
 
   /// 將公曆日期轉換為農曆日期
   LunarDate solarToLunar(DateTime date) {
-    final lunarDate = _lunar.fromDate(date);
+    final lunarDate = _lunar.convertSolarToLunar(
+      date.year,
+      date.month,
+      date.day,
+    );
     
     return LunarDate(
       year: lunarDate.year,
       month: lunarDate.month,
       day: lunarDate.day,
-      isLeapMonth: lunarDate.isLeap,
-      heavenlyStem: lunarDate.yearGan,
-      earthlyBranch: lunarDate.yearZhi,
-      zodiac: lunarDate.yearShengXiao,
-      solarTerm: lunarDate.jieQi,
+      isLeapMonth: lunarDate.isLeapMonth,
+      heavenlyStem: lunarDate.heavenlyStem,
+      earthlyBranch: lunarDate.earthlyBranch,
+      zodiac: lunarDate.zodiac,
+      solarTerm: lunarDate.solarTerm,
       festival: _getLunarFestival(lunarDate),
     );
   }
 
   /// 將農曆日期轉換為公曆日期
   DateTime lunarToSolar(int year, int month, int day, {bool isLeap = false}) {
-    final lunarDate = _lunar.fromYmdHms(
-      year: year,
-      month: month,
-      day: day,
-      hour: 12,
-      minute: 0,
-      second: 0,
-      isLeap: isLeap,
+    final solarDate = _lunar.convertLunarToSolar(
+      year,
+      month,
+      day,
+      isLeapMonth: isLeap,
     );
-    return lunarDate.toDate();
+    return DateTime(solarDate.year, solarDate.month, solarDate.day);
   }
 
   /// 獲取當月的農曆日期列表
@@ -61,7 +62,7 @@ class LunarService {
 
   /// 獲取指定農曆月份的天數
   int getDaysInLunarMonth(int year, int month, {bool isLeap = false}) {
-    return _lunar.getDaysOfMonth(year, month, isLeap: isLeap);
+    return _lunar.getDaysInLunarMonth(year, month, isLeapMonth: isLeap);
   }
 
   /// 檢查指定年月日是否合法
@@ -82,7 +83,7 @@ class LunarService {
   }
 
   /// 獲取農曆節日
-  String? _getLunarFestival(Lunar lunarDate) {
+  String? _getLunarFestival(LunarDate lunarDate) {
     final festivals = {
       // 春節
       '1-1': '春節',
@@ -110,29 +111,29 @@ class LunarService {
 
   /// 獲取下一個節氣
   (String name, DateTime date) getNextSolarTerm(DateTime date) {
-    final nextJieQi = _lunar.fromDate(date).nextJieQi;
-    return (nextJieQi.name, nextJieQi.toDate());
+    final nextTerm = _lunar.getNextSolarTerm(date);
+    return (nextTerm.name, nextTerm.date);
   }
 
   /// 獲取當前節氣
   (String name, DateTime date) getCurrentSolarTerm(DateTime date) {
-    final currentJieQi = _lunar.fromDate(date).currentJieQi;
-    return (currentJieQi.name, currentJieQi.toDate());
+    final currentTerm = _lunar.getCurrentSolarTerm(date);
+    return (currentTerm.name, currentTerm.date);
   }
 
   /// 獲取今日時辰
   String getCurrentTimeZhi(DateTime date) {
-    return _lunar.fromDate(date).timeZhi;
+    return _lunar.getTimeZhi(date);
   }
 
   /// 獲取八字
   (String year, String month, String day, String time) getBaZi(DateTime date) {
-    final lunar = _lunar.fromDate(date);
+    final baZi = _lunar.getBaZi(date);
     return (
-      '${lunar.yearGan}${lunar.yearZhi}',
-      '${lunar.monthGan}${lunar.monthZhi}',
-      '${lunar.dayGan}${lunar.dayZhi}',
-      '${lunar.timeGan}${lunar.timeZhi}',
+      baZi.yearGanZhi,
+      baZi.monthGanZhi,
+      baZi.dayGanZhi,
+      baZi.timeGanZhi,
     );
   }
 } 

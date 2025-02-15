@@ -1,15 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import '../../../core/providers/fortune_provider.dart';
-import '../../../core/providers/fortune_config_provider.dart';
-import '../widgets/fortune_card_list.dart';
-import '../widgets/study_fortune_card.dart';
-import '../widgets/career_fortune_card.dart';
-import '../widgets/love_fortune_card.dart';
-import '../widgets/fortune_loading_card.dart';
-import '../widgets/fortune_error_card.dart';
-import '../widgets/fortune_skeleton_card.dart';
+import '../../../core/providers/theme_provider.dart';
+import '../../../core/routes/app_router.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -19,107 +11,72 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _isFirstLoad = true;
-
-  @override
-  void initState() {
-    super.initState();
-    // 預加載運勢數據
-    Future.microtask(() {
-      final today = DateTime.now();
-      ref.read(studyFortuneProvider(today));
-      ref.read(careerFortuneProvider(today));
-      ref.read(loveFortuneProvider(today));
-    });
-  }
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final displayConfig = ref.watch(fortuneDisplayConfigProvider);
+    final theme = Theme.of(context);
+    final isDarkMode = ref.watch(themeModeProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('吉時萬事通'),
+        title: const Text('運勢預測'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => context.push('/settings'),
+            icon: Icon(isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(studyFortuneProvider(today));
-          ref.invalidate(careerFortuneProvider(today));
-          ref.invalidate(loveFortuneProvider(today));
-        },
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  if (displayConfig.isVisible('study'))
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final studyFortune = ref.watch(studyFortuneProvider(today));
-                        return studyFortune.when(
-                          data: (fortune) {
-                            _isFirstLoad = false;
-                            return StudyFortuneCard(fortune: fortune);
-                          },
-                          loading: () => _isFirstLoad 
-                            ? const FortuneSkeleton(type: '學業運勢')
-                            : const FortuneLoadingCard(),
-                          error: (error, _) => FortuneErrorCard(
-                            message: error.toString(),
-                          ),
-                        );
-                      },
-                    ),
-                  if (displayConfig.isVisible('career'))
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final careerFortune = ref.watch(careerFortuneProvider(today));
-                        return careerFortune.when(
-                          data: (fortune) {
-                            _isFirstLoad = false;
-                            return CareerFortuneCard(fortune: fortune);
-                          },
-                          loading: () => _isFirstLoad 
-                            ? const FortuneSkeleton(type: '事業運勢')
-                            : const FortuneLoadingCard(),
-                          error: (error, _) => FortuneErrorCard(
-                            message: error.toString(),
-                          ),
-                        );
-                      },
-                    ),
-                  if (displayConfig.isVisible('love'))
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final loveFortune = ref.watch(loveFortuneProvider(today));
-                        return loveFortune.when(
-                          data: (fortune) {
-                            _isFirstLoad = false;
-                            return LoveFortuneCard(fortune: fortune);
-                          },
-                          loading: () => _isFirstLoad 
-                            ? const FortuneSkeleton(type: '愛情運勢')
-                            : const FortuneLoadingCard(),
-                          error: (error, _) => FortuneErrorCard(
-                            message: error.toString(),
-                          ),
-                        );
-                      },
-                    ),
-                ]),
-              ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('今日運勢'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, AppRouter.sceneSelection);
+                  },
+                  child: const Text('選擇場景'),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.person_outline, size: 64),
+                SizedBox(height: 16),
+                Text('我的頁面開發中...'),
+              ],
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: '首頁',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: '我的',
+          ),
+        ],
       ),
     );
   }

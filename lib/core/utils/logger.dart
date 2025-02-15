@@ -5,38 +5,27 @@ class Logger {
   static final Logger _instance = Logger._internal();
   final logging.Logger _logger;
   static bool debugMode = true;
+  final String _tag;
   
-  factory Logger() => _instance;
+  factory Logger([String tag = '']) => _instance._internal(tag);
   
-  Logger._internal() : _logger = logging.Logger('App');
+  Logger._internal(this._tag) : _logger = logging.Logger('AllLucky');
   
-  void info(String message, [Object? error, StackTrace? stackTrace]) {
+  void info(String message) {
     if (debugMode) {
       print('INFO: $message');
-      if (error != null) {
-        print('Error details: $error');
-      }
-      if (stackTrace != null) {
-        print('Stack trace:\n$stackTrace');
-      }
     }
-    _logger.info(message, error, stackTrace);
+    _logger.info('[$_tag] $message');
   }
   
-  void warning(String message, [Object? error, StackTrace? stackTrace]) {
+  void warning(String message) {
     if (debugMode) {
       print('WARNING: $message');
-      if (error != null) {
-        print('Error details: $error');
-      }
-      if (stackTrace != null) {
-        print('Stack trace:\n$stackTrace');
-      }
     }
-    _logger.warning(message, error, stackTrace);
+    _logger.warning('[$_tag] $message');
   }
   
-  void error(String message, [Object? error, StackTrace? stackTrace]) {
+  void error(String message, [dynamic error, StackTrace? stackTrace]) {
     if (debugMode) {
       print('ERROR: $message');
       if (error != null) {
@@ -46,20 +35,14 @@ class Logger {
         print('Stack trace:\n$stackTrace');
       }
     }
-    _logger.severe(message, error, stackTrace);
+    _logger.severe('[$_tag] $message', error, stackTrace);
   }
   
-  void debug(String message, [Object? error, StackTrace? stackTrace]) {
+  void debug(String message) {
     if (debugMode) {
       print('DEBUG: $message');
-      if (error != null) {
-        print('Error details: $error');
-      }
-      if (stackTrace != null) {
-        print('Stack trace:\n$stackTrace');
-      }
     }
-    _logger.fine(message, error, stackTrace);
+    _logger.fine('[$_tag] $message');
   }
   
   void verbose(String message, [Object? error, StackTrace? stackTrace]) {
@@ -72,7 +55,7 @@ class Logger {
         print('Stack trace:\n$stackTrace');
       }
     }
-    _logger.finer(message, error, stackTrace);
+    _logger.finer('[$_tag] $message', error, stackTrace);
   }
   
   void wtf(String message, [Object? error, StackTrace? stackTrace]) {
@@ -85,7 +68,7 @@ class Logger {
         print('Stack trace:\n$stackTrace');
       }
     }
-    _logger.shout(message, error, stackTrace);
+    _logger.shout('[$_tag] $message', error, stackTrace);
   }
   
   /// 靜態方法,用於直接輸出日誌

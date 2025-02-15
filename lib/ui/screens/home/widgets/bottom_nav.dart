@@ -12,8 +12,6 @@ class BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return NavigationBar(
       selectedIndex: currentIndex,
       onDestinationSelected: onTap,

@@ -68,13 +68,14 @@ class _SceneSelectionScreenState extends ConsumerState<SceneSelectionScreen> {
                       future: _recommendedScenesFuture,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const LoadingIndicator();
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         }
                         
                         if (snapshot.hasError) {
-                          return ErrorView(
-                            error: snapshot.error.toString(),
-                            onRetry: () => setState(() => _loadScenes()),
+                          return Center(
+                            child: Text('載入失敗: ${snapshot.error}'),
                           );
                         }
                         
@@ -135,15 +136,14 @@ class _SceneSelectionScreenState extends ConsumerState<SceneSelectionScreen> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SliverFillRemaining(
-                    child: Center(child: LoadingIndicator()),
+                    child: Center(child: CircularProgressIndicator()),
                   );
                 }
                 
                 if (snapshot.hasError) {
                   return SliverFillRemaining(
-                    child: ErrorView(
-                      error: snapshot.error.toString(),
-                      onRetry: () => setState(() => _loadScenes()),
+                    child: Center(
+                      child: Text('載入失敗: ${snapshot.error}'),
                     ),
                   );
                 }
@@ -284,7 +284,7 @@ class _RecommendedSceneCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(

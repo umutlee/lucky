@@ -106,9 +106,9 @@ class FortuneCard extends ConsumerWidget {
 
   Widget _buildFortuneTypes(ThemeData theme) {
     final types = [
-      (FortuneType.study, Icons.school, '學業運勢'),
-      (FortuneType.career, Icons.work, '事業運勢'),
-      (FortuneType.love, Icons.favorite, '感情運勢'),
+      (Icons.school, '學業運勢'),
+      (Icons.work, '事業運勢'),
+      (Icons.favorite, '感情運勢'),
     ];
 
     return Row(
@@ -130,13 +130,13 @@ class FortuneCard extends ConsumerWidget {
                 ],
               ),
               child: Icon(
-                type.$2,
+                type.$1,
                 color: theme.colorScheme.primary,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              type.$3,
+              type.$2,
               style: theme.textTheme.bodyMedium,
             ),
           ],

@@ -4,59 +4,60 @@ import '../config/api_error_codes.dart';
 /// API 異常
 class ApiException implements Exception {
   final String message;
-  final int code;
+  final int statusCode;
   final dynamic data;
 
   ApiException({
     required this.message,
-    required this.code,
+    required this.statusCode,
     this.data,
   });
 
   /// 從 DioException 創建實例
   factory ApiException.fromDioException(DioException error) {
+    late String message;
+    late int statusCode;
+
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return ApiException(
-          message: ApiErrorCodes.getErrorMessage(ApiErrorCodes.timeoutError),
-          code: ApiErrorCodes.timeoutError,
-        );
+        message = '連接超時，請檢查網絡連接';
+        statusCode = 408;
+        break;
 
       case DioExceptionType.badResponse:
-        final statusCode = error.response?.statusCode ?? ApiErrorCodes.serverError;
-        return ApiException(
-          message: ApiErrorCodes.getErrorMessage(statusCode),
-          code: statusCode,
-          data: error.response?.data,
-        );
+        final response = error.response;
+        message = response?.data?['message'] ?? '伺服器錯誤';
+        statusCode = response?.statusCode ?? 500;
+        break;
 
       case DioExceptionType.cancel:
-        return ApiException(
-          message: ApiErrorCodes.getErrorMessage(ApiErrorCodes.cancelError),
-          code: ApiErrorCodes.cancelError,
-        );
+        message = '請求已取消';
+        statusCode = 499;
+        break;
 
       case DioExceptionType.connectionError:
-        return ApiException(
-          message: ApiErrorCodes.getErrorMessage(ApiErrorCodes.networkError),
-          code: ApiErrorCodes.networkError,
-        );
+        message = '網絡連接錯誤，請檢查網絡設置';
+        statusCode = 503;
+        break;
 
       case DioExceptionType.badCertificate:
-        return ApiException(
-          message: '證書驗證失敗',
-          code: ApiErrorCodes.networkError,
-        );
+        message = '證書驗證失敗';
+        statusCode = 495;
+        break;
 
       case DioExceptionType.unknown:
-      default:
-        return ApiException(
-          message: error.message ?? ApiErrorCodes.getErrorMessage(ApiErrorCodes.serverError),
-          code: ApiErrorCodes.serverError,
-        );
+        message = '未知錯誤';
+        statusCode = 520;
+        break;
     }
+
+    return ApiException(
+      message: message,
+      statusCode: statusCode,
+      data: error.response?.data,
+    );
   }
 
   /// 從響應數據創建實例
@@ -68,7 +69,7 @@ class ApiException implements Exception {
 
     return ApiException(
       message: message,
-      code: code,
+      statusCode: code,
       data: data,
     );
   }
@@ -77,16 +78,25 @@ class ApiException implements Exception {
   factory ApiException.fromCode(int code) {
     return ApiException(
       message: ApiErrorCodes.getErrorMessage(code),
-      code: code,
+      statusCode: code,
     );
   }
 
   /// 是否需要重試
-  bool get shouldRetry => ApiErrorCodes.shouldRetry(code);
+  bool get shouldRetry => ApiErrorCodes.shouldRetry(statusCode);
 
   /// 是否需要清除緩存
-  bool get shouldClearCache => ApiErrorCodes.shouldClearCache(code);
+  bool get shouldClearCache => ApiErrorCodes.shouldClearCache(statusCode);
+
+  bool get isNetworkError =>
+      statusCode == 408 || statusCode == 503 || statusCode == 520;
+
+  bool get isAuthError => statusCode == 401 || statusCode == 403;
+
+  bool get isServerError => statusCode >= 500 && statusCode < 600;
+
+  bool get isClientError => statusCode >= 400 && statusCode < 500;
 
   @override
-  String toString() => 'ApiException: [$code] $message';
+  String toString() => 'ApiException: $message (Status Code: $statusCode)';
 } 

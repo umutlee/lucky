@@ -199,13 +199,22 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
             ),
             child: Stack(
               children: [
-                Positioned(
-                  right: 24,
-                  bottom: 24,
-                  child: Icon(
-                    widget.scene.icon,
-                    size: 64,
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                Positioned.fill(
+                  child: Image.asset(
+                    widget.scene.imageAsset,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.7),
+                      ],
+                    ),
                   ),
                 ),
               ],

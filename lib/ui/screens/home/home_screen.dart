@@ -7,7 +7,8 @@ import 'widgets/zodiac_section.dart';
 import 'widgets/horoscope_section.dart';
 import 'widgets/compass_section.dart';
 import 'widgets/bottom_nav.dart';
-import 'scene_selection_screen.dart';
+import '../scene/scene_selection_screen.dart';
+import '../../../core/providers/theme_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -102,8 +103,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SceneSelectionScreen(),
             
             // 我的頁面
-            const Center(
-              child: Text('我的頁面開發中...'),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '我的頁面開發中...',
+                    style: theme.textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  Icon(
+                    Icons.construction,
+                    size: 48,
+                    color: theme.colorScheme.primary,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

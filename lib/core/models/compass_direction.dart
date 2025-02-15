@@ -4,7 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'compass_direction.freezed.dart';
 part 'compass_direction.g.dart';
 
-enum CompassDirection {
+enum Direction {
   north,
   northEast,
   east,
@@ -14,88 +14,80 @@ enum CompassDirection {
   west,
   northWest;
 
-  @override
-  String toString() {
+  String get displayName {
     switch (this) {
-      case CompassDirection.north:
+      case Direction.north:
         return '北';
-      case CompassDirection.northEast:
+      case Direction.northEast:
         return '東北';
-      case CompassDirection.east:
+      case Direction.east:
         return '東';
-      case CompassDirection.southEast:
+      case Direction.southEast:
         return '東南';
-      case CompassDirection.south:
+      case Direction.south:
         return '南';
-      case CompassDirection.southWest:
+      case Direction.southWest:
         return '西南';
-      case CompassDirection.west:
+      case Direction.west:
         return '西';
-      case CompassDirection.northWest:
+      case Direction.northWest:
         return '西北';
     }
   }
+
+  double get angle {
+    switch (this) {
+      case Direction.north:
+        return 0.0;
+      case Direction.northEast:
+        return 45.0;
+      case Direction.east:
+        return 90.0;
+      case Direction.southEast:
+        return 135.0;
+      case Direction.south:
+        return 180.0;
+      case Direction.southWest:
+        return 225.0;
+      case Direction.west:
+        return 270.0;
+      case Direction.northWest:
+        return 315.0;
+    }
+  }
+
+  static Direction fromAngle(double angle) {
+    final normalizedAngle = (angle + 360) % 360;
+    if (normalizedAngle < 22.5) return Direction.north;
+    if (normalizedAngle < 67.5) return Direction.northEast;
+    if (normalizedAngle < 112.5) return Direction.east;
+    if (normalizedAngle < 157.5) return Direction.southEast;
+    if (normalizedAngle < 202.5) return Direction.south;
+    if (normalizedAngle < 247.5) return Direction.southWest;
+    if (normalizedAngle < 292.5) return Direction.west;
+    if (normalizedAngle < 337.5) return Direction.northWest;
+    return Direction.north;
+  }
 }
 
-@immutable
-class CompassState {
-  final double heading;
-  final CompassDirection currentDirection;
-  final String? directionDescription;
-  final List<String>? auspiciousDirections;
-  final bool isLoading;
-  final String? error;
-
-  const CompassState({
-    this.heading = 0.0,
-    this.currentDirection = CompassDirection.north,
-    this.directionDescription,
-    this.auspiciousDirections,
-    this.isLoading = false,
-    this.error,
-  });
-
-  CompassState copyWith({
-    double? heading,
-    CompassDirection? currentDirection,
-    String? directionDescription,
+@freezed
+class CompassState with _$CompassState {
+  const factory CompassState({
+    required double heading,
+    Direction? currentDirection,
+    @Default(false) bool isCalibrating,
+    @Default(false) bool hasError,
+    String? errorMessage,
     List<String>? auspiciousDirections,
-    bool? isLoading,
-    String? error,
-  }) {
-    return CompassState(
-      heading: heading ?? this.heading,
-      currentDirection: currentDirection ?? this.currentDirection,
-      directionDescription: directionDescription ?? this.directionDescription,
-      auspiciousDirections: auspiciousDirections ?? this.auspiciousDirections,
-      isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
-    );
-  }
+  }) = _CompassState;
 
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is CompassState &&
-        other.heading == heading &&
-        other.currentDirection == currentDirection &&
-        other.directionDescription == directionDescription &&
-        listEquals(other.auspiciousDirections, auspiciousDirections) &&
-        other.isLoading == isLoading &&
-        other.error == error;
-  }
+  factory CompassState.initial() => const CompassState(
+        heading: 0.0,
+        currentDirection: Direction.north,
+      );
 
-  @override
-  int get hashCode {
-    return Object.hash(
-      heading,
-      currentDirection,
-      directionDescription,
-      Object.hashAll(auspiciousDirections ?? []),
-      isLoading,
-      error,
-    );
-  }
+  factory CompassState.fromJson(Map<String, dynamic> json) =>
+      _$CompassStateFromJson(json);
 }
 
 @freezed

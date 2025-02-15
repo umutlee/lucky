@@ -1,158 +1,146 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/scene.dart';
-import 'logger_service.dart';
+import '../models/fortune_type.dart';
+import '../utils/logger.dart';
 import 'fortune_score_service.dart';
 import 'time_factor_service.dart';
 
 final sceneServiceProvider = Provider<SceneService>((ref) {
-  final logger = ref.watch(loggerServiceProvider);
   final fortuneScoreService = ref.watch(fortuneScoreServiceProvider);
   final timeFactorService = ref.watch(timeFactorServiceProvider);
-  return SceneService(logger, fortuneScoreService, timeFactorService);
+  final logger = Logger('SceneService');
+  return SceneService(
+    fortuneScoreService,
+    timeFactorService,
+    logger,
+  );
 });
 
 class SceneService {
-  final LoggerService _logger;
+  final List<Scene> _scenes = [
+    Scene(
+      id: 'temple',
+      name: '古寺祈福',
+      description: '在寧靜的古寺中尋求智慧與指引',
+      imagePath: 'assets/images/scenes/temple.jpg',
+      type: FortuneType.daily,
+      baseScore: 80,
+      isUnlocked: true,
+    ),
+    Scene(
+      id: 'garden',
+      name: '禪意花園',
+      description: '在幽靜的花園中感受自然的啟示',
+      imagePath: 'assets/images/scenes/garden.jpg',
+      type: FortuneType.love,
+      baseScore: 75,
+      isUnlocked: true,
+    ),
+    Scene(
+      id: 'mountain',
+      name: '靈山秘境',
+      description: '在雲霧繚繞的山巔尋找生命的答案',
+      imagePath: 'assets/images/scenes/mountain.jpg',
+      type: FortuneType.career,
+      baseScore: 85,
+      isUnlocked: false,
+      unlockCondition: '完成3次占卜解鎖',
+    ),
+    Scene(
+      id: 'lake',
+      name: '月光湖畔',
+      description: '在皎潔的月光下聆聽內心的聲音',
+      imagePath: 'assets/images/scenes/lake.jpg',
+      type: FortuneType.study,
+      baseScore: 70,
+      isUnlocked: false,
+      unlockCondition: '完成5次占卜解鎖',
+    ),
+  ];
+
   final FortuneScoreService _fortuneScoreService;
   final TimeFactorService _timeFactorService;
+  final Logger _logger;
 
   // 場景緩存
   List<Scene>? _cachedScenes;
   DateTime? _lastCacheTime;
   static const _cacheDuration = Duration(minutes: 30);
 
-  SceneService(this._logger, this._fortuneScoreService, this._timeFactorService);
+  SceneService(
+    this._fortuneScoreService,
+    this._timeFactorService,
+    this._logger,
+  );
 
   Future<List<Scene>> getScenes() async {
     try {
-      // 檢查緩存是否有效
       if (_isCacheValid()) {
+        _logger.info('使用緩存的場景數據');
         return _cachedScenes!;
       }
 
-      // TODO: 從API獲取場景數據
-      // 目前返回擴展的模擬數據
-      final scenes = [
-        const Scene(
-          id: 'study',
-          name: '學習運勢',
-          description: '考試、學習、升學運勢分析',
-          imageAsset: 'assets/images/scenes/study.jpg',
-          type: 'study',
-          parameters: {
-            'difficulty': 'medium',
-            'subjects': ['數學', '物理', '化學', '語文'],
-            'examTypes': ['期中考試', '期末考試', '入學考試'],
-            'studyMethods': ['自習', '小組學習', '線上課程'],
-          },
-        ),
-        const Scene(
-          id: 'career',
-          name: '職場運勢',
-          description: '工作、升遷、創業運勢分析',
-          imageAsset: 'assets/images/scenes/career.jpg',
-          type: 'career',
-          parameters: {
-            'industry': 'general',
-            'positions': ['技術', '管理', '銷售', '創業'],
-            'activities': ['面試', '述職', '談判', '簽約'],
-            'skills': ['溝通', '領導', '專業', '創新'],
-          },
-        ),
-        const Scene(
-          id: 'love',
-          name: '感情運勢',
-          description: '戀愛、婚姻、人際關係分析',
-          imageAsset: 'assets/images/scenes/love.jpg',
-          type: 'love',
-          parameters: {
-            'status': 'single',
-            'relationshipTypes': ['戀愛', '婚姻', '友情'],
-            'activities': ['約會', '告白', '求婚', '社交'],
-            'places': ['餐廳', '電影院', '公園', '旅遊'],
-          },
-        ),
-        const Scene(
-          id: 'wealth',
-          name: '財運分析',
-          description: '投資、理財、收入運勢分析',
-          imageAsset: 'assets/images/scenes/wealth.jpg',
-          type: 'wealth',
-          parameters: {
-            'risk_level': 'medium',
-            'investmentTypes': ['股票', '基金', '房地產', '創業'],
-            'activities': ['投資', '理財', '談判', '合作'],
-            'methods': ['長期投資', '短期理財', '定期儲蓄'],
-          },
-        ),
-        const Scene(
-          id: 'health',
-          name: '健康運勢',
-          description: '身體、心理健康運勢分析',
-          imageAsset: 'assets/images/scenes/health.jpg',
-          type: 'health',
-          parameters: {
-            'focus': 'general',
-            'aspects': ['身體', '心理', '飲食', '運動'],
-            'activities': ['體檢', '運動', '養生', '調理'],
-            'methods': ['規律作息', '均衡飲食', '適度運動'],
-          },
-        ),
-        const Scene(
-          id: 'travel',
-          name: '旅行運勢',
-          description: '出行、旅遊、探險運勢分析',
-          imageAsset: 'assets/images/scenes/travel.jpg',
-          type: 'travel',
-          parameters: {
-            'duration': 'short',
-            'types': ['觀光', '探險', '美食', '文化'],
-            'destinations': ['國內', '國外', '近郊', '長途'],
-            'activities': ['景點遊覽', '美食探索', '文化體驗'],
-          },
-        ),
-        const Scene(
-          id: 'social',
-          name: '社交運勢',
-          description: '人際關係、社交活動運勢分析',
-          imageAsset: 'assets/images/scenes/social.jpg',
-          type: 'social',
-          parameters: {
-            'scope': 'general',
-            'types': ['商務社交', '朋友聚會', '家庭聚會'],
-            'activities': ['聚會', '談判', '合作', '溝通'],
-            'skills': ['表達', '傾聽', '禮儀', '情商'],
-          },
-        ),
-        const Scene(
-          id: 'creativity',
-          name: '創意運勢',
-          description: '藝術創作、設計靈感運勢分析',
-          imageAsset: 'assets/images/scenes/creativity.jpg',
-          type: 'creativity',
-          parameters: {
-            'field': 'general',
-            'types': ['藝術', '設計', '寫作', '音樂'],
-            'activities': ['創作', '展演', '發表', '競賽'],
-            'methods': ['靈感激發', '技巧練習', '作品完善'],
-          },
-        ),
-      ];
-
-      // 更新緩存
-      _cachedScenes = scenes;
+      await Future.delayed(const Duration(seconds: 1));
+      _cachedScenes = List.from(_scenes);
       _lastCacheTime = DateTime.now();
-
-      return scenes;
+      _logger.info('更新場景緩存');
+      return _cachedScenes!;
     } catch (e, stack) {
       _logger.error('獲取場景列表失敗', e, stack);
-      return [];
+      rethrow;
     }
   }
 
   Future<Scene> getSceneById(String id) async {
-    final scenes = await getScenes();
-    return scenes.firstWhere((scene) => scene.id == id);
+    try {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final scene = _scenes.firstWhere(
+        (scene) => scene.id == id,
+        orElse: () => throw Exception('找不到場景：$id'),
+      );
+      _logger.info('獲取場景：${scene.name}');
+      return scene;
+    } catch (e, stack) {
+      _logger.error('獲取場景失敗：$id', e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> unlockScene(String id) async {
+    try {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final index = _scenes.indexWhere((scene) => scene.id == id);
+      if (index == -1) {
+        throw Exception('找不到場景：$id');
+      }
+      
+      _scenes[index] = _scenes[index].copyWith(isUnlocked: true);
+      _invalidateCache();
+      _logger.info('解鎖場景：${_scenes[index].name}');
+    } catch (e, stack) {
+      _logger.error('解鎖場景失敗：$id', e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> incrementViewCount(String id) async {
+    try {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final index = _scenes.indexWhere((scene) => scene.id == id);
+      if (index == -1) {
+        throw Exception('找不到場景：$id');
+      }
+      
+      _scenes[index] = _scenes[index].copyWith(
+        viewCount: _scenes[index].viewCount + 1,
+        lastViewedAt: DateTime.now(),
+      );
+      _invalidateCache();
+      _logger.info('增加場景瀏覽次數：${_scenes[index].name}');
+    } catch (e, stack) {
+      _logger.error('增加場景瀏覽次數失敗：$id', e, stack);
+      rethrow;
+    }
   }
 
   /// 獲取推薦場景
@@ -163,13 +151,18 @@ class SceneService {
     try {
       final allScenes = await getScenes();
       final recommendations = <Scene>[];
+      final scores = <String, double>{};
       
+      // 計算所有場景的分數
       for (final scene in allScenes) {
+        if (!scene.isUnlocked) continue;
+        
         final score = await _calculateSceneScore(
           scene,
           date,
           userPreferences,
         );
+        scores[scene.id] = score;
         
         if (score >= 0.7) {
           recommendations.add(scene);
@@ -178,13 +171,15 @@ class SceneService {
       
       // 根據分數排序
       recommendations.sort((a, b) {
-        final scoreA = _getSceneScore(a, date, userPreferences);
-        final scoreB = _getSceneScore(b, date, userPreferences);
+        final scoreA = scores[a.id] ?? 0.0;
+        final scoreB = scores[b.id] ?? 0.0;
         return scoreB.compareTo(scoreA);
       });
       
       // 返回前3個最推薦的場景
-      return recommendations.take(3).toList();
+      final result = recommendations.take(3).toList();
+      _logger.info('獲取推薦場景：${result.map((s) => s.name).join(', ')}');
+      return result;
     } catch (e, stack) {
       _logger.error('獲取推薦場景失敗', e, stack);
       return [];
@@ -209,10 +204,7 @@ class SceneService {
       // 計算時間分數
       final timeScore = _timeFactorService.calculateTimeScore(
         date,
-        FortuneType.values.firstWhere(
-          (t) => t.toString() == 'FortuneType.${scene.type}',
-          orElse: () => FortuneType.daily,
-        ),
+        scene.type,
       );
       
       // 計算季節分數
@@ -227,10 +219,7 @@ class SceneService {
       // 計算運勢分數
       final fortuneData = await _fortuneScoreService.calculateFortuneScore(
         date: date,
-        type: FortuneType.values.firstWhere(
-          (t) => t.toString() == 'FortuneType.${scene.type}',
-          orElse: () => FortuneType.daily,
-        ),
+        type: scene.type,
       );
       final fortuneScore = fortuneData.score / 100;
       
@@ -241,33 +230,35 @@ class SceneService {
         userScore * weights['userScore']! +
         fortuneScore * weights['fortuneScore']!;
       
-      return totalScore;
+      return totalScore.clamp(0.0, 1.0);
     } catch (e, stack) {
-      _logger.error('計算場景分數失敗', e, stack);
+      _logger.error('計算場景分數失敗：${scene.name}', e, stack);
       return 0.5;
     }
   }
 
   /// 計算季節分數
   double _calculateSeasonScore(Scene scene, DateTime date) {
-    final month = date.month;
-    
-    // 根據場景類型和月份計算適合度
-    switch (scene.type) {
-      case 'study':
-        return switch (month) {
+    try {
+      final month = date.month;
+      
+      // 根據場景類型和月份計算適合度
+      return switch (scene.type) {
+        FortuneType.study => switch (month) {
           3 || 4 || 5 || 9 || 10 || 11 => 0.9, // 春秋季最適合學習
           6 || 7 || 8 => 0.6,                  // 夏季較難專注
           _ => 0.7,                            // 冬季一般
-        };
-      case 'travel':
-        return switch (month) {
+        },
+        FortuneType.travel => switch (month) {
           3 || 4 || 5 || 9 || 10 => 0.9,      // 春秋季最適合旅遊
           6 || 7 || 8 => 0.7,                  // 夏季一般
           _ => 0.6,                            // 冬季較差
-        };
-      default:
-        return 0.7; // 其他類型場景不受季節影響
+        },
+        _ => 0.7, // 其他類型場景不受季節影響
+      };
+    } catch (e) {
+      _logger.warning('計算季節分數失敗：${scene.name}', e);
+      return 0.7;
     }
   }
 
@@ -284,7 +275,7 @@ class SceneService {
       // 檢查用戶興趣
       final interests = userPreferences['interests'] as List<String>?;
       if (interests != null && interests.isNotEmpty) {
-        if (interests.contains(scene.type)) {
+        if (interests.contains(scene.type.toString())) {
           score += 0.2;
         }
       }
@@ -298,27 +289,10 @@ class SceneService {
         }
       }
       
-      // 確保分數在 0-1 範圍內
       return score.clamp(0.0, 1.0);
     } catch (e) {
-      _logger.warning('計算用戶偏好分數失敗: $e');
+      _logger.warning('計算用戶偏好分數失敗：${scene.name}', e);
       return 0.7;
-    }
-  }
-
-  /// 獲取場景分數（用於排序）
-  double _getSceneScore(
-    Scene scene,
-    DateTime date,
-    Map<String, dynamic>? userPreferences,
-  ) {
-    try {
-      return _calculateSceneScore(scene, date, userPreferences).then(
-        (score) => score,
-        onError: (e) => 0.5,
-      );
-    } catch (e) {
-      return 0.5;
     }
   }
 
@@ -326,5 +300,18 @@ class SceneService {
   bool _isCacheValid() {
     if (_cachedScenes == null || _lastCacheTime == null) return false;
     return DateTime.now().difference(_lastCacheTime!) < _cacheDuration;
+  }
+
+  /// 使緩存失效
+  void _invalidateCache() {
+    _cachedScenes = null;
+    _lastCacheTime = null;
+    _logger.info('清除場景緩存');
+  }
+
+  /// 清理資源
+  void dispose() {
+    _invalidateCache();
+    _logger.info('釋放場景服務資源');
   }
 } 

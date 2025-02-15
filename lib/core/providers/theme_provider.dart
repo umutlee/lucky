@@ -5,11 +5,12 @@ import '../theme/identity_theme.dart';
 import 'fortune_config_provider.dart';
 import 'storage_provider.dart';
 import 'user_identity_provider.dart';
+import '../services/storage_service.dart';
 
 /// 主題模式提供者
-final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
-  final prefsService = ref.watch(sqlitePreferencesServiceProvider);
-  return ThemeModeNotifier(prefsService);
+final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, bool>((ref) {
+  final storage = ref.watch(storageServiceProvider);
+  return ThemeModeNotifier(storage);
 });
 
 /// 身份主題提供者
@@ -32,38 +33,21 @@ final themeProvider = Provider<ThemeData>((ref) {
 });
 
 /// 主題模式管理器
-class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  final SQLitePreferencesService _prefsService;
+class ThemeModeNotifier extends StateNotifier<bool> {
+  final StorageService _storage;
+  static const _key = 'theme_mode_is_dark';
 
-  ThemeModeNotifier(this._prefsService) : super(ThemeMode.system) {
-    _loadThemeMode();
+  ThemeModeNotifier(this._storage) : super(false) {
+    _init();
   }
 
-  Future<void> _loadThemeMode() async {
-    try {
-      final isDark = await _prefsService.getValue<bool>('is_dark_mode') ?? false;
-      state = isDark ? ThemeMode.dark : ThemeMode.light;
-    } catch (e) {
-      print('加載主題設置失敗: $e');
-    }
+  Future<void> _init() async {
+    final isDark = await _storage.getBool(_key);
+    state = isDark ?? false;
   }
 
-  Future<void> toggleTheme() async {
-    try {
-      final newMode = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-      await _prefsService.setValue('is_dark_mode', newMode == ThemeMode.dark);
-      state = newMode;
-    } catch (e) {
-      print('更新主題設置失敗: $e');
-    }
-  }
-
-  Future<void> setThemeMode(ThemeMode mode) async {
-    try {
-      await _prefsService.setValue('is_dark_mode', mode == ThemeMode.dark);
-      state = mode;
-    } catch (e) {
-      print('設置主題模式失敗: $e');
-    }
+  Future<void> toggle() async {
+    state = !state;
+    await _storage.setBool(_key, state);
   }
 } 

@@ -85,10 +85,10 @@ class FortuneChart extends StatelessWidget {
               }).toList(),
             ),
           ],
-          getTitle: (index) {
-            return RadarTitle(
+          getTitle: (index, angle) {
+            return RadarChartTitle(
               text: factors.keys.elementAt(index),
-              angle: 0,
+              angle: angle,
             );
           },
           titleTextStyle: theme.textTheme.bodySmall?.copyWith(

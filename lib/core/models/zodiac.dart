@@ -4,7 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'zodiac.freezed.dart';
 part 'zodiac.g.dart';
 
-enum ChineseZodiac {
+enum Zodiac {
   rat,
   ox,
   tiger,
@@ -18,69 +18,101 @@ enum ChineseZodiac {
   dog,
   pig;
 
-  @override
-  String toString() {
+  static Zodiac fromYear(int year) {
+    return Zodiac.values[year % 12];
+  }
+
+  static Zodiac fromString(String value) {
+    return Zodiac.values.firstWhere(
+      (z) => z.toString().split('.').last == value,
+      orElse: () => Zodiac.rat,
+    );
+  }
+
+  String get displayName {
     switch (this) {
-      case ChineseZodiac.rat:
+      case Zodiac.rat:
         return '鼠';
-      case ChineseZodiac.ox:
+      case Zodiac.ox:
         return '牛';
-      case ChineseZodiac.tiger:
+      case Zodiac.tiger:
         return '虎';
-      case ChineseZodiac.rabbit:
+      case Zodiac.rabbit:
         return '兔';
-      case ChineseZodiac.dragon:
+      case Zodiac.dragon:
         return '龍';
-      case ChineseZodiac.snake:
+      case Zodiac.snake:
         return '蛇';
-      case ChineseZodiac.horse:
+      case Zodiac.horse:
         return '馬';
-      case ChineseZodiac.goat:
+      case Zodiac.goat:
         return '羊';
-      case ChineseZodiac.monkey:
+      case Zodiac.monkey:
         return '猴';
-      case ChineseZodiac.rooster:
+      case Zodiac.rooster:
         return '雞';
-      case ChineseZodiac.dog:
+      case Zodiac.dog:
         return '狗';
-      case ChineseZodiac.pig:
+      case Zodiac.pig:
         return '豬';
     }
   }
 
   String get description {
     switch (this) {
-      case ChineseZodiac.rat:
+      case Zodiac.rat:
         return '機靈活潑，善於社交';
-      case ChineseZodiac.ox:
-        return '勤勞踏實，性格溫和';
-      case ChineseZodiac.tiger:
-        return '勇敢威嚴，充滿活力';
-      case ChineseZodiac.rabbit:
-        return '溫柔敏感，優雅善良';
-      case ChineseZodiac.dragon:
-        return '威嚴尊貴，充滿魅力';
-      case ChineseZodiac.snake:
-        return '智慧優雅，神秘深邃';
-      case ChineseZodiac.horse:
-        return '活潑開朗，不拘小節';
-      case ChineseZodiac.goat:
+      case Zodiac.ox:
+        return '勤勞踏實，性格穩重';
+      case Zodiac.tiger:
+        return '勇敢無畏，充滿活力';
+      case Zodiac.rabbit:
+        return '溫和善良，優雅細心';
+      case Zodiac.dragon:
+        return '充滿魅力，雄心壯志';
+      case Zodiac.snake:
+        return '智慧敏銳，神秘優雅';
+      case Zodiac.horse:
+        return '活力四射，追求自由';
+      case Zodiac.goat:
         return '溫順善良，富有同情心';
-      case ChineseZodiac.monkey:
-        return '聰明靈活，機智多變';
-      case ChineseZodiac.rooster:
-        return '勤奮務實，注重細節';
-      case ChineseZodiac.dog:
+      case Zodiac.monkey:
+        return '聰明靈活，創意十足';
+      case Zodiac.rooster:
+        return '勤奮自信，注重細節';
+      case Zodiac.dog:
         return '忠誠可靠，正直善良';
-      case ChineseZodiac.pig:
+      case Zodiac.pig:
         return '真誠厚道，樂觀開朗';
+    }
+  }
+
+  String get element {
+    switch (this) {
+      case Zodiac.rat:
+      case Zodiac.monkey:
+        return '水';
+      case Zodiac.ox:
+      case Zodiac.rooster:
+        return '金';
+      case Zodiac.tiger:
+      case Zodiac.pig:
+        return '木';
+      case Zodiac.rabbit:
+      case Zodiac.dog:
+        return '土';
+      case Zodiac.dragon:
+      case Zodiac.snake:
+      case Zodiac.horse:
+      case Zodiac.goat:
+        return '火';
     }
   }
 }
 
 @immutable
 class ZodiacState {
-  final ChineseZodiac userZodiac;
+  final Zodiac userZodiac;
   final String? fortuneDescription;
   final List<String>? luckyElements;
   final bool isLoading;
@@ -95,7 +127,7 @@ class ZodiacState {
   });
 
   ZodiacState copyWith({
-    ChineseZodiac? userZodiac,
+    Zodiac? userZodiac,
     String? fortuneDescription,
     List<String>? luckyElements,
     bool? isLoading,

@@ -13,43 +13,89 @@ part 'fortune.g.dart';
 /// 運勢模型
 @freezed
 class Fortune with _$Fortune {
-  const Fortune._();  // 添加私有構造函數
-
   const factory Fortune({
     required String id,
-    required FortuneType type,
     required String title,
-    required int score,
     required String description,
+    required int overallScore,
     required DateTime date,
-    required DateTime createdAt,
-    required List<String> luckyTimes,
-    required List<String> luckyDirections,
+    required Map<String, int> scores,
+    required List<String> advice,
     required List<String> luckyColors,
-    required List<int> luckyNumbers,
-    required List<String> suggestions,
-    required List<String> warnings,
-    @Default(false) bool isLuckyDay,
-    @Default([]) List<String> suitableActivities,
+    required List<String> luckyNumbers,
+    required List<String> luckyDirections,
+    required FortuneType type,
     Zodiac? zodiac,
-    @Default(0) int zodiacAffinity,
-    @Default([]) List<String> recommendations,
-    StudyFortune? studyFortune,
-    CareerFortune? careerFortune,
-    LoveFortune? loveFortune,
-    DailyFortune? dailyFortune,
+    String? constellation,
+    @Default([]) List<String> warnings,
+    @Default([]) List<String> opportunities,
+    @Default({}) Map<String, dynamic> additionalData,
   }) = _Fortune;
 
   /// 從 JSON 創建
   factory Fortune.fromJson(Map<String, dynamic> json) => _$FortuneFromJson(json);
 
+  const Fortune._();  // 添加私有構造函數
+
+  bool get isLucky => overallScore >= 80;
+  bool get isUnlucky => overallScore <= 20;
+  bool get isNeutral => !isLucky && !isUnlucky;
+
+  String get luckLevel {
+    if (isLucky) return '大吉';
+    if (isUnlucky) return '凶';
+    if (overallScore >= 60) return '小吉';
+    if (overallScore >= 40) return '平';
+    return '小凶';
+  }
+
+  String get summary {
+    if (isLucky) {
+      return '今日運勢非常好，適合大展拳腳！';
+    } else if (isUnlucky) {
+      return '今日運勢欠佳，宜小心謹慎。';
+    } else if (overallScore >= 60) {
+      return '今日運勢不錯，可以嘗試新事物。';
+    } else if (overallScore >= 40) {
+      return '今日運勢平平，按部就班即可。';
+    } else {
+      return '今日運勢稍差，建議多加小心。';
+    }
+  }
+
+  List<String> get keyPoints {
+    final points = <String>[];
+    
+    if (scores.containsKey('love') && scores['love']! >= 80) {
+      points.add('桃花運旺盛');
+    }
+    
+    if (scores.containsKey('wealth') && scores['wealth']! >= 80) {
+      points.add('財運亨通');
+    }
+    
+    if (scores.containsKey('career') && scores['career']! >= 80) {
+      points.add('事業有成');
+    }
+    
+    if (warnings.isNotEmpty) {
+      points.add('需要注意: ${warnings.first}');
+    }
+    
+    if (opportunities.isNotEmpty) {
+      points.add('機會: ${opportunities.first}');
+    }
+    
+    return points;
+  }
+
   /// 獲取運勢等級
   String get level {
-    if (score >= 90) return '大吉';
-    if (score >= 80) return '中吉';
-    if (score >= 70) return '小吉';
-    if (score >= 60) return '平';
-    if (score >= 50) return '凶';
+    if (overallScore >= 90) return '大吉';
+    if (overallScore >= 80) return '中吉';
+    if (overallScore >= 70) return '小吉';
+    if (overallScore >= 60) return '平';
+    if (overallScore >= 50) return '凶';
     return '大凶';
   }
 
@@ -58,10 +104,6 @@ class Fortune with _$Fortune {
     final tags = <String>[];
     
     tags.add(level);
-    
-    if (luckyTimes.isNotEmpty) {
-      tags.add('宜在 ${luckyTimes.join("、")} 行事');
-    }
     
     if (luckyDirections.isNotEmpty) {
       tags.add('宜往 ${luckyDirections.join("、")} 方向');
@@ -82,7 +124,7 @@ class Fortune with _$Fortune {
   String get detailedDescription {
     final buffer = StringBuffer();
     
-    buffer.writeln('【運勢指數】${score}分 - $level');
+    buffer.writeln('【運勢指數】${overallScore}分 - $level');
     
     if (luckyColors.isNotEmpty) {
       buffer.writeln('【幸運顏色】${luckyColors.join('、')}');
@@ -93,36 +135,27 @@ class Fortune with _$Fortune {
     }
     
     if (zodiac != null) {
-      buffer.writeln('【生肖相性】${zodiac!.name} - ${_getAffinityLevel(zodiacAffinity)}');
+      buffer.writeln('【生肖相性】${zodiac!.displayName}');
     }
     
-    if (recommendations.isNotEmpty) {
+    if (warnings.isNotEmpty) {
       buffer.writeln('\n【運勢建議】');
-      for (final recommendation in recommendations) {
-        buffer.writeln('• $recommendation');
+      for (final warning in warnings) {
+        buffer.writeln('• $warning');
       }
     }
     
     return buffer.toString();
   }
 
-  String _getAffinityLevel(int affinity) {
-    if (affinity >= 90) return '極高';
-    if (affinity >= 80) return '很高';
-    if (affinity >= 70) return '較高';
-    if (affinity >= 60) return '一般';
-    if (affinity >= 50) return '較低';
-    return '很低';
-  }
-
   /// 比較運勢
   int compareTo(Fortune other) {
     // 首先比較分數
-    final scoreComparison = other.score.compareTo(score);
+    final scoreComparison = other.overallScore.compareTo(overallScore);
     if (scoreComparison != 0) return scoreComparison;
     
     // 如果分數相同，比較創建時間（較新的排在前面）
-    return other.createdAt.compareTo(createdAt);
+    return other.date.compareTo(date);
   }
 
   /// 檢查是否為特定類型的運勢

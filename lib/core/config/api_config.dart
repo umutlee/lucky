@@ -22,13 +22,27 @@ class ApiConfig {
   static const lunarDateEndpoint = '$_almanacEndpoint/lunar';
 
   // 超時設置
-  static const connectTimeout = Duration(seconds: 10);
-  static const receiveTimeout = Duration(seconds: 10);
-  static const sendTimeout = Duration(seconds: 10);
+  static const connectTimeout = 30000;
+  static const receiveTimeout = 30000;
+  static const sendTimeout = 30000;
 
   // 重試設置
   static const maxRetries = 3;
-  static const retryInterval = Duration(seconds: 1);
+  static const retryDelay = Duration(seconds: 1);
+  static const cacheMaxAge = Duration(hours: 1);
+  static const maxCacheSize = 10 * 1024 * 1024; // 10MB
+
+  // 認證相關
+  static const authTokenKey = 'auth_token';
+  static const refreshTokenKey = 'refresh_token';
+  static const deviceIdKey = 'device_id';
+
+  // 公開端點
+  static const publicEndpoints = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/forgot-password',
+  ];
 
   /// 獲取基礎 URL
   static String get baseUrl {
@@ -89,5 +103,16 @@ class ApiConfig {
   static bool get isDevelopment {
     const env = String.fromEnvironment('FLUTTER_ENV', defaultValue: 'dev');
     return env == 'dev';
+  }
+
+  static bool isPublicEndpoint(String path) {
+    return publicEndpoints.any((endpoint) => path.startsWith(endpoint));
+  }
+
+  static Map<String, String> getAuthHeaders(String token) {
+    return {
+      ...headers,
+      'Authorization': 'Bearer $token',
+    };
   }
 } 
