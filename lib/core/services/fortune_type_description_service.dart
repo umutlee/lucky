@@ -1,14 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:logging/logging.dart';
+import 'package:lunar/lunar.dart';
 import '../models/fortune_type.dart';
+import '../utils/logger.dart';
 
 final fortuneTypeDescriptionServiceProvider = Provider<FortuneTypeDescriptionService>((ref) {
-  return FortuneTypeDescriptionService();
+  final logger = Logger('FortuneTypeDescriptionService');
+  return FortuneTypeDescriptionService(logger);
 });
 
 /// 運勢類型描述服務類，用於提供各種運勢類型的詳細描述
 class FortuneTypeDescriptionService {
-  final _logger = Logger('FortuneTypeDescriptionService');
+  final Logger _logger;
+
+  FortuneTypeDescriptionService(this._logger);
 
   /// 運勢類型的詳細描述
   static const Map<FortuneType, Map<String, dynamic>> _typeDescriptions = {
@@ -254,6 +258,178 @@ ${tips.map((e) => '• $e').join('\n')}
     } catch (e) {
       _logger.warning('獲取運勢評價失敗: $e');
       return '運勢評價生成失敗';
+    }
+  }
+
+  /// 獲取運勢類型的詳細描述
+  String getDescription(FortuneType type, DateTime date) {
+    try {
+      final lunar = Lunar.fromDate(date);
+      final dayYi = lunar.getDayYi();
+      final dayJi = lunar.getDayJi();
+      final positions = lunar.getDayPositions();
+      
+      return switch (type) {
+        FortuneType.study => '''
+          學業運勢
+          - 適合科目：${_getSubjectsByWuXing(lunar.getDayWuXing())}
+          - 宜：${dayYi.take(3).join('、')}
+          - 忌：${dayJi.take(2).join('、')}
+          - 吉利方位：${positions.firstOrNull ?? '書房'}
+          - 建議時段：${lunar.getTimeZhi()}時
+        ''',
+        
+        FortuneType.career => '''
+          事業運勢
+          - 今日干支：${lunar.getDayGan()}${lunar.getDayZhi()}
+          - 宜：${dayYi.take(3).join('、')}
+          - 忌：${dayJi.take(2).join('、')}
+          - 貴人方位：${positions.firstOrNull ?? ''}
+          - 開運時段：${lunar.getTimeZhi()}時
+        ''',
+        
+        FortuneType.love => '''
+          感情運勢
+          - 桃花位：${lunar.getDayPositions().firstOrNull ?? ''}
+          - 宜：${dayYi.take(3).join('、')}
+          - 忌：${dayJi.take(2).join('、')}
+          - 良緣時段：${lunar.getTimeZhi()}時
+          - 避開方向：${lunar.getDayChongDesc()}
+        ''',
+        
+        FortuneType.wealth => '''
+          財運勢
+          - 今日五行：${lunar.getDayWuXing()}
+          - 財位：${positions.firstOrNull ?? ''}
+          - 宜：${dayYi.take(3).join('、')}
+          - 忌：${dayJi.take(2).join('、')}
+          - 開運時段：${lunar.getTimeZhi()}時
+        ''',
+        
+        FortuneType.health => '''
+          健康運勢
+          - 今日胎神：${lunar.getDayTaishen()}
+          - 養生要點：${dayYi.take(3).join('、')}
+          - 禁忌：${dayJi.take(2).join('、')}
+          - 宜運動方位：${positions.firstOrNull ?? ''}
+          - 調養時段：${lunar.getTimeZhi()}時
+        ''',
+        
+        FortuneType.travel => '''
+          旅行運勢
+          - 出行方位：${positions.firstOrNull ?? ''}
+          - 宜：${dayYi.take(3).join('、')}
+          - 忌：${dayJi.take(2).join('、')}
+          - 避開：${lunar.getDayChongDesc()}
+          - 適宜時段：${lunar.getTimeZhi()}時
+        ''',
+        
+        FortuneType.social => '''
+          社交運勢
+          - 人際運：${lunar.getDayXiu()}
+          - 貴人方位：${positions.firstOrNull ?? ''}
+          - 宜：${dayYi.take(3).join('、')}
+          - 忌：${dayJi.take(2).join('、')}
+          - 社交時段：${lunar.getTimeZhi()}時
+        ''',
+        
+        FortuneType.creativity => '''
+          創意運勢
+          - 靈感方位：${positions.firstOrNull ?? ''}
+          - 今日五行：${lunar.getDayWuXing()}
+          - 宜：${dayYi.take(3).join('、')}
+          - 忌：${dayJi.take(2).join('、')}
+          - 創作時段：${lunar.getTimeZhi()}時
+        ''',
+        
+        FortuneType.daily => '''
+          每日運勢
+          - 今日：${lunar.getDayInChinese()}
+          - 農曆：${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}
+          - 節氣：${lunar.getJieQi()}
+          - 宜：${dayYi.take(3).join('、')}
+          - 忌：${dayJi.take(2).join('、')}
+        ''',
+      };
+    } catch (e) {
+      _logger.error('獲取運勢描述失敗', e);
+      return '暫時無法獲取運勢描述';
+    }
+  }
+
+  /// 根據五行獲取適合的學科
+  String _getSubjectsByWuXing(String wuXing) {
+    return switch (wuXing) {
+      '木' => '生物、環境、醫學',
+      '火' => '物理、計算機、電子',
+      '土' => '地理、建築、農業',
+      '金' => '數學、機械、工程',
+      '水' => '化學、文學、藝術',
+      _ => '綜合學科',
+    };
+  }
+
+  /// 獲取運勢提示
+  List<String> getTips(FortuneType type, DateTime date) {
+    try {
+      final lunar = Lunar.fromDate(date);
+      final tips = <String>[];
+      
+      // 添加通用提示
+      tips.add('今日五行：${lunar.getDayWuXing()}');
+      tips.add('吉神方位：${lunar.getDayPositions().firstOrNull ?? ""}');
+      
+      // 添加特定類型提示
+      switch (type) {
+        case FortuneType.study:
+          if (lunar.getDayWuXing() == '金') {
+            tips.add('今日思維敏捷，適合學習理科');
+          }
+          tips.add('建議在${lunar.getDayPositions().firstOrNull ?? "書房"}方位學習');
+          
+        case FortuneType.career:
+          if (lunar.getDayGan().contains('甲')) {
+            tips.add('今日適合開展新項目');
+          }
+          tips.add('事業有貴人相助，把握機會');
+          
+        case FortuneType.love:
+          if (lunar.getDayZhi().contains('卯')) {
+            tips.add('桃花運旺盛，適合表達心意');
+          }
+          tips.add('留意${lunar.getDayChongDesc()}方向的緣分');
+          
+        case FortuneType.wealth:
+          tips.add('財運提示：${lunar.getDayPengZuGan()}');
+          tips.add('開運方位：${lunar.getDayPositions().firstOrNull ?? ""}');
+          
+        case FortuneType.health:
+          tips.add('今日養生要點：${lunar.getDayTaishen()}');
+          tips.add('注意保健：${lunar.getDaySha()}');
+          
+        case FortuneType.travel:
+          tips.add('出行建議：往${lunar.getDayPositions().firstOrNull ?? ""}方向');
+          tips.add('避開：${lunar.getDayChongDesc()}');
+          
+        case FortuneType.social:
+          tips.add('人際運勢：${lunar.getDayXiu()}');
+          tips.add('貴人方位：${lunar.getDayPositions().firstOrNull}');
+          
+        case FortuneType.creativity:
+          if (lunar.getDayWuXing() == '火') {
+            tips.add('今日靈感充沛，適合創作');
+          }
+          tips.add('創意空間建議：${lunar.getDayPositions().firstOrNull ?? ""}');
+          
+        case FortuneType.daily:
+          tips.add('今日吉時：${lunar.getTimeZhi()}');
+          tips.add('開運建議：${lunar.getDayYi().firstOrNull ?? "平和心態"}');
+      }
+      
+      return tips;
+    } catch (e) {
+      _logger.error('獲取運勢提示失敗', e);
+      return ['暫時無法獲取運勢提示'];
     }
   }
 } 
