@@ -5,45 +5,299 @@ import '../../widgets/loading_indicator.dart';
 import '../../../core/providers/scene_provider.dart';
 import '../../../core/models/scene.dart';
 import '../../../core/services/scene_service.dart';
+import 'scene_detail_screen.dart';
 
-class SceneSelectionScreen extends ConsumerWidget {
+class SceneSelectionScreen extends ConsumerStatefulWidget {
   const SceneSelectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final scenes = ref.watch(scenesProvider);
+  ConsumerState<SceneSelectionScreen> createState() => _SceneSelectionScreenState();
+}
 
+class _SceneSelectionScreenState extends ConsumerState<SceneSelectionScreen> {
+  late Future<List<Scene>> _scenesFuture;
+  late Future<List<Scene>> _recommendedScenesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadScenes();
+  }
+
+  void _loadScenes() {
+    final sceneService = ref.read(sceneServiceProvider);
+    _scenesFuture = sceneService.getScenes();
+    _recommendedScenesFuture = sceneService.getRecommendedScenes(
+      date: DateTime.now(),
+      userPreferences: null, // TODO: 從用戶設置獲取
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('選擇場景'),
-        centerTitle: true,
-      ),
-      body: ErrorBoundary(
-        child: scenes.when(
-          data: (sceneList) => GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.85,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-            ),
-            itemCount: sceneList.length,
-            itemBuilder: (context, index) {
-              final scene = sceneList[index];
-              return _SceneCard(
-                scene: scene,
-                index: index,
-              );
-            },
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() => _loadScenes()),
           ),
-          loading: () => const LoadingIndicator(),
-          error: (error, stack) => Center(
-            child: Text(
-              '載入失敗: $error',
-              style: theme.textTheme.bodyLarge,
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => setState(() => _loadScenes()),
+        child: CustomScrollView(
+          slivers: [
+            // 推薦場景部分
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '推薦場景',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    FutureBuilder<List<Scene>>(
+                      future: _recommendedScenesFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const LoadingIndicator();
+                        }
+                        
+                        if (snapshot.hasError) {
+                          return ErrorView(
+                            error: snapshot.error.toString(),
+                            onRetry: () => setState(() => _loadScenes()),
+                          );
+                        }
+                        
+                        final recommendedScenes = snapshot.data ?? [];
+                        if (recommendedScenes.isEmpty) {
+                          return const Center(
+                            child: Text('暫無推薦場景'),
+                          );
+                        }
+                        
+                        return SizedBox(
+                          height: 180,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: recommendedScenes.length,
+                            itemBuilder: (context, index) {
+                              final scene = recommendedScenes[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 16),
+                                child: _RecommendedSceneCard(
+                                  scene: scene,
+                                  onTap: () => _navigateToDetail(scene),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ),
+            
+            // 所有場景部分
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '所有場景',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+            
+            // 場景網格
+            FutureBuilder<List<Scene>>(
+              future: _scenesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SliverFillRemaining(
+                    child: Center(child: LoadingIndicator()),
+                  );
+                }
+                
+                if (snapshot.hasError) {
+                  return SliverFillRemaining(
+                    child: ErrorView(
+                      error: snapshot.error.toString(),
+                      onRetry: () => setState(() => _loadScenes()),
+                    ),
+                  );
+                }
+                
+                final scenes = snapshot.data ?? [];
+                if (scenes.isEmpty) {
+                  return const SliverFillRemaining(
+                    child: Center(
+                      child: Text('暫無場景數據'),
+                    ),
+                  );
+                }
+                
+                return SliverPadding(
+                  padding: const EdgeInsets.all(16.0),
+                  sliver: SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 0.75,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final scene = scenes[index];
+                        return _SceneCard(
+                          scene: scene,
+                          onTap: () => _navigateToDetail(scene),
+                        );
+                      },
+                      childCount: scenes.length,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToDetail(Scene scene) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SceneDetailScreen(scene: scene),
+      ),
+    );
+  }
+}
+
+class _RecommendedSceneCard extends StatelessWidget {
+  final Scene scene;
+  final VoidCallback onTap;
+
+  const _RecommendedSceneCard({
+    required this.scene,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 140,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 背景圖片
+              Image.asset(
+                scene.imageAsset,
+                fit: BoxFit.cover,
+              ),
+              // 漸變遮罩
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.7),
+                    ],
+                  ),
+                ),
+              ),
+              // 場景信息
+              Positioned(
+                left: 8,
+                right: 8,
+                bottom: 8,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      scene.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      scene.description,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              // 推薦標記
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    '推薦',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -53,177 +307,85 @@ class SceneSelectionScreen extends ConsumerWidget {
 
 class _SceneCard extends StatelessWidget {
   final Scene scene;
-  final int index;
+  final VoidCallback onTap;
 
   const _SceneCard({
     required this.scene,
-    required this.index,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Hero(
-      tag: 'scene_${scene.id}',
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        elevation: 0,
-        child: InkWell(
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              '/scene/detail',
-              arguments: scene,
-            );
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  theme.colorScheme.primaryContainer,
-                  theme.colorScheme.primary.withOpacity(0.1),
-                ],
-              ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: _buildBackground(theme),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        scene.icon,
-                        color: theme.colorScheme.primary,
-                        size: 32,
-                      ),
-                      const Spacer(),
-                      Text(
-                        scene.name,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          color: theme.colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        scene.description,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 背景圖片
+              Image.asset(
+                scene.imageAsset,
+                fit: BoxFit.cover,
+              ),
+              // 漸變遮罩
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.7),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              // 場景信息
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      scene.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      scene.description,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
-
-  Widget _buildBackground(ThemeData theme) {
-    return CustomPaint(
-      painter: _SceneBackgroundPainter(
-        color: theme.colorScheme.primary.withOpacity(0.05),
-        index: index,
-      ),
-    );
-  }
-}
-
-class _SceneBackgroundPainter extends CustomPainter {
-  final Color color;
-  final int index;
-
-  _SceneBackgroundPainter({
-    required this.color,
-    required this.index,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    
-    switch (index % 4) {
-      case 0:
-        _drawCirclePattern(canvas, size, paint);
-        break;
-      case 1:
-        _drawWavePattern(canvas, size, paint);
-        break;
-      case 2:
-        _drawDiagonalPattern(canvas, size, paint);
-        break;
-      case 3:
-        _drawDotsPattern(canvas, size, paint);
-        break;
-    }
-  }
-
-  void _drawCirclePattern(Canvas canvas, Size size, Paint paint) {
-    canvas.drawCircle(
-      Offset(size.width * 0.8, size.height * 0.2),
-      size.width * 0.3,
-      paint,
-    );
-  }
-
-  void _drawWavePattern(Canvas canvas, Size size, Paint paint) {
-    final path = Path();
-    path.moveTo(0, size.height * 0.7);
-    
-    for (var i = 0; i < size.width / 20; i++) {
-      path.quadraticBezierTo(
-        10 + (i * 20),
-        size.height * (0.7 + (i % 2 == 0 ? 0.05 : -0.05)),
-        20 + (i * 20),
-        size.height * 0.7,
-      );
-    }
-    
-    path.lineTo(size.width, size.height);
-    path.lineTo(0, size.height);
-    path.close();
-    
-    canvas.drawPath(path, paint);
-  }
-
-  void _drawDiagonalPattern(Canvas canvas, Size size, Paint paint) {
-    for (var i = 0; i < size.width + size.height; i += 20) {
-      canvas.drawLine(
-        Offset(i, 0),
-        Offset(0, i),
-        paint..strokeWidth = 1,
-      );
-    }
-  }
-
-  void _drawDotsPattern(Canvas canvas, Size size, Paint paint) {
-    for (var i = 0; i < size.width; i += 20) {
-      for (var j = 0; j < size.height; j += 20) {
-        canvas.drawCircle(
-          Offset(i.toDouble(), j.toDouble()),
-          2,
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_SceneBackgroundPainter oldDelegate) => false;
 } 
