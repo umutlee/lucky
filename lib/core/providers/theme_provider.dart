@@ -20,14 +20,10 @@ final identityThemeProvider = Provider<IdentityTheme>((ref) {
 
 /// 主題數據提供者
 final themeProvider = Provider<ThemeData>((ref) {
-  final themeMode = ref.watch(themeModeProvider);
+  final isDarkMode = ref.watch(themeModeProvider);
   final identityTheme = ref.watch(identityThemeProvider);
   
-  final brightness = switch (themeMode) {
-    ThemeMode.light => Brightness.light,
-    ThemeMode.dark => Brightness.dark,
-    ThemeMode.system => WidgetsBinding.instance.platformDispatcher.platformBrightness,
-  };
+  final brightness = isDarkMode ? Brightness.dark : Brightness.light;
   
   return identityTheme.createTheme(brightness);
 });

@@ -28,5 +28,15 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>需要使用位置信息來計算方位和運勢</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>需要使用位置信息來計算方位和運勢</string>
+	<key>NSCameraUsageDescription</key>
+	<string>需要使用相機來掃描和識別物品</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>需要使用麥克風來錄製語音</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>需要訪問相冊來保存和選擇圖片</string>
 </dict>
 </plist>

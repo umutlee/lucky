@@ -2,32 +2,35 @@ import 'package:logging/logging.dart' as logging;
 
 /// 日誌工具類,用於輸出不同級別的日誌信息
 class Logger {
-  static final Logger _instance = Logger._internal();
+  static final Logger _instance = Logger._internal('');
   final logging.Logger _logger;
-  static bool debugMode = true;
   final String _tag;
+  static bool debugMode = true;
   
-  factory Logger([String tag = '']) => _instance._internal(tag);
+  factory Logger([String tag = '']) => Logger._internal(tag);
   
   Logger._internal(this._tag) : _logger = logging.Logger('AllLucky');
   
   void info(String message) {
     if (debugMode) {
-      print('INFO: $message');
+      print('INFO: $_tag $message');
     }
     _logger.info('[$_tag] $message');
   }
   
-  void warning(String message) {
+  void warning(String message, [Object? error]) {
     if (debugMode) {
-      print('WARNING: $message');
+      print('WARNING: $_tag $message');
+      if (error != null) {
+        print('Error details: $error');
+      }
     }
-    _logger.warning('[$_tag] $message');
+    _logger.warning('[$_tag] $message', error);
   }
   
-  void error(String message, [dynamic error, StackTrace? stackTrace]) {
+  void error(String message, [Object? error, StackTrace? stackTrace]) {
     if (debugMode) {
-      print('ERROR: $message');
+      print('ERROR: $_tag $message');
       if (error != null) {
         print('Error details: $error');
       }
@@ -40,14 +43,14 @@ class Logger {
   
   void debug(String message) {
     if (debugMode) {
-      print('DEBUG: $message');
+      print('DEBUG: $_tag $message');
     }
     _logger.fine('[$_tag] $message');
   }
   
   void verbose(String message, [Object? error, StackTrace? stackTrace]) {
     if (debugMode) {
-      print('VERBOSE: $message');
+      print('VERBOSE: $_tag $message');
       if (error != null) {
         print('Error details: $error');
       }
@@ -60,7 +63,7 @@ class Logger {
   
   void wtf(String message, [Object? error, StackTrace? stackTrace]) {
     if (debugMode) {
-      print('WTF: $message');
+      print('WTF: $_tag $message');
       if (error != null) {
         print('Error details: $error');
       }

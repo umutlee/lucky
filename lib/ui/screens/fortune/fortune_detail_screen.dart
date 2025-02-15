@@ -24,12 +24,12 @@ class FortuneDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final fortuneScore = ref.watch(
-      fortuneScoreProvider(
+      fortuneScoreProvider((
         type: type,
         date: date,
         zodiac: zodiac,
         targetZodiac: targetZodiac,
-      ),
+      )),
     );
 
     return Scaffold(

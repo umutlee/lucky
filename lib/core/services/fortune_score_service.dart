@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lunar/lunar.dart';
 import '../models/fortune_type.dart';
 import '../models/zodiac.dart';
 import '../utils/logger.dart';
@@ -69,12 +70,18 @@ class FortuneScoreService {
     try {
       _logger.info('開始計算運勢分數：${type.displayName}');
 
+      // 使用 lunar 包計算基礎運勢
+      final lunar = Lunar.fromDate(date);
+      final dayFortune = lunar.getDayFortune();
+      final baseFortune = dayFortune.getScore() / 100.0;
+
       // 計算各項因素的分數
       final factors = await _calculateAllFactors(
         date: date,
         type: type,
         zodiac: zodiac,
         targetZodiac: targetZodiac,
+        baseFortune: baseFortune,
       );
 
       // 計算加權總分
@@ -82,6 +89,7 @@ class FortuneScoreService {
       
       // 生成建議
       final suggestions = _generateSuggestions(
+        lunar: lunar,
         type: type,
         score: weightedScore,
         factors: factors,
@@ -89,7 +97,6 @@ class FortuneScoreService {
 
       _logger.info('運勢計算完成，總分：${(weightedScore * 100).round()}');
 
-      // 返回結果
       return (
         score: (weightedScore * 100).round(),
         factors: factors,
@@ -116,22 +123,32 @@ class FortuneScoreService {
     required FortuneType type,
     String? zodiac,
     String? targetZodiac,
+    required double baseFortune,
   }) async {
+    final lunar = Lunar.fromDate(date);
+    
+    // 時間因素
     final timeScore = _timeFactorService.calculateTimeScore(date, type);
-    final lunarScore = await _calculateLunarScore(date, type);
+    
+    // 農曆因素（包含節氣、節日等）
+    final lunarScore = _calculateLunarScore(lunar, type);
+    
+    // 生肖因素
     final zodiacScore = await _calculateZodiacScore(
       date: date,
       type: type,
       zodiac: zodiac,
       targetZodiac: targetZodiac,
     );
-    final seasonalScore = _calculateSeasonalScore(date, type);
+    
+    // 五行因素
+    final wuxingScore = _calculateWuxingScore(lunar, type);
 
     return {
       '時間因素': timeScore,
       '農曆因素': lunarScore,
       '生肖因素': zodiacScore,
-      '季節因素': seasonalScore,
+      '五行因素': wuxingScore,
     };
   }
 
@@ -144,43 +161,84 @@ class FortuneScoreService {
   }
 
   /// 計算農曆因素分數
-  Future<double> _calculateLunarScore(DateTime date, FortuneType type) async {
+  double _calculateLunarScore(Lunar lunar, FortuneType type) {
     try {
-      final lunarDate = _lunarService.solarToLunar(date);
+      double score = 0.7; // 基礎分數
       
-      // 基礎分數（根據農曆日期）
-      double baseScore = switch (lunarDate.day) {
-        1 || 15 => 1.0,           // 初一、十五
-        8 || 23 => 0.9,           // 初八、廿三
-        3 || 7 || 13 || 27 => 0.8, // 其他傳統吉日
-        <= 2 || >= 29 => 0.6,     // 月初月末
-        _ => 0.7,                 // 其他日期
-      };
-
-      // 節氣加成
-      if (lunarDate.solarTerm != null) {
-        baseScore *= 1.2;
+      // 考慮節氣影響
+      final jieQi = lunar.getJieQi();
+      if (jieQi.isNotEmpty) {
+        score += 0.1;
       }
-
-      // 節日加成
-      if (lunarDate.festival != null) {
-        baseScore *= 1.3;
+      
+      // 考慮農曆節日
+      final festivals = lunar.getFestivals();
+      if (festivals.isNotEmpty) {
+        score += 0.1;
       }
-
+      
+      // 考慮宜忌
+      final yi = lunar.getDayYi();
+      final ji = lunar.getDayJi();
+      score += (yi.length - ji.length) * 0.02;
+      
       // 根據運勢類型調整
-      baseScore *= switch (type) {
+      score *= switch (type) {
         FortuneType.daily => 1.0,
-        FortuneType.love when lunarDate.festival == '七夕節' => 1.5,
-        FortuneType.career when lunarDate.day == 1 => 1.3,
-        FortuneType.study when lunarDate.day == 8 => 1.2,
+        FortuneType.love when festivals.contains('七夕') => 1.5,
+        FortuneType.career when lunar.getDay() == 1 => 1.3,
+        FortuneType.study when lunar.getDay() == 8 => 1.2,
         _ => 1.0,
       };
 
-      return baseScore.clamp(0.0, 1.0);
+      return score.clamp(0.0, 1.0);
     } catch (e) {
       _logger.warning('計算農曆分數失敗: $e');
       return 0.6;
     }
+  }
+
+  /// 計算五行分數
+  double _calculateWuxingScore(Lunar lunar, FortuneType type) {
+    try {
+      final dayWuxing = lunar.getDayWuXing();
+      final timeWuxing = lunar.getTimeWuXing();
+      
+      // 計算五行相生相剋
+      double score = 0.7;
+      if (_isWuxingBeneficial(dayWuxing, timeWuxing)) {
+        score += 0.2;
+      } else if (_isWuxingHarmful(dayWuxing, timeWuxing)) {
+        score -= 0.2;
+      }
+      
+      return score.clamp(0.0, 1.0);
+    } catch (e) {
+      _logger.warning('計算五行分數失敗: $e');
+      return 0.6;
+    }
+  }
+
+  bool _isWuxingBeneficial(String wuxing1, String wuxing2) {
+    const beneficial = {
+      '木': '火',
+      '火': '土',
+      '土': '金',
+      '金': '水',
+      '水': '木',
+    };
+    return beneficial[wuxing1] == wuxing2;
+  }
+
+  bool _isWuxingHarmful(String wuxing1, String wuxing2) {
+    const harmful = {
+      '木': '金',
+      '金': '火',
+      '火': '水',
+      '水': '土',
+      '土': '木',
+    };
+    return harmful[wuxing1] == wuxing2;
   }
 
   /// 計算生肖因素分數
@@ -221,117 +279,106 @@ class FortuneScoreService {
     }
   }
 
-  /// 計算季節因素分數
-  double _calculateSeasonalScore(DateTime date, FortuneType type) {
-    try {
-      final month = date.month;
-      
-      // 基礎季節分數
-      double baseScore = switch (month) {
-        3 || 4 || 5 => 0.9,    // 春季
-        6 || 7 || 8 => 0.8,    // 夏季
-        9 || 10 || 11 => 0.9,  // 秋季
-        _ => 0.7,              // 冬季
-      };
-      
-      // 根據運勢類型調整分數
-      baseScore *= switch (type) {
-        FortuneType.study => switch (month) {
-          3 || 4 || 5 || 9 || 10 || 11 => 1.2,  // 春秋季學習效果好
-          _ => 1.0,
-        },
-        FortuneType.love => switch (month) {
-          3 || 4 || 5 => 1.3,  // 春季桃花運旺
-          _ => 1.0,
-        },
-        FortuneType.career => switch (month) {
-          9 || 10 || 11 => 1.2,  // 秋季事業運好
-          _ => 1.0,
-        },
-        _ => 1.0,
-      };
-      
-      return baseScore.clamp(0.0, 1.0);
-    } catch (e) {
-      _logger.warning('計算季節分數失敗: $e');
-      return 0.7;
-    }
-  }
-
   /// 生成運勢建議
   List<String> _generateSuggestions({
+    required Lunar lunar,
     required FortuneType type,
     required double score,
     required Map<String, double> factors,
   }) {
     final suggestions = <String>[];
     
-    // 根據總分給出建議
+    // 添加基本運勢建議
     suggestions.add(_getOverallSuggestion(score));
     
-    // 添加因素相關建議
-    suggestions.addAll(_getFactorSuggestions(factors));
+    // 添加宜忌建議
+    final yi = lunar.getDayYi();
+    final ji = lunar.getDayJi();
+    if (yi.isNotEmpty) {
+      suggestions.add('今日宜：${yi.take(3).join("、")}');
+    }
+    if (ji.isNotEmpty) {
+      suggestions.add('今日忌：${ji.take(3).join("、")}');
+    }
     
-    // 添加類型特定建議
-    suggestions.addAll(_getTypeSuggestions(type, score));
+    // 添加吉神方位
+    final positions = lunar.getDayPositions();
+    if (positions.isNotEmpty) {
+      suggestions.add('吉神方位：${positions.take(2).join("、")}');
+    }
+    
+    // 添加特定類型建議
+    suggestions.addAll(_getTypeSpecificSuggestions(type, lunar));
     
     return suggestions;
   }
 
   /// 獲取總體建議
   String _getOverallSuggestion(double score) {
-    return switch (score) {
-      >= _thresholds['excellent']! => '今日運勢極佳，適合大展拳腳',
-      >= _thresholds['good']! => '運勢不錯，可以嘗試新事物',
-      >= _thresholds['normal']! => '運勢平平，宜按部就班行事',
-      >= _thresholds['poor']! => '運勢欠佳，建議謹慎行事',
-      _ => '今日運勢不佳，宜靜養休息',
-    };
+    if (score >= 0.8) {
+      return '今日運勢極佳，適合大展拳腳';
+    } else if (score >= 0.7) {
+      return '運勢不錯，可以嘗試新事物';
+    } else if (score >= 0.6) {
+      return '運勢平平，宜按部就班行事';
+    } else if (score >= 0.5) {
+      return '運勢欠佳，建議謹慎行事';
+    } else {
+      return '今日運勢不佳，宜靜養休息';
+    }
   }
 
-  /// 獲取因素相關建議
-  List<String> _getFactorSuggestions(Map<String, double> factors) {
+  /// 獲取特定類型建議
+  List<String> _getTypeSpecificSuggestions(FortuneType type, Lunar lunar) {
     final suggestions = <String>[];
     
-    if (factors['時間因素']! >= _thresholds['good']!) {
-      suggestions.add('當前時段最適合行動');
-    }
-    
-    if (factors['農曆因素']! >= _thresholds['good']!) {
-      suggestions.add('今日為傳統吉日');
-    }
-    
-    if (factors['生肖因素']! >= _thresholds['good']!) {
-      suggestions.add('生肖相性良好');
-    }
-    
-    if (factors['季節因素']! >= _thresholds['good']!) {
-      suggestions.add('季節因素有利');
+    switch (type) {
+      case FortuneType.study:
+        if (lunar.getDayWuXing() == '金') {
+          suggestions.add('今日思維敏捷，適合學習新知識');
+        }
+        suggestions.add('建議在${lunar.getDayPositions().firstOrNull ?? "書房"}方位學習');
+        
+      case FortuneType.career:
+        if (lunar.getDayGan().contains('甲')) {
+          suggestions.add('今日適合開展新項目');
+        }
+        suggestions.add('事業有貴人相助，把握機會');
+        
+      case FortuneType.love:
+        if (lunar.getDayZhi().contains('卯')) {
+          suggestions.add('桃花運旺盛，適合表達心意');
+        }
+        suggestions.add('留意${lunar.getDayChongDesc()}方向的緣分');
+        
+      case FortuneType.wealth:
+        final pengZuGan = lunar.getDayPengZuGan();
+        suggestions.add('財運提示：$pengZuGan');
+        suggestions.add('投資建議：謹慎為上');
+        
+      case FortuneType.health:
+        suggestions.add('今日養生要點：${lunar.getDayTaishen()}');
+        suggestions.add('注意保健：${lunar.getDaySha()}');
+        
+      case FortuneType.travel:
+        suggestions.add('出行建議：往${lunar.getDayPositions().firstOrNull ?? "東"}方向');
+        suggestions.add('避開：${lunar.getDayChongDesc()}');
+        
+      case FortuneType.social:
+        suggestions.add('人際運勢：${lunar.getDayXiu()}');
+        suggestions.add('貴人方位：${lunar.getDayPositions().firstOrNull}');
+        
+      case FortuneType.creativity:
+        if (lunar.getDayWuXing() == '火') {
+          suggestions.add('今日靈感充沛，適合創作');
+        }
+        suggestions.add('創意提示：保持開放心態');
+        
+      case FortuneType.daily:
+        suggestions.add('今日吉時：${lunar.getTimeZhi()}');
+        suggestions.add('開運建議：${lunar.getDayYi().firstOrNull ?? "平和心態"}');
     }
     
     return suggestions;
-  }
-
-  /// 獲取類型特定建議
-  List<String> _getTypeSuggestions(FortuneType type, double score) {
-    if (score < _thresholds['good']!) return [];
-    
-    return switch (type) {
-      FortuneType.study => [
-        '適合學習新知識',
-        '考試運勢不錯',
-      ],
-      FortuneType.career => [
-        '職場發展機會良好',
-        '適合談判或簽約',
-      ],
-      FortuneType.love => [
-        '桃花運旺盛',
-        '適合表達心意',
-      ],
-      _ => [
-        '整體運勢良好',
-      ],
-    };
   }
 } 

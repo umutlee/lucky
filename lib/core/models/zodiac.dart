@@ -1,9 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'zodiac.freezed.dart';
-part 'zodiac.g.dart';
-
+/// 生肖枚舉
 enum Zodiac {
   rat,
   ox,
@@ -110,6 +107,7 @@ enum Zodiac {
   }
 }
 
+/// 生肖狀態
 @immutable
 class ZodiacState {
   final Zodiac userZodiac;

@@ -1,20 +1,21 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:all_lucky/core/models/fortune.dart';
+import '../models/fortune.dart';
 import '../utils/logger.dart';
-import 'sqlite_preferences_service.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
-  return StorageService();
+  final logger = Logger('StorageService');
+  return StorageService(logger);
 });
 
 /// 本地存儲服務
 class StorageService {
-  static const String _tag = 'StorageService';
-  final _logger = Logger(_tag);
+  final Logger _logger;
   static const String _keyPrefix = 'all_lucky_';
   SharedPreferences? _prefs;
+
+  StorageService(this._logger);
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -94,96 +95,121 @@ class StorageService {
   }
 
   Future<bool> saveData(String key, dynamic value) async {
-    final String fullKey = _keyPrefix + key;
-    
-    if (value is String) {
-      await setString(key, value);
-    } else if (value is bool) {
-      await setBool(key, value);
-    } else if (value is int) {
-      await setInt(key, value);
-    } else if (value is double) {
-      await setDouble(key, value);
-    } else if (value is List<String>) {
-      await setStringList(key, value);
-    } else {
-      // 對於複雜對象,轉換為JSON字符串存儲
-      await setObject(key, value);
+    try {
+      final String fullKey = _keyPrefix + key;
+      
+      if (value is String) {
+        await setString(key, value);
+      } else if (value is bool) {
+        await setBool(key, value);
+      } else if (value is int) {
+        await setInt(key, value);
+      } else if (value is double) {
+        await setDouble(key, value);
+      } else if (value is List<String>) {
+        await setStringList(key, value);
+      } else {
+        // 對於複雜對象,轉換為JSON字符串存儲
+        await setObject(key, value);
+      }
+      return true;
+    } catch (e, stack) {
+      _logger.error('保存數據失敗: $key', e, stack);
+      return false;
     }
-    return true;
   }
 
   T? getData<T>(String key) {
-    final String fullKey = _keyPrefix + key;
-    final value = _prefs?.get(fullKey);
-    
-    if (value == null) {
-      return null;
-    }
+    try {
+      final String fullKey = _keyPrefix + key;
+      final value = _prefs?.get(fullKey);
+      
+      if (value == null) {
+        return null;
+      }
 
-    if (T == String || T == bool || T == int || T == double || T == List<String>) {
-      return value as T;
-    } else {
-      // 對於複雜對象,從JSON字符串解析
-      try {
+      if (T == String || T == bool || T == int || T == double || T == List<String>) {
+        return value as T;
+      } else {
+        // 對於複雜對象,從JSON字符串解析
         final jsonString = _prefs?.getString(fullKey);
         if (jsonString == null) return null;
         return json.decode(jsonString) as T;
-      } catch (e) {
-        print('Error decoding JSON for key $key: $e');
-        return null;
       }
+    } catch (e, stack) {
+      _logger.error('獲取數據失敗: $key', e, stack);
+      return null;
     }
   }
 
   Future<bool> removeData(String key) async {
-    final String fullKey = _keyPrefix + key;
-    await remove(fullKey);
-    return true;
+    try {
+      final String fullKey = _keyPrefix + key;
+      await remove(fullKey);
+      return true;
+    } catch (e, stack) {
+      _logger.error('刪除數據失敗: $key', e, stack);
+      return false;
+    }
   }
 
   Future<bool> clearAll() async {
-    await clear();
-    return true;
+    try {
+      await clear();
+      return true;
+    } catch (e, stack) {
+      _logger.error('清除所有數據失敗', e, stack);
+      return false;
+    }
   }
 
   bool hasKey(String key) {
-    final String fullKey = _keyPrefix + key;
-    return _prefs?.containsKey(fullKey) ?? false;
+    try {
+      final String fullKey = _keyPrefix + key;
+      return _prefs?.containsKey(fullKey) ?? false;
+    } catch (e, stack) {
+      _logger.error('檢查鍵是否存在失敗: $key', e, stack);
+      return false;
+    }
   }
 
   Future<T?> getCachedFortune<T>(String key) async {
-    final jsonString = _prefs?.getString(key);
-    if (jsonString == null) return null;
-    
     try {
+      final jsonString = _prefs?.getString(key);
+      if (jsonString == null) return null;
+      
       final json = jsonDecode(jsonString);
       if (T == Fortune) {
         return Fortune.fromJson(json) as T;
       }
       return json as T;
-    } catch (e) {
+    } catch (e, stack) {
+      _logger.error('獲取緩存運勢失敗: $key', e, stack);
       return null;
     }
   }
 
   Future<void> cacheFortune<T>(String key, T data) async {
-    if (data == null) return;
-    
     try {
+      if (data == null) return;
+      
       final jsonString = data is Fortune 
           ? jsonEncode(data.toJson())
           : jsonEncode(data);
       await setString(key, jsonString);
-    } catch (e) {
-      // 忽略序列化錯誤
+    } catch (e, stack) {
+      _logger.error('緩存運勢失敗: $key', e, stack);
     }
   }
 
   Future<void> clearAllCache() async {
-    final keys = await getAllKeys();
-    for (final key in keys) {
-      await remove(key);
+    try {
+      final keys = await getAllKeys();
+      for (final key in keys) {
+        await remove(key);
+      }
+    } catch (e, stack) {
+      _logger.error('清除所有緩存失敗', e, stack);
     }
   }
 
@@ -206,8 +232,8 @@ class StorageService {
         await setString(key, jsonString);
       }
       return true;
-    } catch (e, stackTrace) {
-      _logger.error('保存設置失敗: $key', e, stackTrace);
+    } catch (e, stack) {
+      _logger.error('保存設置失敗: $key', e, stack);
       return false;
     }
   }
@@ -229,8 +255,8 @@ class StorageService {
         if (jsonString == null) return null;
         return json.decode(jsonString) as T;
       }
-    } catch (e, stackTrace) {
-      _logger.error('獲取設置失敗: $key', e, stackTrace);
+    } catch (e, stack) {
+      _logger.error('獲取設置失敗: $key', e, stack);
       return null;
     }
   }
