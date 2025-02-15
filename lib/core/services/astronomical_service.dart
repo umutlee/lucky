@@ -1,5 +1,5 @@
-import 'package:chinese_lunar_calendar/chinese_lunar_calendar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lunar/lunar.dart';
 import 'package:logging/logging.dart';
 
 final astronomicalServiceProvider = Provider<AstronomicalService>((ref) {
@@ -9,16 +9,15 @@ final astronomicalServiceProvider = Provider<AstronomicalService>((ref) {
 /// 天文計算服務類，用於處理太陽節氣、農曆日期和月相的計算
 class AstronomicalService {
   final _logger = Logger('AstronomicalService');
-  final _calendar = ChineseLunarCalendar();
 
   /// 獲取當前太陽節氣
   /// 
   /// 返回一個包含節氣名稱和日期的元組
   (String name, DateTime date) getCurrentSolarTerm() {
     try {
-      final now = DateTime.now();
-      final term = _calendar.getSolarTerm(now.year, now.month);
-      return (term.name, term.date);
+      final lunar = Lunar.fromDate(DateTime.now());
+      final jieQi = lunar.getCurrentJieQi();
+      return (jieQi.getName(), jieQi.getSolar().toDate());
     } catch (e) {
       _logger.warning('獲取太陽節氣失敗: $e');
       return ('未知', DateTime.now());
@@ -31,8 +30,8 @@ class AstronomicalService {
   (int year, int month, int day) getLunarDate([DateTime? date]) {
     try {
       date ??= DateTime.now();
-      final lunar = _calendar.getLunarDate(date);
-      return (lunar.year, lunar.month, lunar.day);
+      final lunar = Lunar.fromDate(date);
+      return (lunar.getYear(), lunar.getMonth(), lunar.getDay());
     } catch (e) {
       _logger.warning('獲取農曆日期失敗: $e');
       return (0, 0, 0);
@@ -46,7 +45,10 @@ class AstronomicalService {
   double getMoonPhase([DateTime? date]) {
     try {
       date ??= DateTime.now();
-      return _calendar.getMoonPhase(date);
+      final lunar = Lunar.fromDate(date);
+      final day = lunar.getDay();
+      // 農曆初一為朔（新月），十五為望（滿月）
+      return day <= 15 ? day / 15 : (30 - day) / 15;
     } catch (e) {
       _logger.warning('獲取月相失敗: $e');
       return 0.0;
@@ -59,24 +61,8 @@ class AstronomicalService {
   bool isLunarFestival([DateTime? date]) {
     try {
       date ??= DateTime.now();
-      final lunar = _calendar.getLunarDate(date);
-      
-      // 農曆新年：正月初一
-      if (lunar.month == 1 && lunar.day == 1) return true;
-      
-      // 元宵節：正月十五
-      if (lunar.month == 1 && lunar.day == 15) return true;
-      
-      // 端午節：五月初五
-      if (lunar.month == 5 && lunar.day == 5) return true;
-      
-      // 中秋節：八月十五
-      if (lunar.month == 8 && lunar.day == 15) return true;
-      
-      // 重陽節：九月初九
-      if (lunar.month == 9 && lunar.day == 9) return true;
-      
-      return false;
+      final lunar = Lunar.fromDate(date);
+      return lunar.getFestivals().isNotEmpty;
     } catch (e) {
       _logger.warning('檢查節日失敗: $e');
       return false;
@@ -89,8 +75,9 @@ class AstronomicalService {
   (String name, DateTime date) getNextSolarTerm([DateTime? date]) {
     try {
       date ??= DateTime.now();
-      final term = _calendar.getNextSolarTerm(date);
-      return (term.name, term.date);
+      final lunar = Lunar.fromDate(date);
+      final nextJieQi = lunar.getNextJieQi();
+      return (nextJieQi.getName(), nextJieQi.getSolar().toDate());
     } catch (e) {
       _logger.warning('獲取下一個節氣失敗: $e');
       return ('未知', date ?? DateTime.now());
@@ -104,12 +91,12 @@ class AstronomicalService {
   /// 返回天數差，如果計算失敗則返回 0
   int getLunarDaysBetween(DateTime start, DateTime end) {
     try {
-      final startLunar = _calendar.getLunarDate(start);
-      final endLunar = _calendar.getLunarDate(end);
+      final startLunar = Lunar.fromDate(start);
+      final endLunar = Lunar.fromDate(end);
       
       // 計算農曆天數差
-      final startDays = startLunar.year * 365 + startLunar.month * 30 + startLunar.day;
-      final endDays = endLunar.year * 365 + endLunar.month * 30 + endLunar.day;
+      final startDays = startLunar.getYear() * 365 + startLunar.getMonth() * 30 + startLunar.getDay();
+      final endDays = endLunar.getYear() * 365 + endLunar.getMonth() * 30 + endLunar.getDay();
       
       return (endDays - startDays).abs();
     } catch (e) {
