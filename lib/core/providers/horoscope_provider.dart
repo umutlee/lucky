@@ -1,41 +1,39 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import '../models/horoscope.dart';
 import '../services/horoscope_service.dart';
 import '../services/error_service.dart';
 import 'base_provider.dart';
 import 'user_provider.dart';
 
-class HoroscopeState with ErrorHandlingState, LoadingState {
-  final Horoscope userHoroscope;
-  final String? fortuneDescription;
-  final List<String>? luckyElements;
+part 'horoscope_provider.freezed.dart';
+part 'horoscope_provider.g.dart';
 
-  HoroscopeState({
-    required this.userHoroscope,
-    this.fortuneDescription,
-    this.luckyElements,
-    this.error,
-    this.isLoading = false,
-  });
+@freezed
+class HoroscopeState with _$HoroscopeState implements ErrorHandlingState {
+  const factory HoroscopeState({
+    required String userHoroscope,
+    required List<String> luckyElements,
+    required String fortuneDescription,
+    @Default(false) bool isLoading,
+    @Default(false) bool hasError,
+    String? errorMessage,
+  }) = _HoroscopeState;
 
-  HoroscopeState copyWith({
-    Horoscope? userHoroscope,
-    String? fortuneDescription,
-    List<String>? luckyElements,
-    AppError? error,
-    bool? isLoading,
-  }) {
-    return HoroscopeState(
-      userHoroscope: userHoroscope ?? this.userHoroscope,
-      fortuneDescription: fortuneDescription ?? this.fortuneDescription,
-      luckyElements: luckyElements ?? this.luckyElements,
-      error: error ?? this.error,
-      isLoading: isLoading ?? this.isLoading,
-    );
-  }
+  factory HoroscopeState.fromJson(Map<String, dynamic> json) =>
+      _$HoroscopeStateFromJson(json);
+
+  factory HoroscopeState.initial() => const HoroscopeState(
+        userHoroscope: '',
+        luckyElements: [],
+        fortuneDescription: '',
+        isLoading: false,
+        hasError: false,
+      );
 }
 
-final horoscopeProvider = StateNotifierProvider<HoroscopeNotifier, HoroscopeState>((ref) {
+final horoscopeProvider =
+    StateNotifierProvider<HoroscopeNotifier, HoroscopeState>((ref) {
   final birthDate = ref.watch(userProvider.select((user) => user.birthDate));
   final errorService = ref.watch(errorServiceProvider);
   return HoroscopeNotifier(
@@ -55,10 +53,7 @@ class HoroscopeNotifier extends BaseStateNotifier<HoroscopeState> {
     this._birthDate,
   ) : super(
           errorService,
-          HoroscopeState(
-            userHoroscope: Horoscope.fromDate(_birthDate),
-            isLoading: true,
-          ),
+          HoroscopeState.initial(),
         ) {
     _init();
   }
@@ -66,7 +61,7 @@ class HoroscopeNotifier extends BaseStateNotifier<HoroscopeState> {
   void _init() async {
     await handleAsync(
       () async {
-        final horoscope = Horoscope.fromDate(_birthDate);
+        final horoscope = _horoscopeService.calculateHoroscope(_birthDate);
         
         state = state.copyWith(
           userHoroscope: horoscope,
@@ -87,8 +82,9 @@ class HoroscopeNotifier extends BaseStateNotifier<HoroscopeState> {
       },
       onError: (error) {
         state = state.copyWith(
-          error: error,
+          errorMessage: error.toString(),
           isLoading: false,
+          hasError: true,
         );
       },
     );
@@ -104,7 +100,8 @@ class HoroscopeNotifier extends BaseStateNotifier<HoroscopeState> {
           fortuneDescription: description,
           luckyElements: luckyElements,
           isLoading: false,
-          error: null,
+          errorMessage: null,
+          hasError: false,
         );
       },
       onStart: () {
@@ -112,8 +109,9 @@ class HoroscopeNotifier extends BaseStateNotifier<HoroscopeState> {
       },
       onError: (error) {
         state = state.copyWith(
-          error: error,
+          errorMessage: error.toString(),
           isLoading: false,
+          hasError: true,
         );
       },
     );

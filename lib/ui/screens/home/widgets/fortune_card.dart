@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/models/fortune_level.dart';
 import '../../../../core/providers/fortune_provider.dart';
 import '../../../../core/models/fortune.dart';
 import '../../../../core/models/fortune_type.dart';
@@ -185,15 +186,15 @@ class FortuneCard extends ConsumerWidget {
   Color _getLevelColor(FortuneLevel level, ThemeData theme) {
     switch (level) {
       case FortuneLevel.superLucky:
-        return Colors.red;
+        return theme.colorScheme.primary;
       case FortuneLevel.lucky:
-        return Colors.orange;
+        return theme.colorScheme.secondary;
       case FortuneLevel.smallLucky:
-        return Colors.yellow[700]!;
+        return theme.colorScheme.tertiary;
       case FortuneLevel.normal:
-        return Colors.blue;
+        return theme.colorScheme.surface;
       case FortuneLevel.unlucky:
-        return Colors.grey;
+        return theme.colorScheme.error;
     }
   }
 } 

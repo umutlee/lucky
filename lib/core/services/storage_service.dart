@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:encrypt/encrypt.dart';
 import '../models/fortune.dart';
 import '../utils/logger.dart';
 
@@ -14,19 +15,51 @@ class StorageService {
   final Logger _logger;
   static const String _keyPrefix = 'all_lucky_';
   SharedPreferences? _prefs;
+  late final Key _encryptKey;
+  late final IV _iv;
+  late final Encrypter _encrypter;
 
-  StorageService(this._logger);
+  StorageService(this._logger) {
+    // 初始化加密相關
+    final key = Key.fromSecureRandom(32);
+    final iv = IV.fromSecureRandom(16);
+    _encryptKey = key;
+    _iv = iv;
+    _encrypter = Encrypter(AES(key));
+  }
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _logger.info('儲存服務初始化成功');
   }
 
+  /// 加密數據
+  String encrypt(String data) {
+    try {
+      final encrypted = _encrypter.encrypt(data, iv: _iv);
+      return encrypted.base64;
+    } catch (e, stack) {
+      _logger.error('加密數據失敗', e, stack);
+      rethrow;
+    }
+  }
+
+  /// 解密數據
+  String decrypt(String encryptedData) {
+    try {
+      final encrypted = Encrypted.fromBase64(encryptedData);
+      return _encrypter.decrypt(encrypted, iv: _iv);
+    } catch (e, stack) {
+      _logger.error('解密數據失敗', e, stack);
+      rethrow;
+    }
+  }
+
   Future<void> setString(String key, String value) async {
     await _prefs?.setString('$_keyPrefix$key', value);
   }
 
-  Future<String?> getString(String key) async {
+  String? getString(String key) {
     return _prefs?.getString('$_keyPrefix$key');
   }
 
@@ -34,7 +67,7 @@ class StorageService {
     await _prefs?.setInt('$_keyPrefix$key', value);
   }
 
-  Future<int?> getInt(String key) async {
+  int? getInt(String key) {
     return _prefs?.getInt('$_keyPrefix$key');
   }
 
@@ -42,7 +75,7 @@ class StorageService {
     await _prefs?.setBool('$_keyPrefix$key', value);
   }
 
-  Future<bool?> getBool(String key) async {
+  bool? getBool(String key) {
     return _prefs?.getBool('$_keyPrefix$key');
   }
 
@@ -50,7 +83,7 @@ class StorageService {
     await _prefs?.setDouble('$_keyPrefix$key', value);
   }
 
-  Future<double?> getDouble(String key) async {
+  double? getDouble(String key) {
     return _prefs?.getDouble('$_keyPrefix$key');
   }
 
@@ -58,7 +91,7 @@ class StorageService {
     await _prefs?.setStringList('$_keyPrefix$key', value);
   }
 
-  Future<List<String>?> getStringList(String key) async {
+  List<String>? getStringList(String key) {
     return _prefs?.getStringList('$_keyPrefix$key');
   }
 
@@ -68,7 +101,7 @@ class StorageService {
   }
 
   Future<T?> getObject<T>(String key, T Function(Map<String, dynamic> json) fromJson) async {
-    final jsonString = await getString(key);
+    final jsonString = getString(key);
     if (jsonString == null) return null;
     final jsonMap = json.decode(jsonString) as Map<String, dynamic>;
     return fromJson(jsonMap);
@@ -79,18 +112,18 @@ class StorageService {
   }
 
   Future<void> clear() async {
-    final keys = await getAllKeys();
+    final keys = getAllKeys();
     for (final key in keys) {
       await remove(key);
     }
   }
 
-  Future<List<String>> getAllKeys() async {
+  List<String> getAllKeys() {
     final keys = _prefs?.getKeys() ?? <String>{};
     return keys.where((key) => key.startsWith(_keyPrefix)).toList();
   }
 
-  Future<bool> containsKey(String key) async {
+  bool containsKey(String key) {
     return _prefs?.containsKey('$_keyPrefix$key') ?? false;
   }
 
@@ -204,7 +237,7 @@ class StorageService {
 
   Future<void> clearAllCache() async {
     try {
-      final keys = await getAllKeys();
+      final keys = getAllKeys();
       for (final key in keys) {
         await remove(key);
       }

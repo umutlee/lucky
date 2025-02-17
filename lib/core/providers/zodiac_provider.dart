@@ -1,38 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import '../models/zodiac.dart';
 import '../services/zodiac_service.dart';
 import '../services/error_service.dart';
 import 'base_provider.dart';
 import 'user_provider.dart';
 
-class ZodiacState with ErrorHandlingState, LoadingState {
-  final ChineseZodiac userZodiac;
-  final String? fortuneDescription;
-  final List<String>? luckyElements;
+part 'zodiac_provider.freezed.dart';
+part 'zodiac_provider.g.dart';
 
-  ZodiacState({
-    required this.userZodiac,
-    this.fortuneDescription,
-    this.luckyElements,
-    this.error,
-    this.isLoading = false,
-  });
+@freezed
+class ZodiacState with _$ZodiacState implements ErrorHandlingState {
+  const factory ZodiacState({
+    required String userZodiac,
+    required List<String> luckyElements,
+    required String fortuneDescription,
+    @Default(false) bool isLoading,
+    @Default(false) bool hasError,
+    String? errorMessage,
+  }) = _ZodiacState;
 
-  ZodiacState copyWith({
-    ChineseZodiac? userZodiac,
-    String? fortuneDescription,
-    List<String>? luckyElements,
-    AppError? error,
-    bool? isLoading,
-  }) {
-    return ZodiacState(
-      userZodiac: userZodiac ?? this.userZodiac,
-      fortuneDescription: fortuneDescription ?? this.fortuneDescription,
-      luckyElements: luckyElements ?? this.luckyElements,
-      error: error ?? this.error,
-      isLoading: isLoading ?? this.isLoading,
-    );
-  }
+  factory ZodiacState.initial() => const ZodiacState(
+        userZodiac: 'Rat',
+        isLoading: false,
+      );
+
+  factory ZodiacState.fromJson(Map<String, dynamic> json) =>
+      _$ZodiacStateFromJson(json);
 }
 
 final zodiacProvider = StateNotifierProvider<ZodiacNotifier, ZodiacState>((ref) {
@@ -55,10 +49,7 @@ class ZodiacNotifier extends BaseStateNotifier<ZodiacState> {
     this._birthDate,
   ) : super(
           errorService,
-          ZodiacState(
-            userZodiac: ChineseZodiac.rat,
-            isLoading: true,
-          ),
+          ZodiacState.initial(),
         ) {
     _init();
   }
@@ -87,7 +78,7 @@ class ZodiacNotifier extends BaseStateNotifier<ZodiacState> {
       },
       onError: (error) {
         state = state.copyWith(
-          error: error,
+          errorMessage: error.toString(),
           isLoading: false,
         );
       },
@@ -104,7 +95,6 @@ class ZodiacNotifier extends BaseStateNotifier<ZodiacState> {
           fortuneDescription: description,
           luckyElements: luckyElements,
           isLoading: false,
-          error: null,
         );
       },
       onStart: () {
@@ -112,7 +102,7 @@ class ZodiacNotifier extends BaseStateNotifier<ZodiacState> {
       },
       onError: (error) {
         state = state.copyWith(
-          error: error,
+          errorMessage: error.toString(),
           isLoading: false,
         );
       },

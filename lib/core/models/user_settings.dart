@@ -1,9 +1,34 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'zodiac.dart';
 
 part 'user_settings.freezed.dart';
 part 'user_settings.g.dart';
+
+/// 主題模式轉換器
+class ThemeModeConverter implements JsonConverter<ThemeMode, String> {
+  const ThemeModeConverter();
+
+  @override
+  ThemeMode fromJson(String json) {
+    switch (json) {
+      case 'system':
+        return ThemeMode.system;
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  @override
+  String toJson(ThemeMode object) {
+    return object.toString().split('.').last;
+  }
+}
 
 @freezed
 class UserSettings with _$UserSettings {
@@ -20,8 +45,10 @@ class UserSettings with _$UserSettings {
     @Default(false) bool hasAcceptedPrivacy,
     @Default(true) bool isFirstLaunch,
     @Default([]) List<String> preferredFortuneTypes,
-    String? selectedLanguage,
-    String? selectedTheme,
+    @Default('zh_TW') String locale,
+    @ThemeModeConverter() @Default(ThemeMode.system) ThemeMode themeMode,
+    @Default(true) bool notificationsEnabled,
+    @Default(true) bool autoBackupEnabled,
   }) = _UserSettings;
 
   factory UserSettings.fromJson(Map<String, dynamic> json) =>
@@ -41,8 +68,10 @@ class UserSettings with _$UserSettings {
       hasAcceptedPrivacy: false,
       isFirstLaunch: true,
       preferredFortuneTypes: [],
-      selectedLanguage: 'zh_TW',
-      selectedTheme: 'system',
+      locale: 'zh_TW',
+      themeMode: ThemeMode.system,
+      notificationsEnabled: true,
+      autoBackupEnabled: true,
     );
   }
 
@@ -64,10 +93,10 @@ class UserSettings with _$UserSettings {
       preferredFortuneTypes.isNotEmpty;
 
   String get displayLanguage =>
-      selectedLanguage ?? 'zh_TW';
+      locale;
 
   String get displayTheme =>
-      selectedTheme ?? 'system';
+      themeMode.toString().split('.').last;
 
   String get displayNotificationTime =>
       notificationTime;
@@ -88,8 +117,10 @@ extension UserSettingsX on UserSettings {
       'privacy_accepted': hasAcceptedPrivacy ? 1 : 0,
       'is_first_launch': isFirstLaunch ? 1 : 0,
       'preferred_fortune_types': preferredFortuneTypes,
-      'selected_language': selectedLanguage,
-      'selected_theme': selectedTheme,
+      'locale': locale,
+      'theme_mode': themeMode.toString().split('.').last,
+      'notifications_enabled': notificationsEnabled ? 1 : 0,
+      'auto_backup_enabled': autoBackupEnabled ? 1 : 0,
     };
   }
 } 

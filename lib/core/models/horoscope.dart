@@ -96,57 +96,15 @@ enum Horoscope {
   }
 }
 
-@immutable
-class HoroscopeState {
-  final Horoscope userHoroscope;
-  final String? fortuneDescription;
-  final List<String>? luckyElements;
-  final bool isLoading;
-  final String? error;
-
-  const HoroscopeState({
-    required this.userHoroscope,
-    this.fortuneDescription,
-    this.luckyElements,
-    this.isLoading = false,
-    this.error,
-  });
-
-  HoroscopeState copyWith({
-    Horoscope? userHoroscope,
+@freezed
+class HoroscopeState with _$HoroscopeState {
+  const factory HoroscopeState({
+    required Horoscope userHoroscope,
     String? fortuneDescription,
     List<String>? luckyElements,
-    bool? isLoading,
+    @Default(false) bool isLoading,
     String? error,
-  }) {
-    return HoroscopeState(
-      userHoroscope: userHoroscope ?? this.userHoroscope,
-      fortuneDescription: fortuneDescription ?? this.fortuneDescription,
-      luckyElements: luckyElements ?? this.luckyElements,
-      isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
-    );
-  }
+  }) = _HoroscopeState;
 
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is HoroscopeState &&
-        other.userHoroscope == userHoroscope &&
-        other.fortuneDescription == fortuneDescription &&
-        listEquals(other.luckyElements, luckyElements) &&
-        other.isLoading == isLoading &&
-        other.error == error;
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(
-      userHoroscope,
-      fortuneDescription,
-      Object.hashAll(luckyElements ?? []),
-      isLoading,
-      error,
-    );
-  }
+  factory HoroscopeState.fromJson(Map<String, dynamic> json) => _$HoroscopeStateFromJson(json);
 } 

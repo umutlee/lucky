@@ -3,11 +3,12 @@ import 'dart:io';
 import 'dart:math';
 import 'package:path/path.dart' as path;
 import '../utils/logger.dart';
+import '../services/storage_service.dart';
 
 /// 密鑰管理服務工廠
 class KeyManagementServiceFactory {
-  static KeyManagementService create() {
-    return KeyManagementServiceImpl();
+  static KeyManagementService create(StorageService storageService) {
+    return KeyManagementServiceImpl(storageService);
   }
 }
 
@@ -25,12 +26,13 @@ abstract class KeyManagementService {
 
 /// 密鑰管理服務實現
 class KeyManagementServiceImpl implements KeyManagementService {
-  final _logger = Logger();
+  final _logger = Logger('KeyManagementService');
+  final StorageService _storageService;
   
   static const String _keyFileName = '.encryption_key';
   late final String _keyFilePath;
   
-  KeyManagementServiceImpl() {
+  KeyManagementServiceImpl(this._storageService) {
     final appDir = Directory.current;
     _keyFilePath = path.join(appDir.path, _keyFileName);
   }
@@ -91,12 +93,12 @@ class KeyManagementServiceImpl implements KeyManagementService {
   }
   
   String _encryptKey(String key) {
-    // TODO: 實現密鑰加密
-    return key;
+    // 使用 StorageService 加密密鑰
+    return _storageService.encrypt(key);
   }
   
   String _decryptKey(String encrypted) {
-    // TODO: 實現密鑰解密
-    return encrypted;
+    // 使用 StorageService 解密密鑰
+    return _storageService.decrypt(encrypted);
   }
 } 

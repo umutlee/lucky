@@ -46,7 +46,10 @@ class ApiClient {
     try {
       // 檢查網絡連接
       if (!await _apiInterceptor.checkConnection()) {
-        throw ApiException.fromCode(ApiErrorCodes.networkError);
+        throw ApiException(
+          message: '網絡連接錯誤',
+          statusCode: ApiErrorCodes.networkError,
+        );
       }
 
       // 嘗試從緩存獲取（如果未強制刷新）
@@ -79,7 +82,7 @@ class ApiClient {
       if (e is ApiException) rethrow;
       throw ApiException(
         message: e.toString(),
-        code: ApiErrorCodes.serverError,
+        statusCode: ApiErrorCodes.serverError,
       );
     }
   }
@@ -95,7 +98,10 @@ class ApiClient {
     try {
       // 檢查網絡連接
       if (!await _apiInterceptor.checkConnection()) {
-        throw ApiException.fromCode(ApiErrorCodes.networkError);
+        throw ApiException(
+          message: '網絡連接錯誤',
+          statusCode: ApiErrorCodes.networkError,
+        );
       }
 
       final response = await _dio.post(
@@ -112,7 +118,7 @@ class ApiClient {
       if (e is ApiException) rethrow;
       throw ApiException(
         message: e.toString(),
-        code: ApiErrorCodes.serverError,
+        statusCode: ApiErrorCodes.serverError,
       );
     }
   }
@@ -124,26 +130,32 @@ class ApiClient {
   ) {
     try {
       if (response.data is! Map<String, dynamic>) {
-        throw ApiException.fromCode(ApiErrorCodes.invalidResponse);
+        throw ApiException(
+          message: '無效的響應格式',
+          statusCode: ApiErrorCodes.invalidResponse,
+        );
       }
 
       final data = response.data as Map<String, dynamic>;
       final success = data['success'] as bool? ?? false;
-      final code = data['code'] as int?;
+      final statusCode = data['code'] as int?;
       final message = data['message'] as String?;
       final responseData = data['data'];
 
-      if (!success || code != null) {
+      if (!success || statusCode != null) {
         throw ApiException(
-          message: message ?? ApiErrorCodes.getErrorMessage(code ?? ApiErrorCodes.serverError),
-          code: code ?? ApiErrorCodes.serverError,
+          message: message ?? ApiErrorCodes.getErrorMessage(statusCode ?? ApiErrorCodes.serverError),
+          statusCode: statusCode ?? ApiErrorCodes.serverError,
           data: responseData,
         );
       }
 
       if (fromJson != null && responseData != null) {
         if (responseData is! Map<String, dynamic>) {
-          throw ApiException.fromCode(ApiErrorCodes.invalidResponse);
+          throw ApiException(
+            message: '無效的響應數據格式',
+            statusCode: ApiErrorCodes.invalidResponse,
+          );
         }
         return ApiResponse.success(fromJson(responseData));
       }
@@ -151,7 +163,10 @@ class ApiClient {
       return ApiResponse.success(responseData as T?);
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException.fromCode(ApiErrorCodes.parseError);
+      throw ApiException(
+        message: '解析響應失敗',
+        statusCode: ApiErrorCodes.parseError,
+      );
     }
   }
 

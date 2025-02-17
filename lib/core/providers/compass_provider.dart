@@ -12,12 +12,12 @@ class CompassNotifier extends StateNotifier<CompassState> {
   final DirectionService _directionService;
   StreamSubscription<CompassEvent>? _compassSubscription;
 
-  CompassNotifier(this._directionService) : super(const CompassState()) {
+  CompassNotifier(this._directionService) : super(CompassState.initial()) {
     _init();
   }
 
   void _init() async {
-    if (!await FlutterCompass.events.first.timeout(
+    if (!await FlutterCompass.events!.first.timeout(
       const Duration(seconds: 5),
       onTimeout: () => throw Exception('無法獲取方位感應器數據'),
     )) {
@@ -39,18 +39,16 @@ class CompassNotifier extends StateNotifier<CompassState> {
         
         state = state.copyWith(
           heading: heading,
-          currentDirection: direction,
+          direction: direction,
           isLoading: false,
         );
 
         // 獲取方位運勢
         try {
           final description = await _directionService.getDirectionDescription(direction);
-          final auspicious = await _directionService.getAuspiciousDirections(direction);
           
           state = state.copyWith(
             directionDescription: description,
-            auspiciousDirections: auspicious,
           );
         } catch (e) {
           state = state.copyWith(
@@ -66,15 +64,15 @@ class CompassNotifier extends StateNotifier<CompassState> {
     }
   }
 
-  CompassDirection _getDirection(double heading) {
-    if (heading < 22.5 || heading >= 337.5) return CompassDirection.north;
-    if (heading < 67.5) return CompassDirection.northEast;
-    if (heading < 112.5) return CompassDirection.east;
-    if (heading < 157.5) return CompassDirection.southEast;
-    if (heading < 202.5) return CompassDirection.south;
-    if (heading < 247.5) return CompassDirection.southWest;
-    if (heading < 292.5) return CompassDirection.west;
-    return CompassDirection.northWest;
+  CompassPoint _getDirection(double heading) {
+    if (heading < 22.5 || heading >= 337.5) return CompassPoint.north;
+    if (heading < 67.5) return CompassPoint.northEast;
+    if (heading < 112.5) return CompassPoint.east;
+    if (heading < 157.5) return CompassPoint.southEast;
+    if (heading < 202.5) return CompassPoint.south;
+    if (heading < 247.5) return CompassPoint.southWest;
+    if (heading < 292.5) return CompassPoint.west;
+    return CompassPoint.northWest;
   }
 
   @override

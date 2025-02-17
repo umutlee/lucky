@@ -43,6 +43,16 @@ class ZodiacFortuneService {
         return ['羊', '豬', '兔'];
       case FortuneType.daily:
         return ['鼠', '龍', '猴'];
+      case FortuneType.wealth:
+        return ['龍', '蛇', '雞'];
+      case FortuneType.health:
+        return ['虎', '龍', '狗'];
+      case FortuneType.travel:
+        return ['馬', '猴', '豬'];
+      case FortuneType.social:
+        return ['兔', '羊', '猴'];
+      case FortuneType.creative:
+        return ['龍', '猴', '雞'];
     }
   }
 
@@ -77,7 +87,7 @@ class ZodiacFortuneService {
       
       return fortune.copyWith(
         zodiac: Zodiac.fromString(zodiac),
-        zodiacAffinity: zodiacAffinity.values.reduce((a, b) => a + b) ~/ zodiacAffinity.length,
+        affinityScore: zodiacAffinity.values.reduce((a, b) => a + b) ~/ zodiacAffinity.length,
         recommendations: recommendations,
       );
     }
@@ -141,6 +151,71 @@ class ZodiacFortuneService {
           recommendations.add('建議多與${relatedZodiacs.last}生肖的人交流，轉運添福。');
         }
         break;
+
+      case FortuneType.wealth:
+        if (score >= 80) {
+          recommendations.add('今日財運亨通，適合投資理財。');
+          recommendations.add('與${relatedZodiacs.join('、')}生肖的人合作可能帶來意外收穫。');
+        } else if (score >= 60) {
+          recommendations.add('理財要謹慎，避免衝動消費。');
+          recommendations.add('可以向${relatedZodiacs.first}生肖的人請教投資建議。');
+        } else {
+          recommendations.add('今日財運欠佳，建議避免大額支出。');
+          recommendations.add('與${relatedZodiacs.last}生肖的人討論可能會有新的財運機會。');
+        }
+        break;
+
+      case FortuneType.health:
+        if (score >= 80) {
+          recommendations.add('今日身體狀況良好，適合進行運動。');
+          recommendations.add('可以和${relatedZodiacs.join('、')}生肖的朋友一起健身。');
+        } else if (score >= 60) {
+          recommendations.add('注意作息規律，保持良好的生活習慣。');
+          recommendations.add('建議向${relatedZodiacs.first}生肖的人學習養生之道。');
+        } else {
+          recommendations.add('今日身體較易疲勞，要多休息。');
+          recommendations.add('可以請教${relatedZodiacs.last}生肖的長輩保健知識。');
+        }
+        break;
+
+      case FortuneType.travel:
+        if (score >= 80) {
+          recommendations.add('今日適合外出旅行，與${relatedZodiacs.join('、')}生肖的人同行會很愉快。');
+          recommendations.add('可能會有意外的驚喜發現。');
+        } else if (score >= 60) {
+          recommendations.add('出行要注意安全，提前做好準備。');
+          recommendations.add('可以請${relatedZodiacs.first}生肖的朋友推薦旅遊地點。');
+        } else {
+          recommendations.add('今日不適合長途旅行，建議改期。');
+          recommendations.add('如果必須出行，可以諮詢${relatedZodiacs.last}生肖的人的建議。');
+        }
+        break;
+
+      case FortuneType.social:
+        if (score >= 80) {
+          recommendations.add('今日人緣極佳，特別是與${relatedZodiacs.join('、')}生肖的人互動。');
+          recommendations.add('適合參加社交活動，擴展人脈。');
+        } else if (score >= 60) {
+          recommendations.add('保持謙遜的態度，避免過於強勢。');
+          recommendations.add('可以通過${relatedZodiacs.first}生肖的朋友認識新朋友。');
+        } else {
+          recommendations.add('今日社交運較弱，不適合參加重要社交場合。');
+          recommendations.add('建議與${relatedZodiacs.last}生肖的知己好友小聚。');
+        }
+        break;
+
+      case FortuneType.creative:
+        if (score >= 80) {
+          recommendations.add('今日靈感湧現，與${relatedZodiacs.join('、')}生肖的人合作能激發創意。');
+          recommendations.add('適合嘗試新的創作方式。');
+        } else if (score >= 60) {
+          recommendations.add('保持開放的心態，多觀察生活中的細節。');
+          recommendations.add('可以向${relatedZodiacs.first}生肖的人學習新技能。');
+        } else {
+          recommendations.add('今日創意較弱，建議整理已有的想法。');
+          recommendations.add('與${relatedZodiacs.last}生肖的人交流可能會有新的啟發。');
+        }
+        break;
     }
     
     return recommendations;
@@ -165,7 +240,7 @@ class ZodiacFortuneService {
         
         return fortune.copyWith(
           zodiac: Zodiac.fromString(zodiac),
-          zodiacAffinity: zodiacAffinity.values.reduce((a, b) => a + b) ~/ zodiacAffinity.length,
+          affinityScore: zodiacAffinity.values.reduce((a, b) => a + b) ~/ zodiacAffinity.length,
           recommendations: recommendations,
         );
       }).toList();

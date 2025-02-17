@@ -1,6 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'logger_service.dart';
+
+part 'error_service.freezed.dart';
+part 'error_service.g.dart';
+
+class StackTraceConverter implements JsonConverter<StackTrace?, String?> {
+  const StackTraceConverter();
+
+  @override
+  StackTrace? fromJson(String? json) {
+    if (json == null) return null;
+    return StackTrace.fromString(json);
+  }
+
+  @override
+  String? toJson(StackTrace? stackTrace) {
+    if (stackTrace == null) return null;
+    return stackTrace.toString();
+  }
+}
+
+class ObjectConverter implements JsonConverter<Object?, String?> {
+  const ObjectConverter();
+
+  @override
+  Object? fromJson(String? json) {
+    if (json == null) return null;
+    return json;
+  }
+
+  @override
+  String? toJson(Object? object) {
+    if (object == null) return null;
+    return object.toString();
+  }
+}
 
 enum ErrorType {
   network,    // 網絡錯誤
@@ -10,18 +46,18 @@ enum ErrorType {
   unknown     // 未知錯誤
 }
 
-class AppError {
-  final String message;
-  final ErrorType type;
-  final Object? originalError;
-  final StackTrace? stackTrace;
+@freezed
+class AppError with _$AppError {
+  const factory AppError({
+    required String message,
+    required ErrorType type,
+    @ObjectConverter() Object? originalError,
+    @StackTraceConverter() StackTrace? stackTrace,
+  }) = _AppError;
 
-  const AppError({
-    required this.message,
-    required this.type,
-    this.originalError,
-    this.stackTrace,
-  });
+  factory AppError.fromJson(Map<String, dynamic> json) => _$AppErrorFromJson(json);
+
+  const AppError._();
 
   String get userMessage {
     switch (type) {

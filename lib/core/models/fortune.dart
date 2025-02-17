@@ -31,6 +31,8 @@ class Fortune with _$Fortune {
     @Default([]) List<String> opportunities,
     @Default({}) Map<String, dynamic> additionalData,
     @Default(0) int score,
+    @Default(0) int affinityScore,
+    @Default([]) List<String> recommendations,
     StudyFortune? studyFortune,
     CareerFortune? careerFortune,
     LoveFortune? loveFortune,

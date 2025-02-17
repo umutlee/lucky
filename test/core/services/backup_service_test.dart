@@ -1,98 +1,128 @@
+// ignore_for_file: depend_on_referenced_packages
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:all_lucky/core/services/backup_service.dart';
-import 'package:all_lucky/core/services/storage_service.dart';
+import 'package:all_lucky/core/database/database_helper.dart';
 import 'package:all_lucky/core/utils/logger.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
-@GenerateMocks([StorageService, Logger])
+import 'backup_service_test.mocks.dart';
+
+@GenerateMocks([DatabaseHelper])
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  // Mock path provider
+  const MethodChannel channel = MethodChannel('plugins.flutter.io/path_provider');
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+    channel,
+    (MethodCall methodCall) async {
+      if (methodCall.method == 'getApplicationDocumentsDirectory') {
+        return './test/temp';
+      }
+      return null;
+    },
+  );
+
   group('備份服務測試', () {
     late BackupService backupService;
-    late MockStorageService mockStorageService;
-    late MockLogger mockLogger;
+    late MockDatabaseHelper mockDatabaseHelper;
+    late String testBackupPath;
 
-    setUp(() {
-      mockStorageService = MockStorageService();
-      mockLogger = MockLogger();
-      backupService = BackupService(mockStorageService, mockLogger);
+    setUp(() async {
+      mockDatabaseHelper = MockDatabaseHelper();
+      backupService = BackupServiceImpl(mockDatabaseHelper);
+      
+      // 創建臨時測試目錄
+      final testDir = Directory('./test/temp');
+      if (!await testDir.exists()) {
+        await testDir.create(recursive: true);
+      }
+      
+      // 創建測試備份文件
+      testBackupPath = '${testDir.path}/test_backup.db';
+      final testFile = File(testBackupPath);
+      if (!await testFile.exists()) {
+        await testFile.create();
+      }
+    });
+
+    tearDown(() async {
+      // 清理測試目錄
+      final testDir = Directory('./test/temp');
+      if (await testDir.exists()) {
+        await testDir.delete(recursive: true);
+      }
     });
 
     test('創建備份', () async {
-      when(mockStorageService.getAllKeys())
-          .thenAnswer((_) async => ['key1', 'key2']);
-      
-      when(mockStorageService.getString(any))
-          .thenAnswer((_) async => 'value');
+      when(mockDatabaseHelper.database).thenReturn(sqlite3.openInMemory());
 
-      final success = await backupService.createBackup();
-      expect(success, isTrue);
+      final backupPath = await backupService.createBackup();
       
-      verify(mockLogger.info('開始創建備份')).called(1);
-      verify(mockStorageService.getAllKeys()).called(1);
-      verify(mockStorageService.getString(any)).called(2);
+      expect(backupPath, isNotEmpty);
+      verify(mockDatabaseHelper.database).called(1);
     });
 
     test('從備份恢復', () async {
-      final backupData = {
-        'key1': 'value1',
-        'key2': 'value2',
-      };
+      when(mockDatabaseHelper.database).thenReturn(sqlite3.openInMemory());
 
-      when(mockStorageService.setString(any, any))
-          .thenAnswer((_) async => true);
-
-      final success = await backupService.restoreFromBackup(backupData);
-      expect(success, isTrue);
+      final result = await backupService.restoreFromBackup(testBackupPath);
       
-      verify(mockLogger.info('開始從備份恢復')).called(1);
-      verify(mockStorageService.setString(any, any)).called(2);
+      expect(result, isTrue);
+      verify(mockDatabaseHelper.database).called(1);
+    });
+
+    test('獲取備份列表', () async {
+      final backupList = await backupService.getBackups();
+      
+      expect(backupList, isA<List<String>>());
     });
 
     test('刪除備份', () async {
-      when(mockStorageService.remove(any))
-          .thenAnswer((_) async => true);
-
-      final success = await backupService.deleteBackup('backup_20240215');
-      expect(success, isTrue);
+      final result = await backupService.deleteBackup(testBackupPath);
       
-      verify(mockLogger.info('刪除備份: backup_20240215')).called(1);
-      verify(mockStorageService.remove(any)).called(1);
+      expect(result, isTrue);
     });
 
-    test('檢查備份是否存在', () async {
-      when(mockStorageService.containsKey(any))
-          .thenAnswer((_) async => true);
+    test('自動備份 - 首次備份', () async {
+      when(mockDatabaseHelper.database).thenReturn(sqlite3.openInMemory());
+      when(mockDatabaseHelper.query(
+        'preferences',
+        where: 'key = ?',
+        whereArgs: ['last_backup_time'],
+      )).thenAnswer((_) async => []);
+      when(mockDatabaseHelper.insert(
+        'preferences',
+        any,
+        conflictResolution: 'REPLACE',
+      )).thenAnswer((_) async => 1);
 
-      final exists = await backupService.checkBackupExists('backup_20240215');
-      expect(exists, isTrue);
+      final result = await backupService.autoBackup();
       
-      verify(mockStorageService.containsKey(any)).called(1);
+      expect(result, isTrue);
+      verify(mockDatabaseHelper.database).called(1);
     });
 
-    test('獲取所有備份', () async {
-      when(mockStorageService.getAllKeys())
-          .thenAnswer((_) async => [
-            'backup_20240215',
-            'backup_20240214',
-            'other_key',
-          ]);
+    test('自動備份 - 最近已備份', () async {
+      when(mockDatabaseHelper.query(
+        'preferences',
+        where: 'key = ?',
+        whereArgs: ['last_backup_time'],
+      )).thenAnswer((_) async => [{
+        'value': DateTime.now().toIso8601String(),
+      }]);
 
-      final backups = await backupService.getAllBackups();
-      expect(backups, hasLength(2));
-      expect(backups, contains('backup_20240215'));
-      expect(backups, contains('backup_20240214'));
-      expect(backups, isNot(contains('other_key')));
-    });
-
-    test('處理備份錯誤', () async {
-      when(mockStorageService.getAllKeys())
-          .thenThrow(Exception('測試錯誤'));
-
-      final success = await backupService.createBackup();
-      expect(success, isFalse);
+      final result = await backupService.autoBackup();
       
-      verify(mockLogger.error(any, any)).called(1);
+      expect(result, isTrue);
+      verifyNever(mockDatabaseHelper.database);
     });
   });
 } 

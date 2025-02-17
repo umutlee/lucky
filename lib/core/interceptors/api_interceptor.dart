@@ -10,14 +10,14 @@ import '../utils/logger.dart';
 class ApiInterceptor extends Interceptor {
   int _retryCount = 0;
   final int maxRetries;
-  final Duration retryInterval;
+  final Duration retryDelay;
   final Dio _dio;
   final CacheService _cacheService;
   final _logger = Logger('ApiInterceptor');
 
   ApiInterceptor({
-    this.maxRetries = ApiConfig.maxRetries,
-    this.retryInterval = ApiConfig.retryInterval,
+    this.maxRetries = 3,
+    this.retryDelay = const Duration(seconds: 1),
     Dio? dio,
     required CacheService cacheService,
   }) : _dio = dio ?? Dio(), _cacheService = cacheService;
@@ -30,7 +30,7 @@ class ApiInterceptor extends Interceptor {
     try {
       // 檢查是否有緩存
       final cacheKey = '${options.method}:${options.path}';
-      final cachedData = await _cacheService.get(cacheKey);
+      final cachedData = await _cacheService.get(cacheKey, 'json');
       
       if (cachedData != null) {
         // 返回緩存數據
@@ -68,7 +68,7 @@ class ApiInterceptor extends Interceptor {
       await _cacheService.set(
         cacheKey,
         response.data,
-        const Duration(minutes: 5),
+        expiry: const Duration(minutes: 5),
       );
     } catch (e) {
       _logger.warning('緩存響應失敗: $e');
@@ -81,16 +81,16 @@ class ApiInterceptor extends Interceptor {
     if (response.data is! Map<String, dynamic>) {
       throw ApiException(
         message: ApiErrorCodes.getErrorMessage(ApiErrorCodes.invalidResponse),
-        code: ApiErrorCodes.invalidResponse,
+        statusCode: ApiErrorCodes.invalidResponse,
       );
     }
 
     // 檢查業務邏輯錯誤
     final data = response.data as Map<String, dynamic>;
     final success = data['success'] as bool? ?? false;
-    final code = data['code'] as int?;
+    final statusCode = data['code'] as int?;
 
-    if (!success || code != null) {
+    if (!success || statusCode != null) {
       throw ApiException.fromResponse(data);
     }
 
@@ -107,7 +107,7 @@ class ApiInterceptor extends Interceptor {
       _retryCount++;
       
       // 等待重試間隔
-      await Future.delayed(retryInterval);
+      await Future.delayed(retryDelay);
       
       // 重試請求
       try {
@@ -133,7 +133,7 @@ class ApiInterceptor extends Interceptor {
     _retryCount = 0;
 
     // 處理特定錯誤
-    if (error.code == ApiErrorCodes.unauthorized) {
+    if (error.isAuthError) {
       // TODO: 處理未授權錯誤，例如跳轉到登錄頁面
     }
 

@@ -1,18 +1,34 @@
-import 'package:flutter/foundation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'zodiac.freezed.dart';
+part 'zodiac.g.dart';
 
 /// 生肖枚舉
+@JsonEnum()
 enum Zodiac {
+  @JsonValue('rat')
   rat,
+  @JsonValue('ox')
   ox,
+  @JsonValue('tiger')
   tiger,
+  @JsonValue('rabbit')
   rabbit,
+  @JsonValue('dragon')
   dragon,
+  @JsonValue('snake')
   snake,
+  @JsonValue('horse')
   horse,
+  @JsonValue('goat')
   goat,
+  @JsonValue('monkey')
   monkey,
+  @JsonValue('rooster')
   rooster,
+  @JsonValue('dog')
   dog,
+  @JsonValue('pig')
   pig;
 
   static Zodiac fromYear(int year) {
@@ -105,60 +121,47 @@ enum Zodiac {
         return '火';
     }
   }
+
+  String get earthlyBranch {
+    switch (this) {
+      case Zodiac.rat:
+        return '子';
+      case Zodiac.ox:
+        return '丑';
+      case Zodiac.tiger:
+        return '寅';
+      case Zodiac.rabbit:
+        return '卯';
+      case Zodiac.dragon:
+        return '辰';
+      case Zodiac.snake:
+        return '巳';
+      case Zodiac.horse:
+        return '午';
+      case Zodiac.goat:
+        return '未';
+      case Zodiac.monkey:
+        return '申';
+      case Zodiac.rooster:
+        return '酉';
+      case Zodiac.dog:
+        return '戌';
+      case Zodiac.pig:
+        return '亥';
+    }
+  }
 }
 
 /// 生肖狀態
-@immutable
-class ZodiacState {
-  final Zodiac userZodiac;
-  final String? fortuneDescription;
-  final List<String>? luckyElements;
-  final bool isLoading;
-  final String? error;
-
-  const ZodiacState({
-    required this.userZodiac,
-    this.fortuneDescription,
-    this.luckyElements,
-    this.isLoading = false,
-    this.error,
-  });
-
-  ZodiacState copyWith({
-    Zodiac? userZodiac,
+@freezed
+class ZodiacState with _$ZodiacState {
+  const factory ZodiacState({
+    required Zodiac userZodiac,
     String? fortuneDescription,
     List<String>? luckyElements,
-    bool? isLoading,
+    @Default(false) bool isLoading,
     String? error,
-  }) {
-    return ZodiacState(
-      userZodiac: userZodiac ?? this.userZodiac,
-      fortuneDescription: fortuneDescription ?? this.fortuneDescription,
-      luckyElements: luckyElements ?? this.luckyElements,
-      isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
-    );
-  }
+  }) = _ZodiacState;
 
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is ZodiacState &&
-        other.userZodiac == userZodiac &&
-        other.fortuneDescription == fortuneDescription &&
-        listEquals(other.luckyElements, luckyElements) &&
-        other.isLoading == isLoading &&
-        other.error == error;
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(
-      userZodiac,
-      fortuneDescription,
-      Object.hashAll(luckyElements ?? []),
-      isLoading,
-      error,
-    );
-  }
+  factory ZodiacState.fromJson(Map<String, dynamic> json) => _$ZodiacStateFromJson(json);
 } 

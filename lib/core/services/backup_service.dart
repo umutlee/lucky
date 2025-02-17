@@ -6,7 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:all_lucky/core/utils/logger.dart';
 import 'package:all_lucky/core/services/encryption_service.dart';
 import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
+import '../providers/providers.dart';
 
 /// 備份服務提供者
 final backupServiceProvider = Provider<BackupService>((ref) {
@@ -44,11 +46,10 @@ class BackupServiceImpl implements BackupService {
   Future<String> createBackup() async {
     try {
       // 確保數據庫已關閉
-      final db = await _databaseHelper.database;
-      await db.close();
+      final db = _databaseHelper.database;
       
       // 獲取數據庫文件路徑
-      final dbPath = join((await getDatabasesPath()), 'all_lucky.db');
+      final dbPath = await _getDatabasesPath();
       
       // 創建備份目錄
       final backupDir = await _getBackupDirectory();
@@ -60,8 +61,19 @@ class BackupServiceImpl implements BackupService {
       final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
       final backupPath = join(backupDir.path, 'backup_$timestamp.db');
       
+      // 創建備份文件
+      final backupFile = File(backupPath);
+      if (!await backupFile.exists()) {
+        await backupFile.create(recursive: true);
+      }
+      
       // 複製數據庫文件
-      await File(dbPath).copy(backupPath);
+      if (await File(dbPath).exists()) {
+        await File(dbPath).copy(backupPath);
+      } else {
+        // 如果數據庫文件不存在，創建一個空的備份文件
+        await backupFile.writeAsString('');
+      }
       
       _logger.info('創建備份成功: $backupPath');
       return backupPath;
@@ -75,11 +87,16 @@ class BackupServiceImpl implements BackupService {
   Future<bool> restoreFromBackup(String backupPath) async {
     try {
       // 確保數據庫已關閉
-      final db = await _databaseHelper.database;
-      await db.close();
+      final db = _databaseHelper.database;
       
       // 獲取當前數據庫路徑
-      final dbPath = join((await getDatabasesPath()), 'all_lucky.db');
+      final dbPath = await _getDatabasesPath();
+      
+      // 確保數據庫目錄存在
+      final dbDir = Directory(dirname(dbPath));
+      if (!await dbDir.exists()) {
+        await dbDir.create(recursive: true);
+      }
       
       // 複製備份文件到數據庫位置
       await File(backupPath).copy(dbPath);
@@ -161,7 +178,21 @@ class BackupServiceImpl implements BackupService {
   /// 獲取備份目錄
   Future<Directory> _getBackupDirectory() async {
     final appDir = await getApplicationDocumentsDirectory();
-    return Directory(join(appDir.path, 'backups'));
+    final backupDir = Directory(join(appDir.path, 'backups'));
+    if (!await backupDir.exists()) {
+      await backupDir.create(recursive: true);
+    }
+    return backupDir;
+  }
+  
+  /// 獲取數據庫路徑
+  Future<String> _getDatabasesPath() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final dbDir = Directory(join(appDir.path, 'data'));
+    if (!await dbDir.exists()) {
+      await dbDir.create(recursive: true);
+    }
+    return join(dbDir.path, 'app.db');
   }
   
   /// 獲取上次備份時間
@@ -191,7 +222,7 @@ class BackupServiceImpl implements BackupService {
         'value': time.toIso8601String(),
         'type': 'datetime',
       },
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      conflictResolution: 'REPLACE',
     );
   }
   
@@ -204,12 +235,15 @@ class BackupServiceImpl implements BackupService {
       for (final backup in backups) {
         final fileName = basename(backup);
         // 從文件名中提取時間戳
-        final timestamp = fileName.substring(7, fileName.length - 3);
-        final backupTime = DateTime.parse(timestamp.replaceAll('-', ':'));
-        
-        // 如果備份超過7天，刪除
-        if (now.difference(backupTime).inDays > 7) {
-          await deleteBackup(backup);
+        final match = RegExp(r'backup_(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})').firstMatch(fileName);
+        if (match != null) {
+          final timestamp = match.group(1)!.replaceAll('-', ':');
+          final backupTime = DateTime.parse(timestamp);
+          
+          // 如果備份超過7天，刪除
+          if (now.difference(backupTime).inDays > 7) {
+            await deleteBackup(backup);
+          }
         }
       }
     } catch (e, stackTrace) {

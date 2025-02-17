@@ -1,5 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/error_service.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'base_provider.freezed.dart';
+part 'base_provider.g.dart';
 
 mixin ErrorHandlingState {
   AppError? error;
@@ -57,4 +61,16 @@ mixin PaginationState on ErrorHandlingState {
   int currentPage = 1;
   bool hasMorePages = true;
   bool isLoadingMore = false;
+}
+
+@freezed
+class ErrorHandlingState with _$ErrorHandlingState {
+  const factory ErrorHandlingState({
+    @Default(false) bool isLoading,
+    @Default(false) bool hasError,
+    String? errorMessage,
+  }) = _ErrorHandlingState;
+
+  factory ErrorHandlingState.fromJson(Map<String, dynamic> json) =>
+      _$ErrorHandlingStateFromJson(json);
 } 

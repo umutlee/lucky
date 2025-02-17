@@ -29,21 +29,43 @@ enum UserIdentityType {
   guest,       // 訪客模式
 }
 
+enum Gender {
+  male,
+  female,
+  other;
+
+  String get displayName {
+    switch (this) {
+      case Gender.male:
+        return '男';
+      case Gender.female:
+        return '女';
+      case Gender.other:
+        return '其他';
+    }
+  }
+}
+
 /// 用戶身份模型
 @freezed
 class UserIdentity with _$UserIdentity {
   const factory UserIdentity({
-    required String zodiac,
-    required String constellation,
-    @Default('') String name,
+    required String id,
+    required String name,
+    required DateTime birthDate,
+    required Gender gender,
+    required String location,
+    @Default(false) bool isProfileComplete,
   }) = _UserIdentity;
 
   factory UserIdentity.fromJson(Map<String, dynamic> json) => _$UserIdentityFromJson(json);
 
-  factory UserIdentity.initial() => const UserIdentity(
-    zodiac: '鼠',
-    constellation: '白羊座',
-    name: '訪客',
+  factory UserIdentity.empty() => UserIdentity(
+    id: '',
+    name: '',
+    birthDate: DateTime.now(),
+    gender: Gender.other,
+    location: '',
   );
 }
 
@@ -51,125 +73,173 @@ class UserIdentity with _$UserIdentity {
 List<UserIdentity> get defaultIdentities => [
   // 現代族群
   UserIdentity(
-    zodiac: '鼠',
-    constellation: '白羊座',
+    id: '1',
     name: '學生黨',
+    birthDate: DateTime(2000, 1, 1),
+    gender: Gender.male,
+    location: '台北',
   ),
   UserIdentity(
-    zodiac: '牛',
-    constellation: '金牛座',
+    id: '2',
     name: '上班族',
+    birthDate: DateTime(1990, 5, 15),
+    gender: Gender.male,
+    location: '台中',
   ),
   UserIdentity(
-    zodiac: '虎',
-    constellation: '雙子座',
+    id: '3',
     name: '在職進修',
+    birthDate: DateTime(1985, 10, 20),
+    gender: Gender.male,
+    location: '高雄',
   ),
   UserIdentity(
-    zodiac: '兔',
-    constellation: '巨蟹座',
+    id: '4',
     name: '程序猿/媛',
+    birthDate: DateTime(1995, 3, 10),
+    gender: Gender.male,
+    location: '新竹',
   ),
   UserIdentity(
-    zodiac: '龍',
-    constellation: '獅子座',
+    id: '5',
     name: '社畜人',
+    birthDate: DateTime(1980, 7, 5),
+    gender: Gender.male,
+    location: '台南',
   ),
   UserIdentity(
-    zodiac: '蛇',
-    constellation: '處女座',
+    id: '6',
     name: '工程獅',
+    birthDate: DateTime(1975, 12, 30),
+    gender: Gender.male,
+    location: '台東',
   ),
   UserIdentity(
-    zodiac: '馬',
-    constellation: '天秤座',
+    id: '7',
     name: '宅宅',
+    birthDate: DateTime(1990, 2, 15),
+    gender: Gender.male,
+    location: '花蓮',
   ),
   UserIdentity(
-    zodiac: '羊',
-    constellation: '天蝎座',
+    id: '8',
     name: '腐女子',
+    birthDate: DateTime(1995, 8, 25),
+    gender: Gender.female,
+    location: '屏東',
   ),
   UserIdentity(
-    zodiac: '猴',
-    constellation: '射手座',
+    id: '9',
     name: '傳統愛好者',
+    birthDate: DateTime(1980, 4, 10),
+    gender: Gender.female,
+    location: '宜蘭',
   ),
   UserIdentity(
-    zodiac: '雞',
-    constellation: '摩羯座',
+    id: '10',
     name: '銀髮族',
+    birthDate: DateTime(1965, 11, 20),
+    gender: Gender.female,
+    location: '台東',
   ),
   UserIdentity(
-    zodiac: '狗',
-    constellation: '水瓶座',
+    id: '11',
     name: '命理愛好者',
+    birthDate: DateTime(1970, 6, 5),
+    gender: Gender.female,
+    location: '花蓮',
   ),
   UserIdentity(
-    zodiac: '豬',
-    constellation: '雙魚座',
+    id: '12',
     name: '修行者',
+    birthDate: DateTime(1985, 9, 15),
+    gender: Gender.female,
+    location: '屏東',
   ),
   // 傳統族群
   UserIdentity(
-    zodiac: '鼠',
-    constellation: '子',
+    id: '13',
     name: '教育工作者',
+    birthDate: DateTime(1975, 1, 1),
+    gender: Gender.male,
+    location: '台北',
   ),
   UserIdentity(
-    zodiac: '牛',
-    constellation: '丑',
+    id: '14',
     name: '藝術工作者',
+    birthDate: DateTime(1980, 3, 15),
+    gender: Gender.female,
+    location: '台中',
   ),
   UserIdentity(
-    zodiac: '虎',
-    constellation: '寅',
+    id: '15',
     name: '訪客',
+    birthDate: DateTime(1990, 1, 1),
+    gender: Gender.other,
+    location: '未知',
   ),
   UserIdentity(
-    zodiac: '兔',
-    constellation: '卯',
+    id: '16',
     name: '訪客',
+    birthDate: DateTime(1990, 2, 1),
+    gender: Gender.other,
+    location: '未知',
   ),
   UserIdentity(
-    zodiac: '龍',
-    constellation: '辰',
+    id: '17',
     name: '訪客',
+    birthDate: DateTime(1990, 3, 1),
+    gender: Gender.other,
+    location: '未知',
   ),
   UserIdentity(
-    zodiac: '蛇',
-    constellation: '巳',
+    id: '18',
     name: '訪客',
+    birthDate: DateTime(1990, 4, 1),
+    gender: Gender.other,
+    location: '未知',
   ),
   UserIdentity(
-    zodiac: '馬',
-    constellation: '午',
+    id: '19',
     name: '訪客',
+    birthDate: DateTime(1990, 5, 1),
+    gender: Gender.other,
+    location: '未知',
   ),
   UserIdentity(
-    zodiac: '羊',
-    constellation: '未',
+    id: '20',
     name: '訪客',
+    birthDate: DateTime(1990, 6, 1),
+    gender: Gender.other,
+    location: '未知',
   ),
   UserIdentity(
-    zodiac: '猴',
-    constellation: '申',
+    id: '21',
     name: '訪客',
+    birthDate: DateTime(1990, 7, 1),
+    gender: Gender.other,
+    location: '未知',
   ),
   UserIdentity(
-    zodiac: '雞',
-    constellation: '酉',
+    id: '22',
     name: '訪客',
+    birthDate: DateTime(1990, 8, 1),
+    gender: Gender.other,
+    location: '未知',
   ),
   UserIdentity(
-    zodiac: '狗',
-    constellation: '戌',
+    id: '23',
     name: '訪客',
+    birthDate: DateTime(1990, 9, 1),
+    gender: Gender.other,
+    location: '未知',
   ),
   UserIdentity(
-    zodiac: '豬',
-    constellation: '亥',
+    id: '24',
     name: '訪客',
+    birthDate: DateTime(1990, 10, 1),
+    gender: Gender.other,
+    location: '未知',
   ),
 ];
 
