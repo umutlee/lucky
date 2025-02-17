@@ -1,121 +1,98 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:all_lucky/core/services/backup_service.dart';
+import 'package:all_lucky/core/services/storage_service.dart';
+import 'package:all_lucky/core/utils/logger.dart';
 
-@GenerateMocks([])
-class MockPathProviderPlatform extends Mock
-    with MockPlatformInterfaceMixin
-    implements PathProviderPlatform {
-  final Directory tempDir;
-  
-  MockPathProviderPlatform(this.tempDir);
-  
-  @override
-  Future<String?> getApplicationDocumentsPath() async {
-    return tempDir.path;
-  }
-}
-
+@GenerateMocks([StorageService, Logger])
 void main() {
-  late BackupService backupService;
-  late Directory tempDir;
-  late SharedPreferences prefs;
+  group('備份服務測試', () {
+    late BackupService backupService;
+    late MockStorageService mockStorageService;
+    late MockLogger mockLogger;
 
-  setUp(() async {
-    // 創建臨時目錄
-    tempDir = await Directory.systemTemp.createTemp('backup_test_');
-    
-    // 設置 PathProvider mock
-    PathProviderPlatform.instance = MockPathProviderPlatform(tempDir);
-    
-    // 初始化 SharedPreferences mock
-    SharedPreferences.setMockInitialValues({
-      'test_key': 'test_value',
-      'test_bool': true,
-      'test_int': 42
+    setUp(() {
+      mockStorageService = MockStorageService();
+      mockLogger = MockLogger();
+      backupService = BackupService(mockStorageService, mockLogger);
     });
-    prefs = await SharedPreferences.getInstance();
-    
-    // 初始化 BackupService
-    backupService = BackupService();
-  });
 
-  tearDown(() async {
-    // 清理臨時目錄
-    if (await tempDir.exists()) {
-      await tempDir.delete(recursive: true);
-    }
-  });
+    test('創建備份', () async {
+      when(mockStorageService.getAllKeys())
+          .thenAnswer((_) async => ['key1', 'key2']);
+      
+      when(mockStorageService.getString(any))
+          .thenAnswer((_) async => 'value');
 
-  test('創建備份應該成功保存數據', () async {
-    // 執行備份
-    final success = await backupService.createBackup();
-    expect(success, true);
+      final success = await backupService.createBackup();
+      expect(success, isTrue);
+      
+      verify(mockLogger.info('開始創建備份')).called(1);
+      verify(mockStorageService.getAllKeys()).called(1);
+      verify(mockStorageService.getString(any)).called(2);
+    });
 
-    // 驗證備份文件存在
-    final backupFile = File('${tempDir.path}/preferences_backup.json');
-    expect(await backupFile.exists(), true);
+    test('從備份恢復', () async {
+      final backupData = {
+        'key1': 'value1',
+        'key2': 'value2',
+      };
 
-    // 驗證備份內容
-    final content = await backupFile.readAsString();
-    final Map<String, dynamic> backupData = json.decode(content);
-    expect(backupData['test_key'], 'test_value');
-    expect(backupData['test_bool'], true);
-    expect(backupData['test_int'], 42);
-  });
+      when(mockStorageService.setString(any, any))
+          .thenAnswer((_) async => true);
 
-  test('從備份恢復數據應該成功', () async {
-    // 先創建備份
-    await backupService.createBackup();
+      final success = await backupService.restoreFromBackup(backupData);
+      expect(success, isTrue);
+      
+      verify(mockLogger.info('開始從備份恢復')).called(1);
+      verify(mockStorageService.setString(any, any)).called(2);
+    });
 
-    // 清除 SharedPreferences
-    await prefs.clear();
+    test('刪除備份', () async {
+      when(mockStorageService.remove(any))
+          .thenAnswer((_) async => true);
 
-    // 從備份恢復
-    final success = await backupService.restoreFromBackup();
-    expect(success, true);
+      final success = await backupService.deleteBackup('backup_20240215');
+      expect(success, isTrue);
+      
+      verify(mockLogger.info('刪除備份: backup_20240215')).called(1);
+      verify(mockStorageService.remove(any)).called(1);
+    });
 
-    // 驗證恢復的數據
-    expect(prefs.getString('test_key'), 'test_value');
-    expect(prefs.getBool('test_bool'), true);
-    expect(prefs.getInt('test_int'), 42);
-  });
+    test('檢查備份是否存在', () async {
+      when(mockStorageService.containsKey(any))
+          .thenAnswer((_) async => true);
 
-  test('當備份文件不存在時恢復應該失敗', () async {
-    final success = await backupService.restoreFromBackup();
-    expect(success, false);
-  });
+      final exists = await backupService.checkBackupExists('backup_20240215');
+      expect(exists, isTrue);
+      
+      verify(mockStorageService.containsKey(any)).called(1);
+    });
 
-  test('刪除備份應該成功', () async {
-    // 先創建備份
-    await backupService.createBackup();
-    
-    // 刪除備份
-    final success = await backupService.deleteBackup();
-    expect(success, true);
-    
-    // 驗證備份文件不存在
-    final backupFile = File('${tempDir.path}/preferences_backup.json');
-    expect(await backupFile.exists(), false);
-  });
+    test('獲取所有備份', () async {
+      when(mockStorageService.getAllKeys())
+          .thenAnswer((_) async => [
+            'backup_20240215',
+            'backup_20240214',
+            'other_key',
+          ]);
 
-  test('檢查備份存在性應該正確', () async {
-    // 初始狀態應該是不存在
-    expect(await backupService.hasBackup(), false);
-    
-    // 創建備份後應該存在
-    await backupService.createBackup();
-    expect(await backupService.hasBackup(), true);
-    
-    // 刪除備份後應該不存在
-    await backupService.deleteBackup();
-    expect(await backupService.hasBackup(), false);
+      final backups = await backupService.getAllBackups();
+      expect(backups, hasLength(2));
+      expect(backups, contains('backup_20240215'));
+      expect(backups, contains('backup_20240214'));
+      expect(backups, isNot(contains('other_key')));
+    });
+
+    test('處理備份錯誤', () async {
+      when(mockStorageService.getAllKeys())
+          .thenThrow(Exception('測試錯誤'));
+
+      final success = await backupService.createBackup();
+      expect(success, isFalse);
+      
+      verify(mockLogger.error(any, any)).called(1);
+    });
   });
 } 

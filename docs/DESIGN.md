@@ -8,6 +8,7 @@
 - 本地存儲：SQLite + SharedPreferences
 - 網絡請求：Dio
 - 國際化：intl
+- 農曆計算：lunar
 
 ### 1.2 核心模組
 ```
@@ -36,10 +37,26 @@ lib/
   ```dart
   class DailyInfo {
     final DateTime solarDate;    // 公曆日期
-    final String lunarDate;      // 農曆日期
-    final List<String> suitable; // 宜
-    final List<String> avoid;    // 忌
+    final LunarDate lunarDate;   // 農曆日期
+    final List<String> yi;       // 宜
+    final List<String> ji;       // 忌
     final String fortune;        // 運勢
+    final String timeZhi;        // 時辰
+    final String wuXing;         // 五行
+    final List<String> positions;// 吉神方位
+  }
+
+  class LunarDate {
+    final int year;
+    final int month;
+    final int day;
+    final bool isLeap;
+    final String yearGanZhi;
+    final String monthGanZhi;
+    final String dayGanZhi;
+    final String zodiac;
+    final String? solarTerm;
+    final List<String> festivals;
   }
   ```
 
@@ -54,14 +71,27 @@ lib/
   ```dart
   class MonthView {
     final List<DailyInfo> days;
-    final String monthLunar;
+    final LunarMonth monthLunar;
+    final List<SolarTerm> solarTerms;
+  }
+
+  class LunarMonth {
+    final int month;
+    final bool isLeap;
+    final String monthGanZhi;
     final List<String> festivals;
+  }
+
+  class SolarTerm {
+    final String name;
+    final DateTime date;
   }
   ```
 
 - **主要組件**：
   - 月曆網格
   - 日期詳情彈窗
+  - 節氣標記
   - 節日標記
 
 ### 2.3 設置功能
@@ -73,12 +103,16 @@ lib/
 ## 3. 數據流
 
 ### 3.1 本地數據
-- 使用 SQLite 存儲黃曆基礎數據
+- 使用 SQLite 存儲用戶數據和緩存
 - 使用 SharedPreferences 存儲用戶設置
+- 使用 lunar 包進行農曆計算
+  - 日期轉換
+  - 節氣計算
+  - 八字五行
+  - 宜忌查詢
 
 ### 3.2 網絡數據
-- 中華萬年曆 API 獲取宜忌數據
-- 星座 API 獲取運勢數據
+- 運勢 API 獲取運勢數據
 - 實現數據緩存機制
 
 ## 4. UI/UX 設計原則

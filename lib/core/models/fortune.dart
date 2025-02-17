@@ -30,6 +30,11 @@ class Fortune with _$Fortune {
     @Default([]) List<String> warnings,
     @Default([]) List<String> opportunities,
     @Default({}) Map<String, dynamic> additionalData,
+    @Default(0) int score,
+    StudyFortune? studyFortune,
+    CareerFortune? careerFortune,
+    LoveFortune? loveFortune,
+    DailyFortune? dailyFortune,
   }) = _Fortune;
 
   /// 從 JSON 創建

@@ -52,15 +52,35 @@ GET /fortune/daily
   "code": 200,
   "data": {
     "date": "2024-03-21",
-    "type": "general",
-    "score": 85,
-    "level": "極好",
-    "description": "今日整體運勢不錯，適合...",
-    "suggestions": [
-      "建議早起進行重要工作",
-      "適合戶外活動"
-    ],
-    "luckyDirections": ["東", "南"],
+    "solarDate": "2024年3月21日",
+    "lunarDate": {
+      "year": 2024,
+      "month": 2,
+      "day": 12,
+      "isLeap": false,
+      "yearGanZhi": "甲辰",
+      "monthGanZhi": "丙寅",
+      "dayGanZhi": "壬午",
+      "zodiac": "龍",
+      "solarTerm": "春分",
+      "festivals": ["春分節"]
+    },
+    "fortune": {
+      "score": 85,
+      "level": "極好",
+      "description": "今日整體運勢不錯，適合...",
+      "suggestions": [
+        "建議早起進行重要工作",
+        "適合戶外活動"
+      ]
+    },
+    "dayLuck": {
+      "yi": ["祭祀", "出行", "修造"],
+      "ji": ["動土", "安葬"],
+      "positions": ["東北", "西南"]
+    },
+    "timeZhi": "午時",
+    "wuXing": "火",
     "luckyColors": ["紅", "黃"],
     "luckyNumbers": [3, 8]
   },
@@ -88,6 +108,21 @@ GET /fortune/monthly
   "data": {
     "year": 2024,
     "month": 3,
+    "lunarMonth": {
+      "month": 2,
+      "isLeap": false,
+      "monthGanZhi": "丙寅",
+      "solarTerms": [
+        {
+          "name": "驚蟄",
+          "date": "2024-03-05"
+        },
+        {
+          "name": "春分",
+          "date": "2024-03-20"
+        }
+      ]
+    },
     "overview": "本月整體運勢平穩...",
     "details": {
       "study": 80,
@@ -97,7 +132,13 @@ GET /fortune/monthly
     "highlights": [
       "3月15日：適合重要決策",
       "3月21日：貴人運旺"
-    ]
+    ],
+    "monthFortune": {
+      "score": 82,
+      "description": "本月運勢穩定上升...",
+      "luckyDays": [5, 15, 21],
+      "cautionDays": [8, 18]
+    }
   },
   "message": "success"
 }

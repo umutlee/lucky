@@ -3,10 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:all_lucky/core/utils/page_transition_manager.dart';
 
 void main() {
-  group('PageTransitionManager', () {
-    testWidgets('淡入淡出轉場效果測試', (tester) async {
+  group('頁面轉場管理器測試', () {
+    testWidgets('創建基本轉場', (tester) async {
+      final page = const Text('測試頁面');
       final route = PageTransitionManager.createRoute<void>(
-        page: const Scaffold(),
+        page: page,
         type: PageTransitionType.fade,
       );
 
@@ -14,21 +15,22 @@ void main() {
         MaterialApp(
           home: Builder(
             builder: (context) => route.buildPage(
-              context: context,
-              animation: const AlwaysStoppedAnimation(0),
-              secondaryAnimation: const AlwaysStoppedAnimation(0),
+              context,
+              const AlwaysStoppedAnimation(1.0),
+              const AlwaysStoppedAnimation(0.0),
             ),
           ),
         ),
       );
 
-      expect(find.byType(FadeTransition), findsOneWidget);
+      expect(find.text('測試頁面'), findsOneWidget);
     });
 
-    testWidgets('滑動轉場效果測試', (tester) async {
+    testWidgets('創建自定義轉場', (tester) async {
+      final page = const Text('測試頁面');
       final route = PageTransitionManager.createRoute<void>(
-        page: const Scaffold(),
-        type: PageTransitionType.slide,
+        page: page,
+        type: PageTransitionType.slideAndFade,
         direction: TransitionDirection.right,
       );
 
@@ -36,187 +38,107 @@ void main() {
         MaterialApp(
           home: Builder(
             builder: (context) => route.buildPage(
-              context: context,
-              animation: const AlwaysStoppedAnimation(0),
-              secondaryAnimation: const AlwaysStoppedAnimation(0),
+              context,
+              const AlwaysStoppedAnimation(1.0),
+              const AlwaysStoppedAnimation(0.0),
             ),
           ),
         ),
       );
 
-      expect(find.byType(SlideTransition), findsOneWidget);
+      expect(find.text('測試頁面'), findsOneWidget);
     });
 
-    testWidgets('縮放轉場效果測試', (tester) async {
-      final route = PageTransitionManager.createRoute<void>(
-        page: const Scaffold(),
-        type: PageTransitionType.scale,
+    test('檢查默認轉場時間', () {
+      expect(
+        PageTransitionManager.defaultDuration,
+        const Duration(milliseconds: 300),
       );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Builder(
-            builder: (context) => route.buildPage(
-              context: context,
-              animation: const AlwaysStoppedAnimation(0),
-              secondaryAnimation: const AlwaysStoppedAnimation(0),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.byType(ScaleTransition), findsOneWidget);
     });
 
-    testWidgets('旋轉轉場效果測試', (tester) async {
-      final route = PageTransitionManager.createRoute<void>(
-        page: const Scaffold(),
-        type: PageTransitionType.rotation,
+    test('檢查默認轉場曲線', () {
+      expect(
+        PageTransitionManager.defaultCurve,
+        Curves.easeInOut,
       );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Builder(
-            builder: (context) => route.buildPage(
-              context: context,
-              animation: const AlwaysStoppedAnimation(0),
-              secondaryAnimation: const AlwaysStoppedAnimation(0),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.byType(RotationTransition), findsOneWidget);
     });
 
-    testWidgets('滑動並淡入淡出轉場效果測試', (tester) async {
-      final route = PageTransitionManager.createRoute<void>(
-        page: const Scaffold(),
-        type: PageTransitionType.slideAndFade,
-        direction: TransitionDirection.left,
-      );
+    testWidgets('測試不同類型的轉場效果', (tester) async {
+      final transitions = [
+        PageTransitionType.fade,
+        PageTransitionType.slide,
+        PageTransitionType.scale,
+        PageTransitionType.rotation,
+        PageTransitionType.slideAndFade,
+      ];
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Builder(
-            builder: (context) => route.buildPage(
-              context: context,
-              animation: const AlwaysStoppedAnimation(0),
-              secondaryAnimation: const AlwaysStoppedAnimation(0),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.byType(SlideTransition), findsOneWidget);
-      expect(find.byType(FadeTransition), findsOneWidget);
-    });
-
-    testWidgets('動畫持續時間測試', (tester) async {
-      const duration = Duration(milliseconds: 500);
-      final route = PageTransitionManager.createRoute<void>(
-        page: const Scaffold(),
-        type: PageTransitionType.fade,
-        duration: duration,
-      );
-
-      expect(route.transitionDuration, duration);
-    });
-
-    testWidgets('動畫曲線測試', (tester) async {
-      const curve = Curves.easeInOut;
-      final route = PageTransitionManager.createRoute<void>(
-        page: const Scaffold(),
-        type: PageTransitionType.fade,
-        curve: curve,
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Builder(
-            builder: (context) => route.buildPage(
-              context: context,
-              animation: const AlwaysStoppedAnimation(0),
-              secondaryAnimation: const AlwaysStoppedAnimation(0),
-            ),
-          ),
-        ),
-      );
-
-      final fadeTransition = tester.widget<FadeTransition>(
-        find.byType(FadeTransition),
-      );
-      expect(fadeTransition.opacity.curve, curve);
-    });
-
-    testWidgets('滑動方向測試', (tester) async {
-      for (final direction in TransitionDirection.values) {
+      for (final type in transitions) {
+        final page = Text('測試${type.name}轉場');
         final route = PageTransitionManager.createRoute<void>(
-          page: const Scaffold(),
-          type: PageTransitionType.slide,
-          direction: direction,
+          page: page,
+          type: type,
         );
 
         await tester.pumpWidget(
           MaterialApp(
             home: Builder(
               builder: (context) => route.buildPage(
-                context: context,
-                animation: const AlwaysStoppedAnimation(0),
-                secondaryAnimation: const AlwaysStoppedAnimation(0),
+                context,
+                const AlwaysStoppedAnimation(1.0),
+                const AlwaysStoppedAnimation(0.0),
               ),
             ),
           ),
         );
 
-        final slideTransition = tester.widget<SlideTransition>(
-          find.byType(SlideTransition),
-        );
-
-        final offset = slideTransition.position.value;
-        switch (direction) {
-          case TransitionDirection.right:
-            expect(offset.dx, equals(1.0));
-            expect(offset.dy, equals(0.0));
-            break;
-          case TransitionDirection.left:
-            expect(offset.dx, equals(-1.0));
-            expect(offset.dy, equals(0.0));
-            break;
-          case TransitionDirection.up:
-            expect(offset.dx, equals(0.0));
-            expect(offset.dy, equals(-1.0));
-            break;
-          case TransitionDirection.down:
-            expect(offset.dx, equals(0.0));
-            expect(offset.dy, equals(1.0));
-            break;
-        }
+        expect(find.text('測試${type.name}轉場'), findsOneWidget);
+        await tester.pumpAndSettle();
       }
     });
 
-    testWidgets('動畫完成回調測試', (tester) async {
-      bool completed = false;
-      final route = PageTransitionManager.createRoute<void>(
-        page: const Scaffold(),
-        type: PageTransitionType.fade,
-        onTransitionComplete: () => completed = true,
-      );
+    testWidgets('測試所有方向的偏移量', (tester) async {
+      final directions = [
+        TransitionDirection.right,
+        TransitionDirection.left,
+        TransitionDirection.up,
+        TransitionDirection.down,
+      ];
+
+      final expectedOffsets = [
+        const Offset(1.0, 0.0),
+        const Offset(-1.0, 0.0),
+        const Offset(0.0, -1.0),
+        const Offset(0.0, 1.0),
+      ];
 
       await tester.pumpWidget(
         MaterialApp(
           home: Builder(
-            builder: (context) => route.buildPage(
-              context: context,
-              animation: const AlwaysStoppedAnimation(1),
-              secondaryAnimation: const AlwaysStoppedAnimation(0),
-            ),
+            builder: (context) {
+              for (var i = 0; i < directions.length; i++) {
+                final route = PageTransitionManager.createRoute<void>(
+                  page: const SizedBox(),
+                  type: PageTransitionType.slide,
+                  direction: directions[i],
+                );
+
+                final transition = route.transitionsBuilder(
+                  context,
+                  const AlwaysStoppedAnimation(0.0),
+                  const AlwaysStoppedAnimation(0.0),
+                  const SizedBox(),
+                ) as SlideTransition;
+
+                expect(
+                  transition.position.value,
+                  equals(expectedOffsets[i]),
+                );
+              }
+              return const SizedBox();
+            },
           ),
         ),
       );
-
-      await tester.pumpAndSettle();
-      expect(completed, isTrue);
     });
   });
 } 

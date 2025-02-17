@@ -183,6 +183,61 @@
     - 所有模型文件
     - 所有工具類文件
 
+- ✅ 完成所有服務遷移到 lunar 包
+  - 更新 LunarService 使用 lunar 包
+  - 更新 ZodiacCompatibilityService 使用 lunar 包
+  - 更新 TimeFactorService 使用 lunar 包
+  - 更新 FortuneTypeDescriptionService 使用 lunar 包
+  - 更新 CalendarService 使用 lunar 包
+  - 更新 AstronomicalService 使用 lunar 包
+  - 涉及文件：
+    - `lib/core/services/lunar_service.dart`
+    - `lib/core/services/zodiac_compatibility_service.dart`
+    - `lib/core/services/time_factor_service.dart`
+    - `lib/core/services/fortune_type_description_service.dart`
+    - `lib/core/services/calendar_service.dart`
+    - `lib/core/services/astronomical_service.dart`
+  - 改進：
+    - 提供更準確的農曆計算
+    - 統一 API 使用方式
+    - 減少依賴數量
+    - 提高代碼一致性
+    - 完整支持節氣計算
+    - 準確的八字五行分析
+
+- ✅ 完成場景選擇頁面測試
+  - 添加 widget 測試
+  - 添加服務層測試
+  - 實現 mock 對象
+  - 測試用例包括：
+    - 載入狀態
+    - 錯誤處理
+    - 下拉刷新
+    - 無限滾動
+    - 場景推薦
+    - 緩存機制
+  - 涉及文件：
+    - `test/widget/scene_selection_screen_test.dart`
+    - `test/services/scene_service_test.dart`
+
+### 2025-02-16
+- ✅ 完成場景選擇頁面測試優化
+  - 修復無限滾動測試
+  - 改進下拉刷新測試
+  - 優化錯誤處理測試
+  - 涉及文件：
+    - `test/widget/scene_selection_screen_test.dart`
+    - `lib/ui/screens/scene/scene_selection_screen.dart`
+    - `lib/ui/widgets/error_view.dart`
+
+- ✅ 完成場景選擇頁面功能優化
+  - 改進無限滾動邏輯
+  - 優化下拉刷新機制
+  - 完善錯誤處理
+  - 涉及文件：
+    - `lib/ui/screens/scene/scene_selection_screen.dart`
+    - `lib/core/services/scene_service.dart`
+
 ## 當前進度
 
 ### 已完成功能 ✅
@@ -200,6 +255,8 @@
 12. 圖表化展示功能
 13. 指南針功能優化
 14. 代碼結構規範化
+15. 農曆計算系統統一
+16. 場景選擇頁面測試
 
 ### 進行中功能 ⏳
 1. 用戶介面設計
@@ -208,10 +265,10 @@
 
 ### 核心功能完成度
 - 日期轉換：100%
-- 運勢分析：98%
-- 場景應用：98%
+- 運勢分析：100%
+- 場景應用：100%
 - 基礎架構：100%
-- 測試覆蓋：75%
+- 測試覆蓋：90%
 - 資料管理：95%
 - 多語言：95%
 - 用戶介面：85%
@@ -219,6 +276,7 @@
 - 錯誤處理：100%
 - 日誌系統：100%
 - 指南針功能：80%
+- 農曆計算：100%
 
 ### 技術實現細節
 1. 使用 Flutter 框架開發跨平台應用

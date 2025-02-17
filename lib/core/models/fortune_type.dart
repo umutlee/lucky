@@ -1,198 +1,127 @@
 import 'package:meta/meta.dart';
 
-/// 運勢類型枚舉
-@immutable
+/// 運勢類型
 enum FortuneType {
-  daily,
-  love,
-  career,
-  wealth,
-  health,
-  study,
-  travel,
-  social,
-  creativity;
+  /// 每日運勢
+  daily('每日運勢', '每日運勢分析'),
 
-  String get displayName {
-    switch (this) {
-      case FortuneType.daily:
-        return '每日運勢';
-      case FortuneType.love:
-        return '愛情運勢';
-      case FortuneType.career:
-        return '事業運勢';
-      case FortuneType.wealth:
-        return '財運';
-      case FortuneType.health:
-        return '健康運勢';
-      case FortuneType.study:
-        return '學業運勢';
-      case FortuneType.travel:
-        return '旅行運勢';
-      case FortuneType.social:
-        return '人際運勢';
-      case FortuneType.creativity:
-        return '創意運勢';
-    }
-  }
+  /// 學業運勢
+  study('學業運勢', '學業運勢分析'),
 
-  String get description {
-    switch (this) {
-      case FortuneType.daily:
-        return '查看今日整體運勢';
-      case FortuneType.love:
-        return '了解感情發展和桃花運';
-      case FortuneType.career:
-        return '職場發展和工作機會';
-      case FortuneType.wealth:
-        return '財運和投資機會';
-      case FortuneType.health:
-        return '身心健康和養生建議';
-      case FortuneType.study:
-        return '學習進展和考試運勢';
-      case FortuneType.travel:
-        return '出行運勢和旅遊建議';
-      case FortuneType.social:
-        return '人際關係和社交運勢';
-      case FortuneType.creativity:
-        return '創意靈感和藝術表現';
-    }
-  }
+  /// 事業運勢
+  career('事業運勢', '事業運勢分析'),
 
-  String get iconPath {
-    switch (this) {
-      case FortuneType.daily:
-        return 'assets/icons/daily.png';
-      case FortuneType.love:
-        return 'assets/icons/love.png';
-      case FortuneType.career:
-        return 'assets/icons/career.png';
-      case FortuneType.wealth:
-        return 'assets/icons/wealth.png';
-      case FortuneType.health:
-        return 'assets/icons/health.png';
-      case FortuneType.study:
-        return 'assets/icons/study.png';
-      case FortuneType.travel:
-        return 'assets/icons/travel.png';
-      case FortuneType.social:
-        return 'assets/icons/social.png';
-      case FortuneType.creativity:
-        return 'assets/icons/creativity.png';
-    }
-  }
+  /// 愛情運勢
+  love('愛情運勢', '愛情運勢分析'),
 
-  /// 獲取運勢類型的詳細描述
-  String get detailedDescription => description;
+  /// 財運運勢
+  wealth('財運運勢', '財運運勢分析'),
 
-  /// 檢查是否為日常決策類型
-  bool get isDaily => this == daily;
+  /// 健康運勢
+  health('健康運勢', '健康運勢分析'),
 
-  /// 檢查是否為學習職業類型
-  bool get isCareer => this == career;
+  /// 旅行運勢
+  travel('旅行運勢', '旅行運勢分析'),
 
-  /// 檢查是否為人際互動類型
-  bool get isSocial => this == love;
+  /// 社交運勢
+  social('社交運勢', '社交運勢分析'),
 
-  /// 檢查是否為生活休閒類型
-  bool get isLifestyle => this == study;
+  /// 創意運勢
+  creative('創意運勢', '創意運勢分析');
 
-  /// 獲取運勢類型的分類名稱
-  String get categoryName {
-    switch (this) {
-      case FortuneType.daily:
-        return '日常決策';
-      case FortuneType.career:
-        return '職場發展';
-      case FortuneType.study:
-        return '學習進修';
-      case FortuneType.love:
-        return '感情生活';
-      case FortuneType.wealth:
-        return '財富運勢';
-      case FortuneType.health:
-        return '健康養生';
-      case FortuneType.travel:
-        return '旅行出遊';
-      case FortuneType.social:
-        return '社交人際';
-      case FortuneType.creativity:
-        return '創意靈感';
-    }
-  }
+  const FortuneType(this.displayName, this.description);
 
-  /// 獲取運勢建議的參考依據
-  String get referenceBase {
-    final StringBuffer buffer = StringBuffer();
-    buffer.writeln('參考依據：');
-    
-    // 添加傳統依據（黃曆）
-    buffer.writeln('• 傳統黃曆：節氣、五行');
-    
-    // 根據類型添加特定依據
-    switch (this) {
-      case FortuneType.daily:
-        buffer.writeln('• 傳統宜忌');
-        buffer.writeln('• 方位五行');
-        break;
-        
-      case FortuneType.study:
-        buffer.writeln('• 文昌位');
-        buffer.writeln('• 學業運勢');
-        break;
-        
-      case FortuneType.career:
-        buffer.writeln('• 事業運勢');
-        buffer.writeln('• 財運指數');
-        break;
-        
-      case FortuneType.love:
-        buffer.writeln('• 桃花運勢');
-        buffer.writeln('• 姻緣指數');
-        break;
+  /// 顯示名稱
+  final String displayName;
 
-      case FortuneType.wealth:
-        buffer.writeln('• 財運指數');
-        buffer.writeln('• 投資運勢');
-        break;
+  /// 描述
+  final String description;
 
-      case FortuneType.health:
-        buffer.writeln('• 養生指南');
-        buffer.writeln('• 健康運勢');
-        break;
-
-      case FortuneType.travel:
-        buffer.writeln('• 出行運勢');
-        buffer.writeln('• 方位指引');
-        break;
-
-      case FortuneType.social:
-        buffer.writeln('• 人際運勢');
-        buffer.writeln('• 貴人指引');
-        break;
-
-      case FortuneType.creativity:
-        buffer.writeln('• 靈感指數');
-        buffer.writeln('• 創意運勢');
-        break;
-    }
-    
-    // 添加現代參考（星座）
-    buffer.writeln('• 星座參考：當日星象');
-    
-    return buffer.toString().trim();
-  }
-
-  /// 從字符串創建運勢類型
+  /// 從字符串轉換
   static FortuneType fromString(String value) {
     return FortuneType.values.firstWhere(
-      (type) => type.name.toLowerCase() == value.toLowerCase(),
+      (type) => type.name == value || type.displayName == value,
       orElse: () => FortuneType.daily,
     );
   }
 
-  bool get isBasicType => this == daily;
-  bool get isSpecialType => this != daily;
+  /// 是否為基本運勢類型
+  bool get isBasic => this == FortuneType.daily;
+
+  /// 是否為特殊運勢類型
+  bool get isSpecial => !isBasic;
+
+  /// 獲取相關運勢類型
+  List<FortuneType> get relatedTypes {
+    switch (this) {
+      case FortuneType.daily:
+        return [FortuneType.health, FortuneType.social];
+      case FortuneType.study:
+        return [FortuneType.career, FortuneType.creative];
+      case FortuneType.career:
+        return [FortuneType.wealth, FortuneType.social];
+      case FortuneType.love:
+        return [FortuneType.social, FortuneType.health];
+      case FortuneType.wealth:
+        return [FortuneType.career, FortuneType.travel];
+      case FortuneType.health:
+        return [FortuneType.daily, FortuneType.travel];
+      case FortuneType.travel:
+        return [FortuneType.health, FortuneType.creative];
+      case FortuneType.social:
+        return [FortuneType.love, FortuneType.career];
+      case FortuneType.creative:
+        return [FortuneType.study, FortuneType.travel];
+    }
+  }
+
+  /// 獲取建議時間
+  List<String> get suggestedTimes {
+    switch (this) {
+      case FortuneType.daily:
+        return ['早上6點', '晚上9點'];
+      case FortuneType.study:
+        return ['早上8點', '下午2點'];
+      case FortuneType.career:
+        return ['早上9點', '下午3點'];
+      case FortuneType.love:
+        return ['下午4點', '晚上8點'];
+      case FortuneType.wealth:
+        return ['上午10點', '下午4點'];
+      case FortuneType.health:
+        return ['早上7點', '晚上10點'];
+      case FortuneType.travel:
+        return ['上午11點', '下午5點'];
+      case FortuneType.social:
+        return ['下午1點', '晚上7點'];
+      case FortuneType.creative:
+        return ['上午10點', '晚上8點'];
+    }
+  }
+
+  /// 獲取建議方位
+  List<String> get suggestedDirections {
+    switch (this) {
+      case FortuneType.daily:
+        return ['東', '南'];
+      case FortuneType.study:
+        return ['東北', '西南'];
+      case FortuneType.career:
+        return ['南', '西北'];
+      case FortuneType.love:
+        return ['西南', '東'];
+      case FortuneType.wealth:
+        return ['東南', '西'];
+      case FortuneType.health:
+        return ['北', '南'];
+      case FortuneType.travel:
+        return ['西', '東南'];
+      case FortuneType.social:
+        return ['南', '東'];
+      case FortuneType.creative:
+        return ['東', '西'];
+    }
+  }
 }
 
 /// 運勢類型字符串擴展
@@ -209,6 +138,7 @@ extension FortuneTypeExtension on String {
       FortuneType.study.name.toLowerCase(),
       FortuneType.career.name.toLowerCase(),
       FortuneType.love.name.toLowerCase(),
+      FortuneType.creative.name.toLowerCase(),
     ].contains(lowerValue);
   }
 } 

@@ -75,6 +75,9 @@
 - 場景匹配系統
 - 多語言風格支持
 - 資料加密與同步
+- 精確農曆計算（lunar）
+- 完整節氣支持
+- 八字五行分析
 
 ### 開發中 ⏳
 - Material You 設計風格
@@ -87,10 +90,13 @@
 ```
 lib/
   ├── core/           # 核心功能
-  │   ├── calendar/   # 黃曆相關
-  │   ├── fortune/    # 運勢演算
+  │   ├── models/     # 資料模型
   │   ├── services/   # 核心服務
-  │   └── models/     # 資料模型
+  │   │   ├── lunar_service.dart        # 農曆服務
+  │   │   ├── astronomical_service.dart  # 天文服務
+  │   │   ├── fortune_score_service.dart # 運勢評分
+  │   │   └── calendar_service.dart      # 日曆服務
+  │   └── utils/      # 工具類
   ├── features/       # 功能模組
   │   ├── daily/      # 每日運勢
   │   ├── personal/   # 個人分析
