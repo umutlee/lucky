@@ -246,16 +246,14 @@ class CalendarService {
         heavenlyStem: lunar.getYearGan(),
         earthlyBranch: lunar.getYearZhi(),
         dayZhi: lunar.getDayZhi(),
-        timeZhi: [lunar.getTimeZhi()],
+        timeZhi: lunar.getTimeZhi(),
         wuXing: _getWuXing(lunar),
-        positions: _getPositions(lunar),
-        year: lunar.getYear(),
-        month: lunar.getMonth(),
-        day: lunar.getDay(),
-        isLeapMonth: lunar.isLeap(),
+        isLeapMonth: lunar.getMonth() != lunar.getMonthInGanZhi(),
+        lunarDay: lunar.getDayInChinese(),
+        solarTerm: lunar.getJieQi(),
       );
-    } catch (e) {
-      _logger.error('獲取農曆日期失敗', e);
+    } catch (e, stack) {
+      _logger.error('獲取農曆日期失敗', e, stack);
       rethrow;
     }
   }
@@ -269,8 +267,6 @@ class CalendarService {
       return SolarTerm(
         name: jieQi,
         date: date,
-        description: _getSolarTermDescription(jieQi),
-        element: _getSolarTermElement(jieQi),
       );
     } catch (e, stack) {
       _logger.error('獲取節氣失敗', e, stack);
@@ -284,12 +280,11 @@ class CalendarService {
       final lunar = lunar_lib.Lunar.fromDate(date);
       
       return DailyActivities(
-        date: date,
         goodActivities: lunar.getDayYi(),
         badActivities: lunar.getDayJi(),
       );
-    } catch (e) {
-      _logger.error('獲取每日宜忌失敗', e);
+    } catch (e, stack) {
+      _logger.error('獲取每日宜忌失敗', e, stack);
       rethrow;
     }
   }
@@ -298,30 +293,20 @@ class CalendarService {
   Future<List<String>> getLuckyHours(DateTime date) async {
     try {
       final lunar = lunar_lib.Lunar.fromDate(date);
-      final dayGan = lunar.getDayGan();
+      final timeZhi = lunar.getTimeZhi();
       
-      // 根據日干判斷吉時
-      switch (dayGan) {
-        case '甲':
-        case '己':
-          return ['子時', '卯時', '午時', '酉時'];
-        case '乙':
-        case '庚':
-          return ['寅時', '巳時', '申時', '亥時'];
-        case '丙':
-        case '辛':
-          return ['子時', '巳時', '申時', '亥時'];
-        case '丁':
-        case '壬':
-          return ['寅時', '巳時', '申時', '子時'];
-        case '戊':
-        case '癸':
-          return ['卯時', '午時', '酉時', '子時'];
-        default:
-          return [];
-      }
-    } catch (e) {
-      _logger.error('獲取吉時失敗', e);
+      // 根據時柱判斷吉時
+      final luckyHours = <String>[];
+      if (timeZhi.contains('子')) luckyHours.add('23:00-1:00');
+      if (timeZhi.contains('寅')) luckyHours.add('3:00-5:00');
+      if (timeZhi.contains('辰')) luckyHours.add('7:00-9:00');
+      if (timeZhi.contains('午')) luckyHours.add('11:00-13:00');
+      if (timeZhi.contains('申')) luckyHours.add('15:00-17:00');
+      if (timeZhi.contains('戌')) luckyHours.add('19:00-21:00');
+      
+      return luckyHours;
+    } catch (e, stack) {
+      _logger.error('獲取吉時失敗', e, stack);
       rethrow;
     }
   }
@@ -329,6 +314,7 @@ class CalendarService {
   /// 獲取五行
   String _getWuXing(lunar_lib.Lunar lunar) {
     final dayGan = lunar.getDayGan();
+    
     switch (dayGan) {
       case '甲':
       case '乙':
@@ -353,6 +339,7 @@ class CalendarService {
   /// 獲取方位
   List<String> _getPositions(lunar_lib.Lunar lunar) {
     final dayZhi = lunar.getDayZhi();
+    
     switch (dayZhi) {
       case '子':
         return ['北'];

@@ -1,17 +1,44 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/error_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import '../models/app_error.dart';
 
 part 'base_provider.freezed.dart';
 part 'base_provider.g.dart';
 
+@freezed
+class BaseState with _$BaseState {
+  const factory BaseState({
+    @Default(false) bool isLoading,
+    @Default(false) bool hasError,
+    String? errorMessage,
+    AppError? error,
+  }) = _BaseState;
+
+  factory BaseState.fromJson(Map<String, dynamic> json) =>
+      _$BaseStateFromJson(json);
+}
+
 mixin ErrorHandlingState {
-  AppError? error;
+  AppError? get error;
   bool get hasError => error != null;
 }
 
-abstract class BaseStateNotifier<T extends ErrorHandlingState>
-    extends StateNotifier<T> {
+mixin LoadingState {
+  bool isLoading = false;
+}
+
+mixin RefreshableState {
+  DateTime? lastRefreshed;
+}
+
+mixin PaginationState {
+  int currentPage = 1;
+  bool hasMorePages = true;
+  bool isLoadingMore = false;
+}
+
+abstract class BaseStateNotifier<T extends BaseState> extends StateNotifier<T> {
   final ErrorService _errorService;
 
   BaseStateNotifier(this._errorService, T initialState) : super(initialState);
@@ -44,33 +71,4 @@ abstract class BaseStateNotifier<T extends ErrorHandlingState>
       );
     }
   }
-}
-
-// 用於需要加載狀態的 Provider
-mixin LoadingState on ErrorHandlingState {
-  bool isLoading = false;
-}
-
-// 用於需要刷新功能的 Provider
-mixin RefreshableState on ErrorHandlingState {
-  DateTime? lastRefreshed;
-}
-
-// 用於需要分頁功能的 Provider
-mixin PaginationState on ErrorHandlingState {
-  int currentPage = 1;
-  bool hasMorePages = true;
-  bool isLoadingMore = false;
-}
-
-@freezed
-class ErrorHandlingState with _$ErrorHandlingState {
-  const factory ErrorHandlingState({
-    @Default(false) bool isLoading,
-    @Default(false) bool hasError,
-    String? errorMessage,
-  }) = _ErrorHandlingState;
-
-  factory ErrorHandlingState.fromJson(Map<String, dynamic> json) =>
-      _$ErrorHandlingStateFromJson(json);
 } 

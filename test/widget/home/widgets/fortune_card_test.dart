@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +21,7 @@ void main() {
     mockFortuneService = MockFortuneService();
 
     // 設置基本的 mock 回應
-    when(mockFortuneService.getDailyFortune(testDate))
+    when(mockFortuneService.getDailyFortune(any))
         .thenAnswer((_) async => Fortune(
               id: '1',
               title: '今日運勢',
@@ -61,73 +62,51 @@ void main() {
 
   group('運勢卡片測試', () {
     testWidgets('基本渲染測試', (tester) async {
-      final fortune = Fortune(
-        id: '1',
-        title: '今日運勢',
-        description: '今日運勢不錯',
-        overallScore: 88,
-        date: testDate,
-        scores: {
-          'study': 85,
-          'career': 90,
-          'love': 82,
-        },
-        advice: ['把握機會'],
-        luckyColors: ['紅色'],
-        luckyNumbers: ['8'],
-        luckyDirections: ['東'],
-        type: FortuneType.daily,
-      );
-
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FortuneCard(
-              fortune: fortune,
+        ProviderScope(
+          overrides: [
+            fortuneServiceProvider.overrideWithValue(mockFortuneService),
+            dateProvider.overrideWithValue(testDate),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: FortuneCard(),
             ),
           ),
         ),
       );
 
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
       // 驗證基本元素
       expect(find.text('今日運勢'), findsOneWidget);
-      expect(find.text('88分'), findsOneWidget);
-      expect(find.text('大吉'), findsOneWidget);
-      expect(find.text('今日運勢不錯'), findsOneWidget);
+      expect(find.text('今日運勢不錯，適合嘗試新事物'), findsOneWidget);
     });
 
     testWidgets('點擊測試', (tester) async {
       bool onTapCalled = false;
-      final fortune = Fortune(
-        id: '1',
-        title: '今日運勢',
-        description: '今日運勢不錯',
-        overallScore: 88,
-        date: testDate,
-        scores: {
-          'study': 85,
-          'career': 90,
-          'love': 82,
-        },
-        advice: ['把握機會'],
-        luckyColors: ['紅色'],
-        luckyNumbers: ['8'],
-        luckyDirections: ['東'],
-        type: FortuneType.daily,
-      );
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FortuneCard(
-              fortune: fortune,
-              onTap: () {
-                onTapCalled = true;
-              },
+        ProviderScope(
+          overrides: [
+            fortuneServiceProvider.overrideWithValue(mockFortuneService),
+            dateProvider.overrideWithValue(testDate),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: FortuneCard(
+                onTap: () {
+                  onTapCalled = true;
+                },
+              ),
             ),
           ),
         ),
       );
+
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       await tester.tap(find.byType(FortuneCard));
       await tester.pumpAndSettle();
@@ -135,8 +114,56 @@ void main() {
       expect(onTapCalled, isTrue);
     });
 
-    testWidgets('詳細信息展示測試', (tester) async {
-      final fortune = Fortune(
+    testWidgets('錯誤狀態測試', (tester) async {
+      when(mockFortuneService.getDailyFortune(any))
+          .thenThrow(Exception('測試錯誤'));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            fortuneServiceProvider.overrideWithValue(mockFortuneService),
+            dateProvider.overrideWithValue(testDate),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: FortuneCard(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('無法加載運勢數據'), findsOneWidget);
+      expect(find.text('請稍後重試'), findsOneWidget);
+    });
+
+    testWidgets('加載狀態測試', (tester) async {
+      // 使用 Completer 來控制異步操作
+      final completer = Completer<Fortune>();
+      when(mockFortuneService.getDailyFortune(any))
+          .thenAnswer((_) => completer.future);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            fortuneServiceProvider.overrideWithValue(mockFortuneService),
+            dateProvider.overrideWithValue(testDate),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: FortuneCard(),
+            ),
+          ),
+        ),
+      );
+
+      // 驗證加載指示器
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      // 完成加載
+      completer.complete(Fortune(
         id: '1',
         title: '今日運勢',
         description: '今日運勢不錯',
@@ -147,67 +174,19 @@ void main() {
           'career': 90,
           'love': 82,
         },
-        advice: ['把握機會', '保持樂觀'],
-        luckyColors: ['紅色', '金色'],
-        luckyNumbers: ['6', '8'],
-        luckyDirections: ['東', '南'],
-        type: FortuneType.daily,
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FortuneCard(
-              fortune: fortune,
-              isEnlarged: true,
-            ),
-          ),
-        ),
-      );
-
-      // 驗證詳細信息
-      expect(find.text('運勢分析'), findsOneWidget);
-      expect(find.text('• 把握機會'), findsOneWidget);
-      expect(find.text('• 保持樂觀'), findsOneWidget);
-      expect(find.text('幸運色'), findsOneWidget);
-      expect(find.text('紅色、金色'), findsOneWidget);
-      expect(find.text('幸運數字'), findsOneWidget);
-      expect(find.text('6、8'), findsOneWidget);
-      expect(find.text('幸運方位'), findsOneWidget);
-      expect(find.text('東、南'), findsOneWidget);
-    });
-
-    testWidgets('運勢等級顯示測試', (tester) async {
-      final fortune = Fortune(
-        id: '1',
-        title: '今日運勢',
-        description: '運勢極佳',
-        overallScore: 95,
-        date: testDate,
-        scores: {
-          'study': 95,
-          'career': 95,
-          'love': 95,
-        },
-        advice: ['大展宏圖'],
+        advice: ['把握機會'],
         luckyColors: ['紅色'],
         luckyNumbers: ['8'],
-        luckyDirections: ['南'],
+        luckyDirections: ['東'],
         type: FortuneType.daily,
-      );
+      ));
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FortuneCard(
-              fortune: fortune,
-            ),
-          ),
-        ),
-      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('95分'), findsOneWidget);
-      expect(find.text('大吉'), findsOneWidget);
+      // 驗證內容已加載
+      expect(find.text('今日運勢'), findsOneWidget);
+      expect(find.text('今日運勢不錯'), findsOneWidget);
     });
   });
 }

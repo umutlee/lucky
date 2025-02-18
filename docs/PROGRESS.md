@@ -288,6 +288,21 @@
     - `lib/core/services/backup_service.dart`
     - `test/core/services/backup_service_test.dart`
 
+### 2024-02-18
+- ✅ 完成錯誤處理系統優化
+  - 移除 error_service.dart 中不必要的 freezed 相關代碼
+  - 統一 AppError 的使用方式
+  - 改進錯誤處理測試用例
+  - 涉及文件：
+    - `lib/core/services/error_service.dart`
+    - `lib/core/models/app_error.dart`
+    - `test/widget/home/widgets/calendar_view_test.dart`
+  - 改進：
+    - 簡化錯誤處理邏輯
+    - 提高代碼可讀性
+    - 改進測試可維護性
+    - 統一錯誤信息格式
+
 ## 當前進度
 
 ### 已完成功能 ✅

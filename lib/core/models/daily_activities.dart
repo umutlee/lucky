@@ -6,7 +6,6 @@ part 'daily_activities.g.dart';
 @freezed
 class DailyActivities with _$DailyActivities {
   const factory DailyActivities({
-    required DateTime date,
     @Default([]) List<String> goodActivities,
     @Default([]) List<String> badActivities,
   }) = _DailyActivities;

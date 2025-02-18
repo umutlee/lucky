@@ -1,179 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'logger_service.dart';
-
-part 'error_service.freezed.dart';
-part 'error_service.g.dart';
-
-class StackTraceConverter implements JsonConverter<StackTrace?, String?> {
-  const StackTraceConverter();
-
-  @override
-  StackTrace? fromJson(String? json) {
-    if (json == null) return null;
-    return StackTrace.fromString(json);
-  }
-
-  @override
-  String? toJson(StackTrace? stackTrace) {
-    if (stackTrace == null) return null;
-    return stackTrace.toString();
-  }
-}
-
-class ObjectConverter implements JsonConverter<Object?, String?> {
-  const ObjectConverter();
-
-  @override
-  Object? fromJson(String? json) {
-    if (json == null) return null;
-    return json;
-  }
-
-  @override
-  String? toJson(Object? object) {
-    if (object == null) return null;
-    return object.toString();
-  }
-}
-
-enum ErrorType {
-  network,    // 網絡錯誤
-  validation, // 數據驗證錯誤
-  permission, // 權限錯誤
-  server,     // 服務器錯誤
-  unknown     // 未知錯誤
-}
-
-@freezed
-class AppError with _$AppError {
-  const factory AppError({
-    required String message,
-    required ErrorType type,
-    @ObjectConverter() Object? originalError,
-    @StackTraceConverter() StackTrace? stackTrace,
-  }) = _AppError;
-
-  factory AppError.fromJson(Map<String, dynamic> json) => _$AppErrorFromJson(json);
-
-  const AppError._();
-
-  String get userMessage {
-    switch (type) {
-      case ErrorType.network:
-        return '網絡連接出現問題，請檢查網絡設置後重試';
-      case ErrorType.validation:
-        return '輸入的數據無效，請檢查後重試';
-      case ErrorType.permission:
-        return '沒有足夠的權限執行此操作';
-      case ErrorType.server:
-        return '服務器出現問題，請稍後重試';
-      case ErrorType.unknown:
-        return '發生未知錯誤，請重試';
-    }
-  }
-
-  String get technicalMessage {
-    return '''
-錯誤類型: ${type.name}
-錯誤信息: $message
-原始錯誤: ${originalError?.toString() ?? '無'}
-''';
-  }
-}
+import '../utils/logger.dart';
+import 'dart:io';
+import 'package:dio/dio.dart';
+import '../models/app_error.dart';
 
 final errorServiceProvider = Provider<ErrorService>((ref) {
-  final logger = ref.watch(loggerProvider);
+  final logger = Logger('ErrorService');
   return ErrorService(logger);
 });
 
 class ErrorService {
-  final LoggerService _logger;
+  final Logger _logger;
 
   ErrorService(this._logger);
 
-  AppError handleError(Object error, [StackTrace? stackTrace]) {
-    if (error is AppError) {
-      _logger.error(
-        'AppError occurred',
-        error,
-        stackTrace,
-      );
-      return error;
-    }
-
-    AppError appError;
-
-    // 網絡錯誤
-    if (error.toString().contains('SocketException') ||
-        error.toString().contains('TimeoutException')) {
-      appError = AppError(
-        message: '網絡連接失敗',
+  AppError handleError(Object error, StackTrace stackTrace) {
+    if (error is DioException) {
+      return _handleDioError(error, stackTrace);
+    } else if (error is SocketException) {
+      return AppError(
+        message: '網路連接錯誤',
         type: ErrorType.network,
-        originalError: error,
         stackTrace: stackTrace,
       );
-      _logger.error(
-        'Network error occurred',
-        error,
-        stackTrace,
-      );
-    }
-    // 權限錯誤
-    else if (error.toString().contains('Permission') ||
-        error.toString().contains('Unauthorized')) {
-      appError = AppError(
-        message: '權限不足',
-        type: ErrorType.permission,
-        originalError: error,
+    } else if (error is FormatException) {
+      return AppError(
+        message: '數據格式錯誤',
+        type: ErrorType.validation,
         stackTrace: stackTrace,
       );
-      _logger.error(
-        'Permission error occurred',
-        error,
-        stackTrace,
-      );
-    }
-    // 服務器錯誤
-    else if (error.toString().contains('Server') ||
-        error.toString().contains('500')) {
-      appError = AppError(
-        message: '服務器錯誤',
-        type: ErrorType.server,
-        originalError: error,
-        stackTrace: stackTrace,
-      );
-      _logger.error(
-        'Server error occurred',
-        error,
-        stackTrace,
-      );
-    }
-    // 默認為未知錯誤
-    else {
-      appError = AppError(
+    } else {
+      return AppError(
         message: error.toString(),
         type: ErrorType.unknown,
-        originalError: error,
         stackTrace: stackTrace,
       );
-      _logger.error(
-        'Unknown error occurred',
-        error,
-        stackTrace,
-      );
     }
+  }
 
-    return appError;
+  AppError _handleDioError(DioException error, StackTrace stackTrace) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return AppError(
+          message: '連接超時',
+          type: ErrorType.network,
+          stackTrace: stackTrace,
+        );
+      case DioExceptionType.badResponse:
+        final statusCode = error.response?.statusCode;
+        final message = error.response?.data?['message'] as String? ?? '未知錯誤';
+        return AppError(
+          message: message,
+          type: ErrorType.server,
+          stackTrace: stackTrace,
+        );
+      case DioExceptionType.cancel:
+        return AppError(
+          message: '請求已取消',
+          type: ErrorType.unknown,
+          stackTrace: stackTrace,
+        );
+      default:
+        return AppError(
+          message: '網路錯誤',
+          type: ErrorType.network,
+          stackTrace: stackTrace,
+        );
+    }
   }
 
   void showError(BuildContext context, AppError error) {
-    _logger.warning(
-      'Showing error to user: ${error.userMessage}',
-      error.originalError,
-      error.stackTrace,
-    );
+    _logger.error('顯示錯誤給用戶: ${error.message}');
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -190,11 +90,7 @@ class ErrorService {
   }
 
   Future<void> showErrorDialog(BuildContext context, AppError error) async {
-    _logger.warning(
-      'Showing error dialog to user: ${error.userMessage}',
-      error.originalError,
-      error.stackTrace,
-    );
+    _logger.error('顯示錯誤對話框給用戶: ${error.message}');
 
     return showDialog(
       context: context,
