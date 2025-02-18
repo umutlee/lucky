@@ -17,13 +17,13 @@ class FortuneCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      onDoubleTap: onDoubleTap,
-      child: Card(
-        key: isEnlarged ? const Key('enlarged_fortune_card') : null,
-        elevation: isEnlarged ? 8.0 : 4.0,
-        margin: EdgeInsets.all(isEnlarged ? 16.0 : 8.0),
+    return Card(
+      key: isEnlarged ? const Key('enlarged_fortune_card') : null,
+      elevation: isEnlarged ? 8.0 : 4.0,
+      margin: EdgeInsets.all(isEnlarged ? 16.0 : 8.0),
+      child: InkWell(
+        onTap: onTap,
+        onDoubleTap: onDoubleTap,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
