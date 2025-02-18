@@ -4,6 +4,10 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:all_lucky/core/utils/logger.dart';
 import 'package:all_lucky/core/services/notification_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
+import '../models/user_settings.dart';
+import 'user_settings_service.dart';
 
 final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
   final notificationService = ref.watch(notificationServiceProvider);
@@ -15,52 +19,23 @@ class PushNotificationService {
   static const String _tag = 'PushNotificationService';
   final _logger = Logger(_tag);
   
+  final UserSettingsService _userSettingsService;
   final NotificationService _notificationService;
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  Function(String)? _onNotificationClick;
   
-  PushNotificationService(this._notificationService);
+  PushNotificationService(this._userSettingsService) : 
+    _notificationService = NotificationService();
   
   /// 初始化推送服務
   Future<bool> initialize() async {
     try {
-      // 初始化 Firebase
-      await Firebase.initializeApp();
-      
-      // 請求通知權限
-      final settings = await _messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
-      
-      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-        _logger.warning('用戶未授權推送通知');
-        return false;
+      final settings = await _userSettingsService.getSettings();
+      if (settings.notificationsEnabled) {
+        await _notificationService.initialize();
+        return true;
       }
-      
-      // 獲取 FCM Token
-      final token = await _messaging.getToken();
-      if (token != null) {
-        _logger.info('FCM Token: $token');
-        // TODO: 將 token 發送到後端服務器
-      }
-      
-      // 監聽 token 刷新
-      _messaging.onTokenRefresh.listen((newToken) {
-        _logger.info('FCM Token 已更新: $newToken');
-        // TODO: 將新 token 發送到後端服務器
-      });
-      
-      // 設置消息處理器
-      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-      FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
-      FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
-      
-      _logger.info('推送通知服務初始化成功');
-      return true;
-    } catch (e, stackTrace) {
-      _logger.error('推送通知服務初始化失敗', e, stackTrace);
+      return false;
+    } catch (e) {
       return false;
     }
   }
@@ -101,7 +76,7 @@ class PushNotificationService {
   /// 訂閱主題
   Future<bool> subscribeToTopic(String topic) async {
     try {
-      await _messaging.subscribeToTopic(topic);
+      await _notificationService.subscribeToTopic(topic);
       _logger.info('已訂閱主題: $topic');
       return true;
     } catch (e, stackTrace) {
@@ -113,7 +88,7 @@ class PushNotificationService {
   /// 取消訂閱主題
   Future<bool> unsubscribeFromTopic(String topic) async {
     try {
-      await _messaging.unsubscribeFromTopic(topic);
+      await _notificationService.unsubscribeFromTopic(topic);
       _logger.info('已取消訂閱主題: $topic');
       return true;
     } catch (e, stackTrace) {
@@ -125,12 +100,103 @@ class PushNotificationService {
   /// 獲取當前的通知設置
   Future<NotificationSettings> getNotificationSettings() async {
     try {
-      return await _messaging.getNotificationSettings();
+      return await _notificationService.getNotificationSettings();
     } catch (e, stackTrace) {
       _logger.error('獲取通知設置失敗', e, stackTrace);
       rethrow;
     }
   }
+
+  Future<bool> requestPermission() async {
+    try {
+      final settings = await _userSettingsService.getSettings();
+      if (!settings.notificationsEnabled) return false;
+      return await _notificationService.requestPermission();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> scheduleDailyNotification() async {
+    try {
+      final settings = await _userSettingsService.getSettings();
+      if (!settings.notificationsEnabled || !settings.dailyNotification) {
+        return false;
+      }
+
+      final notification = await createDailyNotification();
+      await _notificationService.showNotification(
+        id: 1,
+        title: notification.title,
+        body: notification.body,
+        payload: notification.payload,
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<List<PendingNotificationRequest>> getScheduledNotifications() async {
+    return await _notificationService.getScheduledNotifications();
+  }
+
+  Future<bool> cancelAllNotifications() async {
+    try {
+      await _notificationService.cancelAll();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateNotificationTime(String time) async {
+    try {
+      await _userSettingsService.updateNotificationTime(time);
+      await cancelAllNotifications();
+      if (await _userSettingsService.getSettings().then((s) => s.dailyNotification)) {
+        await scheduleDailyNotification();
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<NotificationData> createDailyNotification() async {
+    return NotificationData(
+      title: '今日運勢提醒',
+      body: '點擊查看今日運勢詳情',
+      payload: 'daily_fortune',
+    );
+  }
+
+  void setOnNotificationClick(Function(String) callback) {
+    _onNotificationClick = callback;
+  }
+
+  Future<void> handleNotificationClick(String payload) async {
+    _onNotificationClick?.call(payload);
+  }
+
+  Future<void> onPermissionStatusChanged(bool granted) async {
+    await _userSettingsService.updateNotificationPreference(granted);
+    if (!granted) {
+      await cancelAllNotifications();
+    }
+  }
+}
+
+class NotificationData {
+  final String title;
+  final String body;
+  final String payload;
+
+  NotificationData({
+    required this.title,
+    required this.body,
+    required this.payload,
+  });
 }
 
 /// 處理背景消息

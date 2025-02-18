@@ -1,29 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lunar/lunar.dart';
+import 'package:lunar/calendar/Lunar.dart' as lunar_lib;
 import '../models/calendar_day.dart';
 import '../utils/logger.dart';
 import '../models/lunar_date.dart';
 import '../models/solar_term.dart';
+import '../models/daily_activities.dart';
 
+/// 日曆服務提供者
 final calendarServiceProvider = Provider<CalendarService>((ref) {
-  final logger = Logger('CalendarService');
-  return CalendarService(logger);
+  return CalendarService();
 });
 
-class DailyActivities {
-  final List<String> good;
-  final List<String> bad;
-
-  DailyActivities({
-    required this.good,
-    required this.bad,
-  });
-}
-
+/// 日曆服務
 class CalendarService {
-  final Logger _logger;
-
-  CalendarService(this._logger);
+  final Logger _logger = Logger('CalendarService');
 
   /// 獲取指定月份的日曆數據
   List<CalendarDay> getMonthCalendar(int year, int month) {
@@ -67,7 +57,7 @@ class CalendarService {
   /// 創建日曆天對象
   CalendarDay _createCalendarDay(DateTime date, {required bool isCurrentMonth}) {
     try {
-      final lunar = Lunar.fromDate(date);
+      final lunar = lunar_lib.Lunar.fromDate(date);
       
       return CalendarDay(
         date: date,
@@ -79,9 +69,9 @@ class CalendarService {
         isHoliday: _isHoliday(lunar),
         dayYi: lunar.getDayYi(),
         dayJi: lunar.getDayJi(),
-        timeZhi: lunar.getTimeZhi(),
-        wuXing: lunar.getDayWuXing(),
-        positions: lunar.getDayPositions(),
+        timeZhi: [lunar.getTimeZhi()],
+        wuXing: _getWuXing(lunar),
+        positions: _getPositions(lunar),
         ganZhi: '${lunar.getDayGan()}${lunar.getDayZhi()}',
       );
     } catch (e) {
@@ -100,7 +90,7 @@ class CalendarService {
   }
 
   /// 獲取節日信息
-  String? _getFestival(Lunar lunar) {
+  String? _getFestival(lunar_lib.Lunar lunar) {
     final festivals = lunar.getFestivals();
     if (festivals.isNotEmpty) {
       return festivals.join('、');
@@ -109,7 +99,7 @@ class CalendarService {
   }
 
   /// 檢查是否為假日
-  bool _isHoliday(Lunar lunar) {
+  bool _isHoliday(lunar_lib.Lunar lunar) {
     // 週末
     if (lunar.getSolar().getWeek() >= 6) {
       return true;
@@ -138,13 +128,13 @@ class CalendarService {
     List<String> positions,
   }) getDayFortune(DateTime date) {
     try {
-      final lunar = Lunar.fromDate(date);
+      final lunar = lunar_lib.Lunar.fromDate(date);
       
       return (
         summary: _getDaySummary(lunar),
         yi: lunar.getDayYi(),
         ji: lunar.getDayJi(),
-        positions: lunar.getDayPositions(),
+        positions: _getPositions(lunar),
       );
     } catch (e) {
       _logger.error('獲取當日運勢失敗', e);
@@ -158,10 +148,10 @@ class CalendarService {
   }
 
   /// 獲取當日運勢概述
-  String _getDaySummary(Lunar lunar) {
+  String _getDaySummary(lunar_lib.Lunar lunar) {
     final dayGan = lunar.getDayGan();
     final dayZhi = lunar.getDayZhi();
-    final wuXing = lunar.getDayWuXing();
+    final wuXing = _getWuXing(lunar);
     
     // 根據天干地支和五行判斷
     if (dayGan.contains('甲') || dayGan.contains('丙')) {
@@ -187,7 +177,7 @@ class CalendarService {
       for (var date = firstDay;
            date.isBefore(lastDay.add(const Duration(days: 1)));
            date = date.add(const Duration(days: 1))) {
-        final lunar = Lunar.fromDate(date);
+        final lunar = lunar_lib.Lunar.fromDate(date);
         result[date] = _getDaySummary(lunar);
       }
       
@@ -208,7 +198,7 @@ class CalendarService {
       for (var date = firstDay;
            date.isBefore(lastDay.add(const Duration(days: 1)));
            date = date.add(const Duration(days: 1))) {
-        final lunar = Lunar.fromDate(date);
+        final lunar = lunar_lib.Lunar.fromDate(date);
         final jieQi = lunar.getJieQi();
         if (jieQi.isNotEmpty) {
           terms.add((jieQi, date));
@@ -232,7 +222,7 @@ class CalendarService {
       for (var date = firstDay;
            date.isBefore(lastDay.add(const Duration(days: 1)));
            date = date.add(const Duration(days: 1))) {
-        final lunar = Lunar.fromDate(date);
+        final lunar = lunar_lib.Lunar.fromDate(date);
         if (lunar.getDay() == 1) {
           phases.add(('朔', date));
         } else if (lunar.getDay() == 15) {
@@ -247,213 +237,207 @@ class CalendarService {
     }
   }
 
+  /// 獲取農曆日期
   Future<LunarDate> getLunarDate(DateTime date) async {
     try {
-      final lunar = Lunar.fromDate(date);
+      final lunar = lunar_lib.Lunar.fromDate(date);
+      
       return LunarDate(
-        heavenlyStem: lunar.getDayGan(),
-        earthlyBranch: lunar.getDayZhi(),
+        heavenlyStem: lunar.getYearGan(),
+        earthlyBranch: lunar.getYearZhi(),
         dayZhi: lunar.getDayZhi(),
-        timeZhi: lunar.getTimeZhi()[0],
-        wuXing: lunar.getDayWuXing(),
-        positions: lunar.getDayPositions(),
+        timeZhi: [lunar.getTimeZhi()],
+        wuXing: _getWuXing(lunar),
+        positions: _getPositions(lunar),
         year: lunar.getYear(),
         month: lunar.getMonth(),
         day: lunar.getDay(),
-        isLeapMonth: lunar.isLeapMonth(),
+        isLeapMonth: lunar.isLeap(),
       );
     } catch (e) {
       _logger.error('獲取農曆日期失敗', e);
-      return LunarDate(
-        heavenlyStem: '甲',
-        earthlyBranch: '子',
-        dayZhi: '子',
-        timeZhi: '子',
-        wuXing: '木',
-        positions: ['北'],
-        year: date.year,
-        month: date.month,
-        day: date.day,
-        isLeapMonth: false,
-      );
+      rethrow;
     }
   }
 
+  /// 獲取節氣
   Future<SolarTerm> getSolarTerm(DateTime date) async {
     try {
-      final lunar = Lunar.fromDate(date);
+      final lunar = lunar_lib.Lunar.fromDate(date);
       final jieQi = lunar.getJieQi();
-      if (jieQi.isNotEmpty) {
-        return SolarTerm(
-          name: jieQi,
-          date: date,
-          description: _getSolarTermDescription(jieQi),
-          element: _getSolarTermElement(jieQi),
-        );
-      }
-      
-      // 如果當天不是節氣，返回最近的一個節氣
-      final terms = getSolarTerms(date.year, date.month);
-      if (terms.isNotEmpty) {
-        final (name, termDate) = terms.first;
-        return SolarTerm(
-          name: name,
-          date: termDate,
-          description: _getSolarTermDescription(name),
-          element: _getSolarTermElement(name),
-        );
-      }
       
       return SolarTerm(
-        name: '',
+        name: jieQi,
         date: date,
-        description: '',
-        element: '',
+        description: _getSolarTermDescription(jieQi),
+        element: _getSolarTermElement(jieQi),
       );
-    } catch (e) {
-      _logger.error('獲取節氣失敗', e);
-      return SolarTerm(
-        name: '',
-        date: date,
-        description: '',
-        element: '',
-      );
+    } catch (e, stack) {
+      _logger.error('獲取節氣失敗', e, stack);
+      rethrow;
     }
   }
 
-  String _getSolarTermDescription(String term) {
-    switch (term) {
-      case '立春':
-        return '春季的開始，萬物復甦的時節';
-      case '雨水':
-        return '雨量漸增，氣溫回升的時節';
-      case '驚蟄':
-        return '春雷始鳴，萬物驚醒的時節';
-      case '春分':
-        return '晝夜平分，春光明媚的時節';
-      case '清明':
-        return '天氣清爽，萬物生長的時節';
-      case '穀雨':
-        return '雨生百穀，春耕開始的時節';
-      case '立夏':
-        return '夏季的開始，萬物繁茂的時節';
-      case '小滿':
-        return '穀物漸滿，春收開始的時節';
-      case '芒種':
-        return '麥收種稻，農忙的時節';
-      case '夏至':
-        return '晝最長，炎熱的時節';
-      case '小暑':
-        return '暑氣漸增，炎熱的時節';
-      case '大暑':
-        return '一年中最熱的時節';
-      case '立秋':
-        return '秋季的開始，暑氣漸消的時節';
-      case '處暑':
-        return '暑氣漸消，涼爽的時節';
-      case '白露':
-        return '露水漸多，氣溫轉涼的時節';
-      case '秋分':
-        return '晝夜平分，秋高氣爽的時節';
-      case '寒露':
-        return '露水漸寒，氣溫下降的時節';
-      case '霜降':
-        return '霜始降，氣溫驟降的時節';
-      case '立冬':
-        return '冬季的開始，萬物蟄伏的時節';
-      case '小雪':
-        return '雪漸降，天氣寒冷的時節';
-      case '大雪':
-        return '雪量漸增，嚴寒的時節';
-      case '冬至':
-        return '晝最短，寒冷的時節';
-      case '小寒':
-        return '寒氣漸增，嚴寒的時節';
-      case '大寒':
-        return '一年中最冷的時節';
-      default:
-        return '';
-    }
-  }
-
-  String _getSolarTermElement(String term) {
-    switch (term) {
-      case '立春':
-      case '驚蟄':
-      case '清明':
-        return '木';
-      case '立夏':
-      case '小滿':
-      case '芒種':
-        return '火';
-      case '立秋':
-      case '處暑':
-      case '白露':
-        return '金';
-      case '立冬':
-      case '小雪':
-      case '大雪':
-        return '水';
-      case '雨水':
-      case '春分':
-      case '穀雨':
-      case '夏至':
-      case '小暑':
-      case '大暑':
-      case '秋分':
-      case '寒露':
-      case '霜降':
-      case '冬至':
-      case '小寒':
-      case '大寒':
-        return '土';
-      default:
-        return '';
-    }
-  }
-
+  /// 獲取每日宜忌
   Future<DailyActivities> getDailyActivities(DateTime date) async {
     try {
-      final lunar = Lunar.fromDate(date);
+      final lunar = lunar_lib.Lunar.fromDate(date);
+      
       return DailyActivities(
-        good: lunar.getDayYi(),
-        bad: lunar.getDayJi(),
+        date: date,
+        goodActivities: lunar.getDayYi(),
+        badActivities: lunar.getDayJi(),
       );
     } catch (e) {
-      _logger.error('獲取宜忌失敗', e);
-      return DailyActivities(
-        good: [],
-        bad: [],
-      );
+      _logger.error('獲取每日宜忌失敗', e);
+      rethrow;
     }
   }
 
+  /// 獲取吉時
   Future<List<String>> getLuckyHours(DateTime date) async {
     try {
-      final lunar = Lunar.fromDate(date);
-      final luckyHours = <String>[];
+      final lunar = lunar_lib.Lunar.fromDate(date);
+      final dayGan = lunar.getDayGan();
       
-      // 獲取吉時
-      final timeZhi = lunar.getTimeZhi();
-      for (var i = 0; i < timeZhi.length; i++) {
-        if (timeZhi[i].contains('吉')) {
-          final hourName = _getChineseHour(i);
-          luckyHours.add(hourName);
-        }
+      // 根據日干判斷吉時
+      switch (dayGan) {
+        case '甲':
+        case '己':
+          return ['子時', '卯時', '午時', '酉時'];
+        case '乙':
+        case '庚':
+          return ['寅時', '巳時', '申時', '亥時'];
+        case '丙':
+        case '辛':
+          return ['子時', '巳時', '申時', '亥時'];
+        case '丁':
+        case '壬':
+          return ['寅時', '巳時', '申時', '子時'];
+        case '戊':
+        case '癸':
+          return ['卯時', '午時', '酉時', '子時'];
+        default:
+          return [];
       }
-      
-      return luckyHours;
     } catch (e) {
       _logger.error('獲取吉時失敗', e);
-      return [];
+      rethrow;
     }
   }
 
-  String _getChineseHour(int index) {
-    const hours = [
-      '子時', '丑時', '寅時', '卯時', '辰時', '巳時',
-      '午時', '未時', '申時', '酉時', '戌時', '亥時'
-    ];
-    return hours[index % 12];
+  /// 獲取五行
+  String _getWuXing(lunar_lib.Lunar lunar) {
+    final dayGan = lunar.getDayGan();
+    switch (dayGan) {
+      case '甲':
+      case '乙':
+        return '木';
+      case '丙':
+      case '丁':
+        return '火';
+      case '戊':
+      case '己':
+        return '土';
+      case '庚':
+      case '辛':
+        return '金';
+      case '壬':
+      case '癸':
+        return '水';
+      default:
+        return '未知';
+    }
+  }
+
+  /// 獲取方位
+  List<String> _getPositions(lunar_lib.Lunar lunar) {
+    final dayZhi = lunar.getDayZhi();
+    switch (dayZhi) {
+      case '子':
+        return ['北'];
+      case '丑':
+      case '寅':
+        return ['東北'];
+      case '卯':
+        return ['東'];
+      case '辰':
+      case '巳':
+        return ['東南'];
+      case '午':
+        return ['南'];
+      case '未':
+      case '申':
+        return ['西南'];
+      case '酉':
+        return ['西'];
+      case '戌':
+      case '亥':
+        return ['西北'];
+      default:
+        return [];
+    }
+  }
+
+  /// 獲取節氣描述
+  String _getSolarTermDescription(String jieQi) {
+    final descriptions = {
+      '立春': '春天開始，萬物復甦',
+      '雨水': '降雨增多，氣溫回升',
+      '驚蟄': '春雷始鳴，蟄蟲復甦',
+      '春分': '晝夜平分，陰陽相等',
+      '清明': '天氣清爽明朗',
+      '穀雨': '雨生百穀',
+      '立夏': '夏天開始，萬物繁茂',
+      '小滿': '夏熟作物籽粒飽滿',
+      '芒種': '麥類等作物成熟',
+      '夏至': '一年中晝最長',
+      '小暑': '天氣開始炎熱',
+      '大暑': '一年中最熱',
+      '立秋': '秋天開始，暑氣漸消',
+      '處暑': '暑氣開始消退',
+      '白露': '天氣轉涼，露水增多',
+      '秋分': '晝夜再次平分',
+      '寒露': '露水將寒',
+      '霜降': '開始降霜',
+      '立冬': '冬天開始，萬物蟄伏',
+      '小雪': '開始降雪',
+      '大雪': '降雪量增多',
+      '冬至': '一年中晝最短',
+      '小寒': '天氣寒冷',
+      '大寒': '一年中最冷',
+    };
+    return descriptions[jieQi] ?? '節氣變化';
+  }
+
+  /// 獲取節氣五行
+  String _getSolarTermElement(String jieQi) {
+    final elements = {
+      '立春': '木',
+      '雨水': '木',
+      '驚蟄': '木',
+      '春分': '木',
+      '清明': '木',
+      '穀雨': '木',
+      '立夏': '火',
+      '小滿': '火',
+      '芒種': '火',
+      '夏至': '火',
+      '小暑': '火',
+      '大暑': '火',
+      '立秋': '金',
+      '處暑': '金',
+      '白露': '金',
+      '秋分': '金',
+      '寒露': '金',
+      '霜降': '金',
+      '立冬': '水',
+      '小雪': '水',
+      '大雪': '水',
+      '冬至': '水',
+      '小寒': '水',
+      '大寒': '水',
+    };
+    return elements[jieQi] ?? '木';
   }
 } 

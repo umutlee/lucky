@@ -6,28 +6,28 @@ enum FortuneType {
   daily('每日運勢', '每日運勢分析'),
 
   /// 學業運勢
-  study('學業運勢', '學業運勢分析'),
+  study('學習', '學業運勢分析'),
 
   /// 事業運勢
-  career('事業運勢', '事業運勢分析'),
+  career('事業', '事業運勢分析'),
 
   /// 愛情運勢
-  love('愛情運勢', '愛情運勢分析'),
+  love('戀愛', '愛情運勢分析'),
 
   /// 財運運勢
-  wealth('財運運勢', '財運運勢分析'),
+  wealth('財運', '財運運勢分析'),
 
   /// 健康運勢
-  health('健康運勢', '健康運勢分析'),
+  health('健康', '健康運勢分析'),
 
   /// 旅行運勢
-  travel('旅行運勢', '旅行運勢分析'),
+  travel('旅行', '旅行運勢分析'),
 
   /// 社交運勢
-  social('社交運勢', '社交運勢分析'),
+  social('社交', '社交運勢分析'),
 
   /// 創意運勢
-  creative('創意運勢', '創意運勢分析');
+  creative('創意', '創意運勢分析');
 
   const FortuneType(this.displayName, this.description);
 
@@ -54,24 +54,24 @@ enum FortuneType {
   /// 獲取相關運勢類型
   List<FortuneType> get relatedTypes {
     switch (this) {
-      case FortuneType.daily:
-        return [FortuneType.health, FortuneType.social];
       case FortuneType.study:
-        return [FortuneType.career, FortuneType.creative];
+        return [FortuneType.creative, FortuneType.health];
       case FortuneType.career:
         return [FortuneType.wealth, FortuneType.social];
       case FortuneType.love:
-        return [FortuneType.social, FortuneType.health];
+        return [FortuneType.social, FortuneType.creative];
       case FortuneType.wealth:
-        return [FortuneType.career, FortuneType.travel];
+        return [FortuneType.career, FortuneType.creative];
       case FortuneType.health:
-        return [FortuneType.daily, FortuneType.travel];
+        return [FortuneType.travel, FortuneType.study];
       case FortuneType.travel:
-        return [FortuneType.health, FortuneType.creative];
+        return [FortuneType.health, FortuneType.social];
       case FortuneType.social:
         return [FortuneType.love, FortuneType.career];
       case FortuneType.creative:
-        return [FortuneType.study, FortuneType.travel];
+        return [FortuneType.study, FortuneType.wealth];
+      default:
+        return [];
     }
   }
 

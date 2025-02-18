@@ -1,28 +1,50 @@
+import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'fortune_type.dart';
 
 part 'scene.freezed.dart';
 part 'scene.g.dart';
 
+enum SceneType {
+  study('學習'),
+  love('戀愛'),
+  career('事業'),
+  wealth('財運'),
+  health('健康'),
+  travel('旅行');
+
+  final String displayName;
+  const SceneType(this.displayName);
+}
+
+class IconDataConverter implements JsonConverter<IconData, int> {
+  const IconDataConverter();
+
+  @override
+  IconData fromJson(int json) => IconData(json);
+
+  @override
+  int toJson(IconData object) => object.codePoint;
+}
+
 /// 場景模型
 @freezed
 class Scene with _$Scene {
   const factory Scene({
     required String id,
-    required String name,
+    required String title,
     required String description,
-    required String imageUrl,
-    required String imagePath,
-    required FortuneType type,
-    required int baseScore,
-    @Default([]) List<String> tags,
-    @Default({}) Map<String, dynamic> metadata,
+    @IconDataConverter() required IconData icon,
+    required SceneType type,
+    String? imageUrl,
     @Default(false) bool isLocked,
     @Default(false) bool isFavorite,
     @Default(0) int viewCount,
     @Default(0) int useCount,
+    @Default(0) int baseScore,
     DateTime? lastViewedAt,
     String? unlockCondition,
+    @Default([]) List<String> tags,
   }) = _Scene;
 
   /// 從 JSON 創建
@@ -34,10 +56,12 @@ class Scene with _$Scene {
   bool get isNew => lastViewedAt == null;
   bool get isFrequentlyUsed => useCount > 10;
 
-  String get displayName => name;
+  String get name => title;
   String get shortDescription => description.length > 50 
     ? '${description.substring(0, 47)}...' 
     : description;
+
+  String get imagePath => imageUrl ?? '';
 
   List<String> get displayTags => [
     ...tags,

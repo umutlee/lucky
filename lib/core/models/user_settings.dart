@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'zodiac.dart';
+import 'fortune_type.dart';
 
 part 'user_settings.freezed.dart';
 part 'user_settings.g.dart';
@@ -33,82 +34,56 @@ class ThemeModeConverter implements JsonConverter<ThemeMode, String> {
 @freezed
 class UserSettings with _$UserSettings {
   const factory UserSettings({
-    @Default(Zodiac.rat) Zodiac zodiac,
-    @Default('鼠') String chineseZodiac,
-    @Default(true) bool dailyNotification,
-    @Default('09:00') String notificationTime,
-    @Default(2000) int birthYear,
-    @Default(true) bool hasEnabledNotifications,
-    @Default(false) bool hasLocationPermission,
+    @Default(false) bool isFirstLaunch,
     @Default(false) bool hasCompletedOnboarding,
     @Default(false) bool hasAcceptedTerms,
     @Default(false) bool hasAcceptedPrivacy,
-    @Default(true) bool isFirstLaunch,
-    @Default([]) List<String> preferredFortuneTypes,
+    @Default(false) bool hasEnabledNotifications,
+    @Default(false) bool hasLocationPermission,
     @Default('zh_TW') String locale,
     @ThemeModeConverter() @Default(ThemeMode.system) ThemeMode themeMode,
-    @Default(true) bool notificationsEnabled,
-    @Default(true) bool autoBackupEnabled,
+    @Default(false) bool autoBackupEnabled,
+    String? notificationTime,
+    Zodiac? zodiac,
+    String? chineseZodiac,
+    int? birthYear,
+    @Default([]) List<FortuneType> preferredFortuneTypes,
+    @Default(false) bool notificationsEnabled,
+    @Default(false) bool dailyNotification,
   }) = _UserSettings;
 
-  factory UserSettings.fromJson(Map<String, dynamic> json) =>
-      _$UserSettingsFromJson(json);
+  factory UserSettings.defaultSettings() => const UserSettings();
 
-  static UserSettings defaultSettings() {
-    return const UserSettings(
-      zodiac: Zodiac.rat,
-      chineseZodiac: '鼠',
-      dailyNotification: true,
-      notificationTime: '09:00',
-      birthYear: 2000,
-      hasEnabledNotifications: true,
-      hasLocationPermission: false,
-      hasCompletedOnboarding: false,
-      hasAcceptedTerms: false,
-      hasAcceptedPrivacy: false,
-      isFirstLaunch: true,
-      preferredFortuneTypes: [],
-      locale: 'zh_TW',
-      themeMode: ThemeMode.system,
-      notificationsEnabled: true,
-      autoBackupEnabled: true,
-    );
-  }
+  factory UserSettings.fromJson(Map<String, dynamic> json) => _$UserSettingsFromJson(json);
 
   const UserSettings._();
 
-  bool get hasCompletedSetup =>
+  bool get isSetupComplete =>
       !isFirstLaunch &&
       hasCompletedOnboarding &&
       hasAcceptedTerms &&
       hasAcceptedPrivacy;
 
-  bool get canReceiveNotifications =>
+  bool get hasNotificationsConfigured =>
       hasEnabledNotifications && notificationTime != null;
 
-  bool get canUseLocation =>
+  bool get hasLocationConfigured =>
       hasLocationPermission;
 
-  bool get hasPreferredTypes =>
+  bool get hasFortunePreferences =>
       preferredFortuneTypes.isNotEmpty;
 
-  String get displayLanguage =>
+  String get displayLocale =>
       locale;
 
   String get displayTheme =>
       themeMode.toString().split('.').last;
 
-  String get displayNotificationTime =>
-      notificationTime;
-}
-
-extension UserSettingsX on UserSettings {
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
-      'zodiac': zodiac.name,
+      'zodiac': zodiac?.name,
       'chinese_zodiac': chineseZodiac,
-      'daily_notification': dailyNotification ? 1 : 0,
-      'notification_time': notificationTime,
+      'locale': locale,
       'birth_year': birthYear,
       'notifications_enabled': hasEnabledNotifications ? 1 : 0,
       'location_permission_granted': hasLocationPermission ? 1 : 0,
@@ -116,11 +91,12 @@ extension UserSettingsX on UserSettings {
       'terms_accepted': hasAcceptedTerms ? 1 : 0,
       'privacy_accepted': hasAcceptedPrivacy ? 1 : 0,
       'is_first_launch': isFirstLaunch ? 1 : 0,
-      'preferred_fortune_types': preferredFortuneTypes,
-      'locale': locale,
+      'preferred_fortune_types': preferredFortuneTypes.map((e) => e.name).toList(),
       'theme_mode': themeMode.toString().split('.').last,
-      'notifications_enabled': notificationsEnabled ? 1 : 0,
+      'notification_time': notificationTime,
       'auto_backup_enabled': autoBackupEnabled ? 1 : 0,
+      'daily_notification': dailyNotification ? 1 : 0,
+      'notifications_enabled': notificationsEnabled ? 1 : 0,
     };
   }
 } 

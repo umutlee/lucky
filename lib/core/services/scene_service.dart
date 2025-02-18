@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/scene.dart';
 import '../models/fortune_type.dart';
@@ -13,42 +14,38 @@ class SceneService {
   final List<Scene> _scenes = [
     Scene(
       id: 'scene1',
-      name: '晨光祈福',
+      title: '晨光祈福',
       description: '在晨光中感受新的一天的祝福',
+      icon: Icons.wb_sunny,
+      type: SceneType.health,
       imageUrl: 'https://example.com/scene1.jpg',
-      imagePath: 'assets/images/scenes/scene1.jpg',
-      type: FortuneType.daily,
-      baseScore: 80,
       tags: ['晨間', '祈福', '新的開始'],
     ),
     Scene(
       id: 'scene2',
-      name: '書房靈感',
+      title: '書房靈感',
       description: '在書房中尋找學習的靈感',
+      icon: Icons.book,
+      type: SceneType.study,
       imageUrl: 'https://example.com/scene2.jpg',
-      imagePath: 'assets/images/scenes/scene2.jpg',
-      type: FortuneType.study,
-      baseScore: 85,
       tags: ['學習', '靈感', '專注'],
     ),
     Scene(
       id: 'scene3',
-      name: '職場運勢',
+      title: '職場運勢',
       description: '在辦公室中探索事業機遇',
+      icon: Icons.work,
+      type: SceneType.career,
       imageUrl: 'https://example.com/scene3.jpg',
-      imagePath: 'assets/images/scenes/scene3.jpg',
-      type: FortuneType.career,
-      baseScore: 75,
       tags: ['事業', '機遇', '成長'],
     ),
     Scene(
       id: 'scene4',
-      name: '月下情緣',
+      title: '月下情緣',
       description: '在月光下感受愛情的美好',
+      icon: Icons.favorite,
+      type: SceneType.love,
       imageUrl: 'https://example.com/scene4.jpg',
-      imagePath: 'assets/images/scenes/scene4.jpg',
-      type: FortuneType.love,
-      baseScore: 90,
       tags: ['愛情', '浪漫', '月光'],
     ),
   ];
@@ -118,7 +115,7 @@ class SceneService {
         (scene) => scene.id == id,
         orElse: () => throw Exception('找不到場景：$id'),
       );
-      _logger.info('獲取場景：${scene.name}');
+      _logger.info('獲取場景：${scene.title}');
       return scene;
     } catch (e, stack) {
       _logger.error('獲取場景失敗：$id', e, stack);
@@ -137,7 +134,7 @@ class SceneService {
       
       _scenes[index] = _scenes[index].unlock();
       _invalidateCache();
-      _logger.info('解鎖場景：${_scenes[index].name}');
+      _logger.info('解鎖場景：${_scenes[index].title}');
     } catch (e, stack) {
       _logger.error('解鎖場景失敗：$id', e, stack);
       rethrow;
@@ -155,7 +152,7 @@ class SceneService {
       
       _scenes[index] = _scenes[index].updateStats(viewed: true);
       _invalidateCache();
-      _logger.info('增加場景瀏覽次數：${_scenes[index].name}');
+      _logger.info('增加場景瀏覽次數：${_scenes[index].title}');
     } catch (e, stack) {
       _logger.error('增加場景瀏覽次數失敗：$id', e, stack);
       rethrow;
@@ -228,7 +225,7 @@ class SceneService {
   }
 
   /// 獲取特定類型的場景
-  Future<List<Scene>> getScenesByType(FortuneType type) async {
+  Future<List<Scene>> getScenesByType(SceneType type) async {
     return _scenes.where((scene) => scene.type == type).toList();
   }
 
@@ -236,7 +233,7 @@ class SceneService {
   Future<List<Scene>> searchScenes(String query) async {
     final lowercaseQuery = query.toLowerCase();
     return _scenes.where((scene) {
-      return scene.name.toLowerCase().contains(lowercaseQuery) ||
+      return scene.title.toLowerCase().contains(lowercaseQuery) ||
           scene.description.toLowerCase().contains(lowercaseQuery) ||
           scene.tags.any((tag) => tag.toLowerCase().contains(lowercaseQuery));
     }).toList();

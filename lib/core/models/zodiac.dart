@@ -4,32 +4,22 @@ part 'zodiac.freezed.dart';
 part 'zodiac.g.dart';
 
 /// 生肖枚舉
-@JsonEnum()
 enum Zodiac {
-  @JsonValue('rat')
-  rat,
-  @JsonValue('ox')
-  ox,
-  @JsonValue('tiger')
-  tiger,
-  @JsonValue('rabbit')
-  rabbit,
-  @JsonValue('dragon')
-  dragon,
-  @JsonValue('snake')
-  snake,
-  @JsonValue('horse')
-  horse,
-  @JsonValue('goat')
-  goat,
-  @JsonValue('monkey')
-  monkey,
-  @JsonValue('rooster')
-  rooster,
-  @JsonValue('dog')
-  dog,
-  @JsonValue('pig')
-  pig;
+  rat('鼠'),
+  ox('牛'),
+  tiger('虎'),
+  rabbit('兔'),
+  dragon('龍'),
+  snake('蛇'),
+  horse('馬'),
+  goat('羊'),
+  monkey('猴'),
+  rooster('雞'),
+  dog('狗'),
+  pig('豬');
+
+  final String displayName;
+  const Zodiac(this.displayName);
 
   static Zodiac fromYear(int year) {
     return Zodiac.values[year % 12];
@@ -40,35 +30,6 @@ enum Zodiac {
       (z) => z.toString().split('.').last == value,
       orElse: () => Zodiac.rat,
     );
-  }
-
-  String get displayName {
-    switch (this) {
-      case Zodiac.rat:
-        return '鼠';
-      case Zodiac.ox:
-        return '牛';
-      case Zodiac.tiger:
-        return '虎';
-      case Zodiac.rabbit:
-        return '兔';
-      case Zodiac.dragon:
-        return '龍';
-      case Zodiac.snake:
-        return '蛇';
-      case Zodiac.horse:
-        return '馬';
-      case Zodiac.goat:
-        return '羊';
-      case Zodiac.monkey:
-        return '猴';
-      case Zodiac.rooster:
-        return '雞';
-      case Zodiac.dog:
-        return '狗';
-      case Zodiac.pig:
-        return '豬';
-    }
   }
 
   String get description {
@@ -158,10 +119,15 @@ class ZodiacState with _$ZodiacState {
   const factory ZodiacState({
     required Zodiac userZodiac,
     String? fortuneDescription,
-    List<String>? luckyElements,
+    @Default([]) List<String> luckyElements,
     @Default(false) bool isLoading,
     String? error,
   }) = _ZodiacState;
+
+  factory ZodiacState.initial() => const ZodiacState(
+        userZodiac: Zodiac.rat,
+        luckyElements: [],
+      );
 
   factory ZodiacState.fromJson(Map<String, dynamic> json) => _$ZodiacStateFromJson(json);
 } 

@@ -17,256 +17,180 @@ final compassDataProvider = StreamProvider<CompassData>((ref) {
 
 /// 指南針服務提供者
 final compassServiceProvider = Provider<CompassService>((ref) {
-  final logger = ref.watch(loggerServiceProvider);
-  return CompassService(logger);
+  return CompassService();
 });
 
+/// 指南針服務
 class CompassService {
-  final LoggerService _logger;
-  StreamSubscription<dynamic>? _subscription;
-  final _compassController = StreamController<CompassData>.broadcast();
-  final _calibratedCompassController = StreamController<CompassData>.broadcast();
-  
-  // 校準相關變量
-  double _calibrationOffset = 0.0;
-  bool _isCalibrating = false;
-  List<double> _calibrationReadings = [];
-  
-  // 平滑處理相關變量
-  final _smoothingWindow = 5;
-  final List<double> _recentAngles = [];
-  double _lastAngle = 0.0;
-  
-  // 方位定義
-  static const Map<String, (double start, double end)> _directionRanges = {
-    '北': (337.5, 22.5),
-    '東北': (22.5, 67.5),
-    '東': (67.5, 112.5),
-    '東南': (112.5, 157.5),
-    '南': (157.5, 202.5),
-    '西南': (202.5, 247.5),
-    '西': (247.5, 292.5),
-    '西北': (292.5, 337.5),
-  };
+  final Logger _logger = Logger('CompassService');
+  StreamController<CompassPoint>? _directionController;
+  StreamController<CompassData>? _dataController;
 
-  CompassService(this._logger);
-
-  /// 獲取原始指南針數據流
-  Stream<CompassData> get compassStream => _compassController.stream;
-  
-  /// 獲取校準後的指南針數據流
-  Stream<CompassData> get calibratedCompassStream => _calibratedCompassController.stream;
-
-  /// 開始監聽感應器數據
-  Future<void> startListening() async {
-    if (_subscription != null) return;
-
+  /// 獲取當前方向
+  Future<CompassPoint> getDirection(double heading) async {
     try {
-      // 檢查權限
-      final permission = await _checkLocationPermission();
-      if (!permission) {
-        _logger.warning('未獲得位置權限');
-        return;
-      }
-
-      // 檢查羅盤是否可用
-      if (await FlutterCompass.events!.isEmpty) {
-        _logger.warning('設備不支持羅盤功能');
-        return;
-      }
-
-      // 開始監聽羅盤數據
-      _subscription = FlutterCompass.events!.listen(
-        (CompassEvent event) {
-          if (event.heading != null) {
-            final rawAngle = event.heading!;
-            final smoothedAngle = _smoothAngle(rawAngle);
-            final calibratedAngle = _applyCalibratedAngle(smoothedAngle);
-            final direction = _getDirection(calibratedAngle);
-
-            final compassData = CompassData(
-              angle: calibratedAngle,
-              direction: direction,
-              rawX: event.headingForCameraMode ?? 0,
-              rawY: 0,
-              rawZ: 0,
-              isCalibrated: true,
-              accuracy: 1.0,
-            );
-
-            _compassController.add(compassData);
-            _calibratedCompassController.add(compassData);
-          }
-        },
-        onError: (error) {
-          _logger.error('羅盤事件錯誤', error);
-        },
-      );
-    } catch (e, stackTrace) {
-      _logger.error('啟動羅盤監聽失敗', e, stackTrace);
+      return CompassPoint.fromDegrees(heading);
+    } catch (e, stack) {
+      _logger.error('獲取方向失敗', e, stack);
+      rethrow;
     }
   }
 
-  /// 檢查位置權限
-  Future<bool> _checkLocationPermission() async {
+  /// 獲取方向描述
+  Future<String> getDirectionDescription(CompassPoint direction) async {
     try {
-      final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        final result = await Geolocator.requestPermission();
-        return result != LocationPermission.denied;
+      return direction.description;
+    } catch (e, stack) {
+      _logger.error('獲取方向描述失敗', e, stack);
+      rethrow;
+    }
+  }
+
+  /// 獲取吉利方向
+  Future<List<String>> getAuspiciousDirections(CompassPoint direction) async {
+    try {
+      // 模擬根據當前方向計算吉利方向
+      switch (direction) {
+        case CompassPoint.north:
+          return ['東北', '西北'];
+        case CompassPoint.northEast:
+          return ['東', '北'];
+        case CompassPoint.east:
+          return ['東北', '東南'];
+        case CompassPoint.southEast:
+          return ['東', '南'];
+        case CompassPoint.south:
+          return ['東南', '西南'];
+        case CompassPoint.southWest:
+          return ['南', '西'];
+        case CompassPoint.west:
+          return ['西南', '西北'];
+        case CompassPoint.northWest:
+          return ['西', '北'];
       }
-      return permission != LocationPermission.denied;
-    } catch (e) {
-      _logger.error('檢查位置權限失敗', e);
-      return false;
+    } catch (e, stack) {
+      _logger.error('獲取吉利方向失敗', e, stack);
+      rethrow;
     }
   }
 
-  /// 停止監聽
-  void stopListening() {
-    _subscription?.cancel();
-    _subscription = null;
-  }
+  /// 開始監聽方向變化
+  Stream<CompassPoint> getDirectionStream() {
+    _directionController ??= StreamController<CompassPoint>.broadcast(
+      onListen: () {
+        _logger.info('開始監聽方向變化');
+      },
+      onCancel: () {
+        _logger.info('停止監聽方向變化');
+        _directionController?.close();
+        _directionController = null;
+      },
+    );
 
-  /// 開始校準
-  void startCalibration() {
-    _isCalibrating = true;
-    _calibrationReadings.clear();
-  }
-
-  /// 取消校準
-  void cancelCalibration() {
-    _isCalibrating = false;
-    _calibrationReadings.clear();
-  }
-
-  /// 重置校準
-  void resetCalibration() {
-    _calibrationOffset = 0.0;
-    _isCalibrating = false;
-    _calibrationReadings.clear();
-  }
-
-  /// 添加校準讀數
-  void addCalibrationReading(double angle) {
-    if (!_isCalibrating) return;
-    _calibrationReadings.add(angle);
-  }
-
-  /// 完成校準
-  void finishCalibration() {
-    if (!_isCalibrating || _calibrationReadings.isEmpty) return;
-
-    // 計算平均偏移
-    final sum = _calibrationReadings.reduce((a, b) => a + b);
-    final average = sum / _calibrationReadings.length;
-    _calibrationOffset = -average;
-
-    _isCalibrating = false;
-    _calibrationReadings.clear();
-  }
-
-  /// 平滑處理角度數據
-  double _smoothAngle(double newAngle) {
-    // 處理角度跳變
-    if (_lastAngle != 0) {
-      final diff = newAngle - _lastAngle;
-      if (diff > 180) {
-        newAngle -= 360;
-      } else if (diff < -180) {
-        newAngle += 360;
+    FlutterCompass.events?.listen((event) {
+      if (event.heading != null) {
+        final direction = CompassPoint.fromDegrees(event.heading!);
+        _directionController?.add(direction);
       }
-    }
-    
-    // 添加到最近角度列表
-    _recentAngles.add(newAngle);
-    if (_recentAngles.length > _smoothingWindow) {
-      _recentAngles.removeAt(0);
-    }
-    
-    // 計算平均值
-    final smoothedAngle = _recentAngles.reduce((a, b) => a + b) / _recentAngles.length;
-    
-    // 標準化到 0-360 範圍
-    double normalizedAngle = smoothedAngle % 360;
-    if (normalizedAngle < 0) normalizedAngle += 360;
-    
-    _lastAngle = normalizedAngle;
-    return normalizedAngle;
+    });
+
+    return _directionController!.stream;
   }
 
-  /// 獲取方位
-  CompassPoint _getDirection(double angle) {
-    // 處理北方特殊情況
-    if (angle >= 337.5 || angle < 22.5) {
-      return CompassPoint.north;
-    }
-    
-    // 處理其他方位
-    if (angle >= 22.5 && angle < 67.5) return CompassPoint.northEast;
-    if (angle >= 67.5 && angle < 112.5) return CompassPoint.east;
-    if (angle >= 112.5 && angle < 157.5) return CompassPoint.southEast;
-    if (angle >= 157.5 && angle < 202.5) return CompassPoint.south;
-    if (angle >= 202.5 && angle < 247.5) return CompassPoint.southWest;
-    if (angle >= 247.5 && angle < 292.5) return CompassPoint.west;
-    if (angle >= 292.5 && angle < 337.5) return CompassPoint.northWest;
-    
-    return CompassPoint.north; // 預設返回北
+  /// 獲取校準後的羅盤數據流
+  Stream<CompassData> get calibratedCompassStream {
+    _dataController ??= StreamController<CompassData>.broadcast(
+      onListen: () {
+        _logger.info('開始監聽羅盤數據');
+        _startSensorListening();
+      },
+      onCancel: () {
+        _logger.info('停止監聽羅盤數據');
+        _stopSensorListening();
+      },
+    );
+
+    return _dataController!.stream;
   }
 
-  /// 計算校準後的角度
-  double _applyCalibratedAngle(double angle) {
-    double calibratedAngle = angle + _calibrationOffset;
-    // 標準化到 0-360 範圍
-    calibratedAngle = calibratedAngle % 360;
-    if (calibratedAngle < 0) calibratedAngle += 360;
-    return calibratedAngle;
+  void _startSensorListening() {
+    FlutterCompass.events?.listen((event) {
+      if (event.heading != null) {
+        final data = CompassData(
+          angle: event.heading!,
+          direction: _getDirectionFromAngle(event.heading!),
+          rawX: 0,
+          rawY: 0,
+          rawZ: 0,
+          isCalibrated: true,
+          accuracy: 1.0,
+        );
+        _dataController?.add(data);
+      }
+    });
   }
 
-  /// 計算感應器精度
-  double _calculateAccuracy(MagnetometerEvent event) {
-    // 計算磁場強度
-    final magnitude = math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
-    
-    // 正常的地磁場強度範圍約為 25-65 µT
-    const minMagnitude = 25.0;
-    const maxMagnitude = 65.0;
-    
-    if (magnitude < minMagnitude || magnitude > maxMagnitude) {
-      return 0.0; // 不可靠
-    }
-    
-    // 計算可靠度得分 (0-1)
-    return (magnitude - minMagnitude) / (maxMagnitude - minMagnitude);
+  void _stopSensorListening() {
+    _dataController?.close();
+    _dataController = null;
   }
 
-  /// 獲取吉利方位
-  CompassPoint getLuckyDirection(DateTime date) {
-    // 根據農曆日期計算吉利方位
-    final dayOfYear = date.difference(DateTime(date.year)).inDays;
-    
-    // 使用更複雜的算法計算吉利方位
-    final directions = [
-      CompassPoint.east,
-      CompassPoint.south,
-      CompassPoint.west,
-      CompassPoint.north,
-      CompassPoint.northEast,
-      CompassPoint.southEast,
-      CompassPoint.southWest,
-      CompassPoint.northWest,
-    ];
-    
-    // 使用日期計算索引
-    final index = ((dayOfYear * 3 + date.month * 5 + date.day * 7) % directions.length);
-    
+  String _getDirectionFromAngle(double angle) {
+    const directions = ['北', '東北', '東', '東南', '南', '西南', '西', '西北'];
+    final index = ((angle + 22.5) % 360 / 45).floor();
     return directions[index];
   }
 
-  void dispose() {
-    stopListening();
-    _compassController.close();
-    _calibratedCompassController.close();
+  /// 停止監聽方向變化
+  void stopDirectionTracking() {
+    _directionController?.close();
+    _directionController = null;
+  }
+
+  /// 獲取最佳方向
+  Future<CompassPoint> getBestDirection(List<String> luckyDirections) async {
+    if (luckyDirections.isEmpty) return CompassPoint.north;
+
+    final directions = luckyDirections.map((d) => CompassPoint.fromName(d)).toList();
+    
+    // 獲取當前方向
+    final currentHeading = await FlutterCompass.events!.first;
+    if (currentHeading.heading == null) return CompassPoint.north;
+    
+    final currentDirection = CompassPoint.fromDegrees(currentHeading.heading!);
+    
+    // 找到最接近的吉利方向
+    CompassPoint bestDirection = directions.first;
+    double minDifference = currentDirection.calculateAngleDifference(bestDirection);
+    
+    for (final direction in directions.skip(1)) {
+      final difference = currentDirection.calculateAngleDifference(direction);
+      if (difference < minDifference) {
+        minDifference = difference;
+        bestDirection = direction;
+      }
+    }
+    
+    return bestDirection;
+  }
+
+  /// 檢查是否為吉利方向
+  bool isLuckyDirection(CompassPoint direction, List<String> luckyDirections) {
+    return luckyDirections.any((d) => CompassPoint.fromName(d) == direction);
+  }
+
+  /// 獲取所有方位
+  List<CompassPoint> getAllDirections() {
+    return [
+      CompassPoint.north,     // 0°
+      CompassPoint.northEast, // 45°
+      CompassPoint.east,      // 90°
+      CompassPoint.southEast, // 135°
+      CompassPoint.south,     // 180°
+      CompassPoint.southWest, // 225°
+      CompassPoint.west,      // 270°
+      CompassPoint.northWest, // 315°
+    ];
   }
 }
 

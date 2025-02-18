@@ -34,10 +34,13 @@ class CalendarState with _$CalendarState implements ErrorHandlingState {
       _$CalendarStateFromJson(json);
 }
 
-final calendarProvider = StateNotifierProvider<CalendarNotifier, CalendarState>((ref) {
-  final calendarService = ref.read(calendarServiceProvider);
-  final errorService = ref.read(errorServiceProvider);
-  return CalendarNotifier(calendarService, errorService);
+final calendarServiceProvider = Provider<CalendarService>((ref) {
+  return CalendarService();
+});
+
+final calendarProvider = FutureProvider<LunarDate>((ref) async {
+  final calendarService = ref.watch(calendarServiceProvider);
+  return calendarService.getLunarDate(DateTime.now());
 });
 
 class CalendarNotifier extends BaseStateNotifier<CalendarState> {

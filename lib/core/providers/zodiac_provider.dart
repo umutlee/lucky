@@ -12,31 +12,30 @@ part 'zodiac_provider.g.dart';
 @freezed
 class ZodiacState with _$ZodiacState implements ErrorHandlingState {
   const factory ZodiacState({
-    required String userZodiac,
-    required List<String> luckyElements,
-    required String fortuneDescription,
+    required Zodiac userZodiac,
+    String? fortuneDescription,
+    @Default([]) List<String> luckyElements,
     @Default(false) bool isLoading,
     @Default(false) bool hasError,
     String? errorMessage,
   }) = _ZodiacState;
 
   factory ZodiacState.initial() => const ZodiacState(
-        userZodiac: 'Rat',
-        isLoading: false,
+        userZodiac: Zodiac.rat,
+        luckyElements: [],
       );
 
   factory ZodiacState.fromJson(Map<String, dynamic> json) =>
       _$ZodiacStateFromJson(json);
 }
 
-final zodiacProvider = StateNotifierProvider<ZodiacNotifier, ZodiacState>((ref) {
-  final birthDate = ref.watch(userProvider.select((user) => user.birthDate));
-  final errorService = ref.watch(errorServiceProvider);
-  return ZodiacNotifier(
-    ZodiacService(),
-    errorService,
-    birthDate,
-  );
+final zodiacServiceProvider = Provider<ZodiacService>((ref) {
+  return ZodiacService();
+});
+
+final zodiacProvider = FutureProvider<Zodiac>((ref) async {
+  final zodiacService = ref.watch(zodiacServiceProvider);
+  return zodiacService.calculateZodiac(DateTime.now());
 });
 
 class ZodiacNotifier extends BaseStateNotifier<ZodiacState> {
@@ -80,6 +79,7 @@ class ZodiacNotifier extends BaseStateNotifier<ZodiacState> {
         state = state.copyWith(
           errorMessage: error.toString(),
           isLoading: false,
+          hasError: true,
         );
       },
     );
@@ -95,6 +95,8 @@ class ZodiacNotifier extends BaseStateNotifier<ZodiacState> {
           fortuneDescription: description,
           luckyElements: luckyElements,
           isLoading: false,
+          errorMessage: null,
+          hasError: false,
         );
       },
       onStart: () {
@@ -104,6 +106,7 @@ class ZodiacNotifier extends BaseStateNotifier<ZodiacState> {
         state = state.copyWith(
           errorMessage: error.toString(),
           isLoading: false,
+          hasError: true,
         );
       },
     );

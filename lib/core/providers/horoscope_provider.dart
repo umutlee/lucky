@@ -12,35 +12,30 @@ part 'horoscope_provider.g.dart';
 @freezed
 class HoroscopeState with _$HoroscopeState implements ErrorHandlingState {
   const factory HoroscopeState({
-    required String userHoroscope,
-    required List<String> luckyElements,
-    required String fortuneDescription,
+    required Horoscope userHoroscope,
+    String? fortuneDescription,
+    @Default([]) List<String> luckyElements,
     @Default(false) bool isLoading,
     @Default(false) bool hasError,
     String? errorMessage,
   }) = _HoroscopeState;
 
+  factory HoroscopeState.initial() => const HoroscopeState(
+        userHoroscope: Horoscope.aries,
+        luckyElements: [],
+      );
+
   factory HoroscopeState.fromJson(Map<String, dynamic> json) =>
       _$HoroscopeStateFromJson(json);
-
-  factory HoroscopeState.initial() => const HoroscopeState(
-        userHoroscope: '',
-        luckyElements: [],
-        fortuneDescription: '',
-        isLoading: false,
-        hasError: false,
-      );
 }
 
-final horoscopeProvider =
-    StateNotifierProvider<HoroscopeNotifier, HoroscopeState>((ref) {
-  final birthDate = ref.watch(userProvider.select((user) => user.birthDate));
-  final errorService = ref.watch(errorServiceProvider);
-  return HoroscopeNotifier(
-    HoroscopeService(),
-    errorService,
-    birthDate,
-  );
+final horoscopeServiceProvider = Provider<HoroscopeService>((ref) {
+  return HoroscopeService();
+});
+
+final horoscopeProvider = FutureProvider<Horoscope>((ref) async {
+  final horoscopeService = ref.watch(horoscopeServiceProvider);
+  return horoscopeService.calculateHoroscope(DateTime.now());
 });
 
 class HoroscopeNotifier extends BaseStateNotifier<HoroscopeState> {
@@ -75,6 +70,8 @@ class HoroscopeNotifier extends BaseStateNotifier<HoroscopeState> {
           fortuneDescription: description,
           luckyElements: luckyElements,
           isLoading: false,
+          errorMessage: null,
+          hasError: false,
         );
       },
       onStart: () {

@@ -3,9 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import '../models/compass_direction.dart';
 import '../services/direction_service.dart';
+import 'package:all_lucky/core/services/compass_service.dart';
 
-final compassProvider = StateNotifierProvider<CompassNotifier, CompassState>((ref) {
-  return CompassNotifier(DirectionService());
+final compassServiceProvider = Provider<CompassService>((ref) {
+  return CompassService();
+});
+
+final compassProvider = StreamProvider<CompassPoint>((ref) {
+  final compassService = ref.watch(compassServiceProvider);
+  return compassService.getDirectionStream();
 });
 
 class CompassNotifier extends StateNotifier<CompassState> {

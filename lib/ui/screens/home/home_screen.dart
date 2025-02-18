@@ -9,6 +9,11 @@ import 'widgets/compass_section.dart';
 import 'widgets/bottom_nav.dart';
 import '../scene/scene_selection_screen.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/providers/fortune_provider.dart';
+import '../../../core/providers/zodiac_provider.dart';
+import '../../../core/providers/horoscope_provider.dart';
+import '../../../core/providers/calendar_provider.dart';
+import '../../../core/providers/compass_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +24,35 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    ref.read(fortuneProvider.notifier).loadDailyFortune();
+    ref.read(zodiacProvider.notifier).loadZodiacFortune();
+    ref.read(horoscopeProvider.notifier).loadHoroscopeFortune();
+    ref.read(calendarProvider.notifier).loadCalendarData();
+    ref.read(compassProvider.notifier).startTracking();
+  }
+
+  @override
+  void dispose() {
+    ref.read(compassProvider.notifier).stopTracking();
+    super.dispose();
+  }
+
+  void _onFortuneCardTap() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SceneSelectionScreen(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,9 +94,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: FortuneCard(
-                      onTap: () {
-                        // TODO: 導航到運勢詳情頁
-                      },
+                      onTap: _onFortuneCardTap,
                     ),
                   ),
                 ),
@@ -125,11 +157,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       bottomNavigationBar: BottomNav(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        onTap: (index) => setState(() => _currentIndex = index),
       ),
     );
   }

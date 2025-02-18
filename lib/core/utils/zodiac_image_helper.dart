@@ -1,39 +1,43 @@
-import '../models/zodiac.dart';
+import 'package:all_lucky/core/models/zodiac.dart';
 
 class ZodiacImageHelper {
-  static const _basePath = 'assets/images/zodiac/';
+  static const String _basePath = 'assets/images/zodiac';
 
-  static const _zodiacNameMap = {
-    Zodiac.rat: 'Chinese 12 Zodiacs - Rat',
-    Zodiac.ox: 'Chinese 12 Zodiacs - Ox',
-    Zodiac.tiger: 'Chinese 12 Zodiacs - Tiger',
-    Zodiac.rabbit: 'Chinese 12 Zodiacs - Rabbit',
-    Zodiac.dragon: 'Chinese 12 Zodiacs - Dragon',
-    Zodiac.snake: 'Chinese 12 Zodiacs - Snake',
-    Zodiac.horse: 'Chinese 12 Zodiacs - Horse',
-    Zodiac.goat: 'Chinese 12 Zodiacs - Goat',
-    Zodiac.monkey: 'Chinese 12 Zodiacs - Monkey',
-    Zodiac.rooster: 'Chinese 12 Zodiacs - Rooster',
-    Zodiac.dog: 'Chinese 12 Zodiacs - Dog',
-    Zodiac.pig: 'Chinese 12 Zodiacs - Pig',
-  };
-
-  static String getZodiacImage(Zodiac zodiac) {
-    final name = _zodiacNameMap[zodiac];
-    if (name == null) {
-      throw ArgumentError('無效的生肖: $zodiac');
-    }
-    return 'assets/images/zodiac/$name.jpg';
+  static String getZodiacImagePath(Zodiac zodiac) {
+    final zodiacName = _getEnglishName(zodiac);
+    return '$_basePath/Chinese 12 Zodiacs - $zodiacName.png';
   }
 
-  static String getZodiacImageByYear(int year) {
-    final zodiac = Zodiac.fromYear(year);
-    return getZodiacImage(zodiac);
+  static String _getEnglishName(Zodiac zodiac) {
+    switch (zodiac) {
+      case Zodiac.rat:
+        return 'Rat';
+      case Zodiac.ox:
+        return 'Ox';
+      case Zodiac.tiger:
+        return 'Tiger';
+      case Zodiac.rabbit:
+        return 'Rabbit';
+      case Zodiac.dragon:
+        return 'Dragon';
+      case Zodiac.snake:
+        return 'Snake';
+      case Zodiac.horse:
+        return 'Horse';
+      case Zodiac.goat:
+        return 'Goat';
+      case Zodiac.monkey:
+        return 'Monkey';
+      case Zodiac.rooster:
+        return 'Rooster';
+      case Zodiac.dog:
+        return 'Dog';
+      case Zodiac.pig:
+        return 'Pig';
+    }
   }
 
   static List<String> getAllZodiacImages() {
-    return _zodiacNameMap.values
-        .map((name) => 'assets/images/zodiac/$name.jpg')
-        .toList();
+    return Zodiac.values.map((zodiac) => getZodiacImagePath(zodiac)).toList();
   }
 } 

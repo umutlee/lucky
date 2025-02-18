@@ -247,69 +247,50 @@ class _SceneSelectionScreenState extends ConsumerState<SceneSelectionScreen> {
 
   Widget _buildSceneCard(Scene scene) {
     return Card(
-      clipBehavior: Clip.antiAlias,
+      elevation: 4,
+      margin: const EdgeInsets.all(8),
       child: InkWell(
-        onTap: () {
-          Navigator.pushNamed(
-            context,
-            '/scene/detail',
-            arguments: scene,
-          );
-        },
+        onTap: () => _onSceneTap(scene),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              flex: 3,
-              child: Stack(
-                fit: StackFit.expand,
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.network(
+                scene.imageUrl ?? 'https://placeholder.com/300x200',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.error),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Image.asset(
-                    scene.imagePath,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.image_not_supported),
-                      );
-                    },
+                  Text(
+                    scene.title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    scene.description,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (scene.isLocked)
-                    Container(
-                      color: Colors.black54,
-                      child: const Center(
-                        child: Icon(
-                          Icons.lock,
-                          color: Colors.white,
-                          size: 32,
-                        ),
+                    Text(
+                      scene.unlockCondition ?? '未解鎖',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.red,
                       ),
                     ),
                 ],
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      scene.name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      scene.description,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
               ),
             ),
           ],
