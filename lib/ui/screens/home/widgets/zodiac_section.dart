@@ -3,141 +3,129 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/zodiac_provider.dart';
 import '../../../../core/models/zodiac.dart';
 import '../../../../core/utils/zodiac_image_helper.dart';
-import '../../../widgets/loading_indicator.dart';
 
 class ZodiacSection extends ConsumerWidget {
-  const ZodiacSection({super.key});
+  const ZodiacSection({super.key, this.isTest = false});
+
+  final bool isTest;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final zodiacState = ref.watch(zodiacProvider);
+    final zodiacState = ref.watch(zodiacNotifierProvider);
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '生肖運勢',
-                  style: theme.textTheme.titleLarge,
-                ),
-                TextButton(
-                  onPressed: () {
-                    // TODO: 導航到生肖詳情頁
-                  },
-                  child: const Text('查看更多'),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            if (zodiacState.isLoading)
-              const Center(
-                child: LoadingIndicator(
-                  size: 32.0,
-                  message: '載入生肖運勢中...',
-                ),
-              )
-            else if (zodiacState.error != null)
-              Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: theme.colorScheme.error,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      zodiacState.error!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.error,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.tonal(
-                      onPressed: () {
-                        ref.read(zodiacProvider.notifier).refreshFortune();
-                      },
-                      child: const Text('重試'),
-                    ),
-                  ],
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: theme.colorScheme.outline,
-                          width: 1,
+      child: zodiacState.when(
+        data: (state) => state.isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : state.hasError
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48),
+                        const SizedBox(height: 16),
+                        Text(state.errorMessage ?? '載入生肖運勢失敗'),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            ref.read(zodiacNotifierProvider.notifier).refreshFortune();
+                          },
+                          child: const Text('重試'),
                         ),
-                      ),
-                      child: Image.asset(
-                        ZodiacImageHelper.getZodiacImagePath(zodiacState.userZodiac),
-                        fit: BoxFit.contain,
-                      ),
+                      ],
                     ),
-                    
-                    const SizedBox(width: 16),
-                    
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            zodiacState.userZodiac.toString(),
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: theme.colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            zodiacState.fortuneDescription ?? '',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                          if (zodiacState.luckyElements != null) ...[
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: zodiacState.luckyElements!.map((element) => Chip(
-                                label: Text(element),
-                                backgroundColor: theme.colorScheme.surface,
-                                labelStyle: TextStyle(
-                                  color: theme.colorScheme.onSurface,
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            return Row(
+                              children: [
+                                if (!isTest) ...[
+                                  SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: Image.asset(
+                                      ZodiacImageHelper.getZodiacImagePath(state.userZodiac),
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                ],
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '生肖運勢',
+                                        style: theme.textTheme.titleMedium,
+                                      ),
+                                      Text(
+                                        state.userZodiac.displayName,
+                                        style: theme.textTheme.bodyLarge?.copyWith(
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              )).toList(),
-                            ),
-                          ],
+                                IconButton(
+                                  icon: const Icon(Icons.refresh),
+                                  onPressed: () {
+                                    ref.read(zodiacNotifierProvider.notifier).refreshFortune();
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        if (state.fortuneDescription != null) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            state.fortuneDescription!,
+                            style: theme.textTheme.bodyMedium,
+                          ),
                         ],
-                      ),
+                        if (state.luckyElements.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: state.luckyElements
+                                .map((element) => Chip(
+                                      label: Text(element),
+                                      backgroundColor: theme.colorScheme.primaryContainer,
+                                      labelStyle: TextStyle(
+                                        color: theme.colorScheme.onPrimaryContainer,
+                                      ),
+                                    ))
+                                .toList(),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48),
+              const SizedBox(height: 16),
+              Text(error.toString()),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  ref.read(zodiacNotifierProvider.notifier).refreshFortune();
+                },
+                child: const Text('重試'),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );

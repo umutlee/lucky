@@ -1,41 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/error_service.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 import '../models/app_error.dart';
 
-part 'base_provider.freezed.dart';
-part 'base_provider.g.dart';
-
-@freezed
-class BaseState with _$BaseState {
-  const factory BaseState({
-    @Default(false) bool isLoading,
-    @Default(false) bool hasError,
-    String? errorMessage,
-    AppError? error,
-  }) = _BaseState;
-
-  factory BaseState.fromJson(Map<String, dynamic> json) =>
-      _$BaseStateFromJson(json);
+abstract class BaseState {
+  bool get isLoading;
+  bool get hasError;
+  String? get errorMessage;
+  AppError? get error;
 }
 
 mixin ErrorHandlingState {
   AppError? get error;
   bool get hasError => error != null;
+  String? get errorMessage => error?.userMessage;
 }
 
 mixin LoadingState {
-  bool isLoading = false;
+  bool get isLoading;
 }
 
 mixin RefreshableState {
-  DateTime? lastRefreshed;
+  DateTime? get lastRefreshed;
 }
 
 mixin PaginationState {
-  int currentPage = 1;
-  bool hasMorePages = true;
-  bool isLoadingMore = false;
+  int get currentPage;
+  bool get hasMorePages;
+  bool get isLoadingMore;
 }
 
 abstract class BaseStateNotifier<T extends BaseState> extends StateNotifier<T> {

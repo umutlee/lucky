@@ -12,23 +12,34 @@ class BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return NavigationBar(
       selectedIndex: currentIndex,
       onDestinationSelected: onTap,
-      destinations: const [
+      destinations: [
         NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
+          icon: const Icon(Icons.home_outlined),
+          selectedIcon: Icon(
+            Icons.home,
+            color: theme.colorScheme.primary,
+          ),
           label: '首頁',
         ),
         NavigationDestination(
-          icon: Icon(Icons.auto_awesome_outlined),
-          selectedIcon: Icon(Icons.auto_awesome),
+          icon: const Icon(Icons.explore_outlined),
+          selectedIcon: Icon(
+            Icons.explore,
+            color: theme.colorScheme.primary,
+          ),
           label: '場景',
         ),
         NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person),
+          icon: const Icon(Icons.person_outline),
+          selectedIcon: Icon(
+            Icons.person,
+            color: theme.colorScheme.primary,
+          ),
           label: '我的',
         ),
       ],

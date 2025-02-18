@@ -1,8 +1,3 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'zodiac.freezed.dart';
-part 'zodiac.g.dart';
-
 /// 生肖枚舉
 enum Zodiac {
   rat('鼠'),
@@ -111,23 +106,4 @@ enum Zodiac {
         return '亥';
     }
   }
-}
-
-/// 生肖狀態
-@freezed
-class ZodiacState with _$ZodiacState {
-  const factory ZodiacState({
-    required Zodiac userZodiac,
-    String? fortuneDescription,
-    @Default([]) List<String> luckyElements,
-    @Default(false) bool isLoading,
-    String? error,
-  }) = _ZodiacState;
-
-  factory ZodiacState.initial() => const ZodiacState(
-        userZodiac: Zodiac.rat,
-        luckyElements: [],
-      );
-
-  factory ZodiacState.fromJson(Map<String, dynamic> json) => _$ZodiacStateFromJson(json);
 } 
