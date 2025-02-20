@@ -1,6 +1,12 @@
 import '../models/horoscope.dart';
 
 class HoroscopeService {
+  Future<Horoscope> getHoroscope(DateTime birthDate) async {
+    // 模擬網絡請求延遲
+    await Future.delayed(const Duration(milliseconds: 500));
+    return Horoscope.fromDate(birthDate);
+  }
+
   Future<String> getFortuneDescription(Horoscope horoscope) async {
     // 模擬網絡請求延遲
     await Future.delayed(const Duration(milliseconds: 500));
@@ -39,29 +45,29 @@ class HoroscopeService {
     
     switch (horoscope) {
       case Horoscope.aries:
-        return ['幸運數字：1、7', '幸運顏色：紅色、橙色', '幸運方位：東方'];
+        return ['幸運星座：獅子座', '幸運方位：南方'];
       case Horoscope.taurus:
-        return ['幸運數字：2、6', '幸運顏色：綠色、粉色', '幸運方位：東南'];
+        return ['幸運星座：處女座', '幸運方位：北方'];
       case Horoscope.gemini:
-        return ['幸運數字：3、8', '幸運顏色：黃色、藍色', '幸運方位：南方'];
+        return ['幸運星座：天秤座', '幸運方位：東方'];
       case Horoscope.cancer:
-        return ['幸運數字：4、9', '幸運顏色：白色、銀色', '幸運方位：北方'];
+        return ['幸運星座：天蠍座', '幸運方位：西方'];
       case Horoscope.leo:
-        return ['幸運數字：1、5', '幸運顏色：金色、紅色', '幸運方位：東方'];
+        return ['幸運星座：射手座', '幸運方位：東南'];
       case Horoscope.virgo:
-        return ['幸運數字：5、8', '幸運顏色：棕色、灰色', '幸運方位：南方'];
+        return ['幸運星座：摩羯座', '幸運方位：西北'];
       case Horoscope.libra:
-        return ['幸運數字：2、7', '幸運顏色：粉色、藍色', '幸運方位：西方'];
+        return ['幸運星座：水瓶座', '幸運方位：東北'];
       case Horoscope.scorpio:
-        return ['幸運數字：4、9', '幸運顏色：紫色、黑色', '幸運方位：北方'];
+        return ['幸運星座：雙魚座', '幸運方位：西南'];
       case Horoscope.sagittarius:
-        return ['幸運數字：3、6', '幸運顏色：紫色、藍色', '幸運方位：東南'];
+        return ['幸運星座：白羊座', '幸運方位：南方'];
       case Horoscope.capricorn:
-        return ['幸運數字：1、8', '幸運顏色：棕色、黑色', '幸運方位：北方'];
+        return ['幸運星座：金牛座', '幸運方位：北方'];
       case Horoscope.aquarius:
-        return ['幸運數字：4、7', '幸運顏色：藍色、綠色', '幸運方位：西方'];
+        return ['幸運星座：雙子座', '幸運方位：東方'];
       case Horoscope.pisces:
-        return ['幸運數字：2、9', '幸運顏色：海藍色、紫色', '幸運方位：東北'];
+        return ['幸運星座：巨蟹座', '幸運方位：西方'];
     }
   }
 } 

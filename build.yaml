@@ -4,4 +4,27 @@ targets:
       hive_generator|hive_generator:
         enabled: true
         generate_for:
-          - lib/core/models/**.dart 
+          - lib/core/models/**.dart
+      riverpod_generator:
+        enabled: true
+        generate_for:
+          include:
+            - lib/**
+            - test/**
+      mockito|mockBuilder:
+        enabled: true
+        generate_for:
+          include:
+            - test/**
+      json_serializable:
+        enabled: true
+        generate_for:
+          include:
+            - lib/**
+            - test/**
+      freezed:
+        enabled: true
+        generate_for:
+          include:
+            - lib/**
+            - test/** 

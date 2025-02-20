@@ -39,7 +39,7 @@ abstract class BaseStateNotifier<T extends BaseState> extends StateNotifier<T> {
     StackTrace stackTrace,
     void Function(AppError appError) onError,
   ) async {
-    final appError = _errorService.handleError(error, stackTrace);
+    final appError = await _errorService.handleError(error, stackTrace);
     onError(appError);
   }
 

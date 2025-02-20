@@ -11,14 +11,23 @@ enum ErrorType {
   unknown     // 未知錯誤
 }
 
+class StackTraceConverter implements JsonConverter<StackTrace, String> {
+  const StackTraceConverter();
+
+  @override
+  StackTrace fromJson(String json) => StackTrace.fromString(json);
+
+  @override
+  String toJson(StackTrace object) => object.toString();
+}
+
 @freezed
 class AppError with _$AppError {
   const factory AppError({
     required String message,
     required ErrorType type,
-    @Default(false) bool isNetworkError,
-    @JsonKey(ignore: true) StackTrace? stackTrace,
-    @JsonKey(ignore: true) Object? originalError,
+    @StackTraceConverter() required StackTrace stackTrace,
+    dynamic originalError,
   }) = _AppError;
 
   factory AppError.fromJson(Map<String, dynamic> json) =>

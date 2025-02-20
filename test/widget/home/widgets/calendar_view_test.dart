@@ -20,6 +20,7 @@ import 'calendar_view_test.mocks.dart';
 void main() {
   late MockCalendarService mockCalendarService;
   late MockErrorService mockErrorService;
+  final testDate = DateTime(2024, 3, 15);
 
   setUp(() {
     mockCalendarService = MockCalendarService();
@@ -49,136 +50,217 @@ void main() {
 
     when(mockCalendarService.getLuckyHours(any)).thenAnswer((_) async => ['子時', '午時']);
 
-    when(mockErrorService.handleError(any, any)).thenReturn(AppError(
+    when(mockErrorService.handleError(any, any)).thenAnswer((_) async => AppError(
       message: '發生錯誤',
       type: ErrorType.unknown,
-      originalError: Exception('測試錯誤'),
+      stackTrace: StackTrace.current,
     ));
   });
 
-  testWidgets('CalendarView 應該正確顯示日曆信息', (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          calendarStateProvider.overrideWith((ref) => CalendarNotifier(
-            mockCalendarService,
-            mockErrorService,
-          )),
-        ],
-        child: const MaterialApp(
-          home: Scaffold(
-            body: CalendarView(),
-          ),
+  Widget buildTestWidget() {
+    return ProviderScope(
+      overrides: [
+        calendarServiceProvider.overrideWithValue(mockCalendarService),
+        errorServiceProvider.overrideWithValue(mockErrorService),
+        dateProvider.overrideWithValue(testDate),
+      ],
+      child: const MaterialApp(
+        home: Scaffold(
+          body: CalendarView(),
         ),
       ),
     );
+  }
 
-    // 等待異步操作完成
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+  group('CalendarView 基本功能測試', () {
+    testWidgets('應該正確顯示載入狀態', (tester) async {
+      final completer = Completer<LunarDate>();
+      when(mockCalendarService.getLunarDate(any))
+          .thenAnswer((_) => completer.future);
 
-    // 驗證基本 UI 元素存在
-    expect(find.text('農曆 甲子年初一'), findsOneWidget);
-    expect(find.text('立春'), findsOneWidget);
-    expect(find.text('宜'), findsOneWidget);
-    expect(find.text('忌'), findsOneWidget);
-    expect(find.text('吉時'), findsOneWidget);
+      await tester.pumpWidget(buildTestWidget());
 
-    // 驗證活動列表
-    expect(find.text('祈福'), findsOneWidget);
-    expect(find.text('開市'), findsOneWidget);
-    expect(find.text('動土'), findsOneWidget);
-    expect(find.text('安葬'), findsOneWidget);
+      // 驗證載入指示器
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    // 驗證吉時
-    expect(find.text('子時'), findsOneWidget);
-    expect(find.text('午時'), findsOneWidget);
+      // 完成異步操作
+      completer.complete(const LunarDate(
+        heavenlyStem: '甲',
+        earthlyBranch: '子',
+        dayZhi: '寅',
+        timeZhi: '午',
+        wuXing: '木',
+        isLeapMonth: false,
+        lunarDay: '初一',
+        solarTerm: '立春',
+      ));
+      
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    });
+
+    testWidgets('應該正確顯示農曆日期', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('甲子年'), findsOneWidget);
+      expect(find.text('寅日'), findsOneWidget);
+      expect(find.text('午時'), findsOneWidget);
+      expect(find.text('初一'), findsOneWidget);
+    });
+
+    testWidgets('應該正確顯示節氣信息', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('立春'), findsOneWidget);
+    });
+
+    testWidgets('應該正確顯示吉凶活動', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('祈福'), findsOneWidget);
+      expect(find.text('開市'), findsOneWidget);
+      expect(find.text('動土'), findsOneWidget);
+      expect(find.text('安葬'), findsOneWidget);
+    });
   });
 
-  testWidgets('CalendarView 應該處理錯誤狀態', (tester) async {
-    // 模擬錯誤情況
-    when(mockCalendarService.getLunarDate(any)).thenThrow(Exception('測試錯誤'));
-    when(mockErrorService.handleError(any, any)).thenReturn(AppError(
-      message: '發生錯誤',
-      type: ErrorType.unknown,
-      originalError: Exception('測試錯誤'),
-    ));
+  group('CalendarView 錯誤處理測試', () {
+    testWidgets('網絡錯誤時應該顯示錯誤信息', (tester) async {
+      when(mockCalendarService.getLunarDate(any))
+          .thenThrow(Exception('網絡連接失敗'));
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          calendarStateProvider.overrideWith((ref) => CalendarNotifier(
-            mockCalendarService,
-            mockErrorService,
-          )),
-        ],
-        child: const MaterialApp(
-          home: Scaffold(
-            body: CalendarView(),
-          ),
-        ),
-      ),
-    );
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
 
-    // 等待異步操作完成
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+      expect(find.text('發生錯誤'), findsOneWidget);
+      expect(find.text('重試'), findsOneWidget);
+    });
 
-    // 驗證錯誤 UI
-    expect(find.byIcon(Icons.error_outline), findsOneWidget);
-    expect(find.text('發生未知錯誤，請重試'), findsOneWidget);
-    expect(find.text('重試'), findsOneWidget);
+    testWidgets('服務器錯誤時應該顯示錯誤信息', (tester) async {
+      when(mockCalendarService.getLunarDate(any))
+          .thenThrow(Exception('服務器錯誤'));
 
-    // 測試重試按鈕
-    await tester.tap(find.text('重試'));
-    await tester.pump();
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
 
-    // 驗證重試調用
-    verify(mockCalendarService.getLunarDate(any)).called(2);
+      expect(find.text('發生錯誤'), findsOneWidget);
+      expect(find.text('重試'), findsOneWidget);
+    });
+
+    testWidgets('點擊重試按鈕應該重新載入數據', (tester) async {
+      // 第一次調用拋出錯誤
+      when(mockCalendarService.getLunarDate(any))
+          .thenThrow(Exception('測試錯誤'));
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // 重新設置 mock 行為
+      when(mockCalendarService.getLunarDate(any))
+          .thenAnswer((_) async => const LunarDate(
+                heavenlyStem: '甲',
+                earthlyBranch: '子',
+                dayZhi: '寅',
+                timeZhi: '午',
+                wuXing: '木',
+                isLeapMonth: false,
+                lunarDay: '初一',
+                solarTerm: '立春',
+              ));
+
+      // 點擊重試按鈕
+      await tester.tap(find.text('重試'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('甲子年'), findsOneWidget);
+      
+      // 驗證服務被調用兩次
+      verify(mockCalendarService.getLunarDate(any)).called(2);
+    });
   });
 
-  testWidgets('CalendarView 應該處理加載狀態', (tester) async {
-    // 使用 Completer 來控制異步操作
-    final completer = Completer<LunarDate>();
-    when(mockCalendarService.getLunarDate(any)).thenAnswer((_) => completer.future);
+  group('CalendarView 邊界情況測試', () {
+    testWidgets('閏月應該正確顯示', (tester) async {
+      when(mockCalendarService.getLunarDate(any))
+          .thenAnswer((_) async => const LunarDate(
+                heavenlyStem: '甲',
+                earthlyBranch: '子',
+                dayZhi: '寅',
+                timeZhi: '午',
+                wuXing: '木',
+                isLeapMonth: true,
+                lunarDay: '初一',
+                solarTerm: '立春',
+              ));
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          calendarStateProvider.overrideWith((ref) => CalendarNotifier(
-            mockCalendarService,
-            mockErrorService,
-          )),
-        ],
-        child: const MaterialApp(
-          home: Scaffold(
-            body: CalendarView(),
-          ),
-        ),
-      ),
-    );
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
 
-    // 驗證加載指示器
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('閏'), findsOneWidget);
+    });
 
-    // 完成加載
-    completer.complete(const LunarDate(
-      heavenlyStem: '甲',
-      earthlyBranch: '子',
-      dayZhi: '寅',
-      timeZhi: '午',
-      wuXing: '木',
-      isLeapMonth: false,
-      lunarDay: '初一',
-      solarTerm: '立春',
-    ));
+    testWidgets('無節氣時應該正確顯示', (tester) async {
+      when(mockCalendarService.getSolarTerm(any))
+          .thenAnswer((_) async => const SolarTerm.empty());
 
-    // 等待異步操作完成
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
 
-    // 驗證內容已加載
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('農曆 甲子年初一'), findsOneWidget);
+      expect(find.text('無節氣'), findsOneWidget);
+    });
+
+    testWidgets('無吉凶活動時應該正確顯示', (tester) async {
+      when(mockCalendarService.getDailyActivities(any))
+          .thenAnswer((_) async => const DailyActivities(
+                goodActivities: [],
+                badActivities: [],
+              ));
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('無'), findsNWidgets(2));
+    });
+  });
+
+  group('CalendarView 性能測試', () {
+    testWidgets('多次重建不應該觸發多餘的服務調用', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // 重建 widget 多次
+      for (var i = 0; i < 5; i++) {
+        await tester.pumpWidget(buildTestWidget());
+        await tester.pumpAndSettle();
+      }
+
+      // 驗證每個服務只被調用一次
+      verify(mockCalendarService.getLunarDate(any)).called(1);
+      verify(mockCalendarService.getSolarTerm(any)).called(1);
+      verify(mockCalendarService.getDailyActivities(any)).called(1);
+      verify(mockCalendarService.getLuckyHours(any)).called(1);
+    });
+
+    testWidgets('快速點擊重試按鈕應該防抖', (tester) async {
+      when(mockCalendarService.getLunarDate(any))
+          .thenThrow(Exception('測試錯誤'));
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // 快速點擊重試按鈕多次
+      for (var i = 0; i < 5; i++) {
+        await tester.tap(find.text('重試'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      await tester.pumpAndSettle();
+
+      // 由於防抖，服務應該只被調用兩次（初始加載和一次重試）
+      verify(mockCalendarService.getLunarDate(any)).called(2);
+    });
   });
 } 

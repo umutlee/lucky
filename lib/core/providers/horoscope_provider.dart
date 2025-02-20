@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../models/horoscope.dart';
+import '../models/app_error.dart';
 import '../services/horoscope_service.dart';
 import '../services/error_service.dart';
 import 'base_provider.dart';
@@ -10,18 +11,26 @@ part 'horoscope_provider.freezed.dart';
 part 'horoscope_provider.g.dart';
 
 @freezed
-class HoroscopeState with _$HoroscopeState implements ErrorHandlingState {
+class HoroscopeState with _$HoroscopeState implements BaseState {
   const factory HoroscopeState({
     required Horoscope userHoroscope,
     String? fortuneDescription,
     @Default([]) List<String> luckyElements,
     @Default(false) bool isLoading,
-    @Default(false) bool hasError,
-    String? errorMessage,
+    @Default(null) AppError? error,
   }) = _HoroscopeState;
 
+  const HoroscopeState._();
+
+  @override
+  bool get hasError => error != null;
+
+  @override
+  String? get errorMessage => error?.message;
+
   factory HoroscopeState.initial() => const HoroscopeState(
-        userHoroscope: Horoscope.aries,
+        userHoroscope: Horoscope.leo,
+        fortuneDescription: '',
         luckyElements: [],
       );
 
@@ -33,84 +42,78 @@ final horoscopeServiceProvider = Provider<HoroscopeService>((ref) {
   return HoroscopeService();
 });
 
-final horoscopeProvider = FutureProvider<Horoscope>((ref) async {
+final horoscopeProvider = StateNotifierProvider<HoroscopeNotifier, HoroscopeState>((ref) {
   final horoscopeService = ref.watch(horoscopeServiceProvider);
-  return horoscopeService.calculateHoroscope(DateTime.now());
+  final errorService = ref.watch(errorServiceProvider);
+  final birthDate = DateTime.now(); // TODO: 從用戶設置獲取
+  return HoroscopeNotifier(horoscopeService, errorService, birthDate);
 });
 
-class HoroscopeNotifier extends BaseStateNotifier<HoroscopeState> {
+class HoroscopeNotifier extends StateNotifier<HoroscopeState> {
   final HoroscopeService _horoscopeService;
+  final ErrorService _errorService;
   final DateTime _birthDate;
 
   HoroscopeNotifier(
     this._horoscopeService,
-    ErrorService errorService,
+    this._errorService,
     this._birthDate,
-  ) : super(
-          errorService,
-          HoroscopeState.initial(),
-        ) {
+  ) : super(HoroscopeState.initial()) {
     _init();
   }
 
-  void _init() async {
-    await handleAsync(
-      () async {
-        final horoscope = _horoscopeService.calculateHoroscope(_birthDate);
-        
-        state = state.copyWith(
-          userHoroscope: horoscope,
-          isLoading: true,
-        );
-
-        final description = await _horoscopeService.getFortuneDescription(horoscope);
-        final luckyElements = await _horoscopeService.getLuckyElements(horoscope);
-        
-        state = state.copyWith(
-          fortuneDescription: description,
-          luckyElements: luckyElements,
-          isLoading: false,
-          errorMessage: null,
-          hasError: false,
-        );
-      },
-      onStart: () {
-        state = state.copyWith(isLoading: true);
-      },
-      onError: (error) {
-        state = state.copyWith(
-          errorMessage: error.toString(),
-          isLoading: false,
-          hasError: true,
-        );
-      },
-    );
+  Future<void> _init() async {
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+      final horoscope = await _horoscopeService.getHoroscope(_birthDate);
+      final fortuneDescription = await _horoscopeService.getFortuneDescription(horoscope);
+      final luckyElements = await _horoscopeService.getLuckyElements(horoscope);
+      
+      state = state.copyWith(
+        userHoroscope: horoscope,
+        fortuneDescription: fortuneDescription,
+        luckyElements: luckyElements,
+        isLoading: false,
+        error: null,
+      );
+    } catch (e, stackTrace) {
+      final error = await _errorService.handleError(e, stackTrace);
+      state = state.copyWith(
+        isLoading: false,
+        error: error,
+      );
+    }
   }
 
   Future<void> refreshFortune() async {
-    await handleAsync(
-      () async {
-        final description = await _horoscopeService.getFortuneDescription(state.userHoroscope);
-        final luckyElements = await _horoscopeService.getLuckyElements(state.userHoroscope);
-        
-        state = state.copyWith(
-          fortuneDescription: description,
-          luckyElements: luckyElements,
-          isLoading: false,
-          errorMessage: null,
-          hasError: false,
-        );
-      },
-      onStart: () {
-        state = state.copyWith(isLoading: true);
-      },
-      onError: (error) {
-        state = state.copyWith(
-          errorMessage: error.toString(),
-          isLoading: false,
-          hasError: true,
-        );
-      },
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+      final description = await _horoscopeService.getFortuneDescription(state.userHoroscope);
+      final luckyElements = await _horoscopeService.getLuckyElements(state.userHoroscope);
+      
+      state = state.copyWith(
+        fortuneDescription: description,
+        luckyElements: luckyElements,
+        isLoading: false,
+        error: null,
+      );
+    } catch (e, stackTrace) {
+      final error = await _errorService.handleError(e, stackTrace);
+      state = state.copyWith(
+        isLoading: false,
+        error: error,
+      );
+    }
+  }
+
+  Future<void> retry() async {
+    await _init();
+  }
+
+  void setError(AppError error) {
+    state = state.copyWith(
+      isLoading: false,
+      error: error,
     );
   }
 } 

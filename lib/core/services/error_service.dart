@@ -15,61 +15,66 @@ class ErrorService {
 
   ErrorService(this._logger);
 
-  AppError handleError(Object error, StackTrace stackTrace) {
-    if (error is DioException) {
-      return _handleDioError(error, stackTrace);
-    } else if (error is SocketException) {
-      return AppError(
-        message: '網路連接錯誤',
-        type: ErrorType.network,
-        stackTrace: stackTrace,
-      );
-    } else if (error is FormatException) {
-      return AppError(
-        message: '數據格式錯誤',
-        type: ErrorType.validation,
-        stackTrace: stackTrace,
-      );
-    } else {
-      return AppError(
-        message: error.toString(),
-        type: ErrorType.unknown,
-        stackTrace: stackTrace,
-      );
+  Future<AppError> handleError(dynamic error, [StackTrace? stackTrace]) async {
+    if (error is AppError) {
+      return error;
     }
+
+    if (error is Exception) {
+      if (error.toString().contains('SocketException') ||
+          error.toString().contains('TimeoutException') ||
+          error.toString().contains('NetworkException')) {
+        return AppError(
+          message: '網絡連接出現問題，請檢查網絡設置後重試',
+          type: ErrorType.network,
+          stackTrace: stackTrace ?? StackTrace.current,
+        );
+      }
+
+      if (error.toString().contains('ValidationException')) {
+        return AppError(
+          message: '輸入的數據無效，請檢查後重試',
+          type: ErrorType.validation,
+          stackTrace: stackTrace ?? StackTrace.current,
+        );
+      }
+    }
+
+    return AppError(
+      message: '發生未知錯誤，請重試',
+      type: ErrorType.unknown,
+      stackTrace: stackTrace ?? StackTrace.current,
+    );
   }
 
-  AppError _handleDioError(DioException error, StackTrace stackTrace) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return AppError(
-          message: '連接超時',
-          type: ErrorType.network,
-          stackTrace: stackTrace,
-        );
-      case DioExceptionType.badResponse:
-        final statusCode = error.response?.statusCode;
-        final message = error.response?.data?['message'] as String? ?? '未知錯誤';
-        return AppError(
-          message: message,
-          type: ErrorType.server,
-          stackTrace: stackTrace,
-        );
-      case DioExceptionType.cancel:
-        return AppError(
-          message: '請求已取消',
-          type: ErrorType.unknown,
-          stackTrace: stackTrace,
-        );
-      default:
-        return AppError(
-          message: '網路錯誤',
-          type: ErrorType.network,
-          stackTrace: stackTrace,
-        );
+  Future<AppError> handleNetworkError(dynamic error, [StackTrace? stackTrace]) async {
+    if (error is AppError) {
+      return error;
     }
+
+    if (error.toString().contains('SocketException') ||
+        error.toString().contains('TimeoutException')) {
+      return AppError(
+        message: '網絡連接出現問題，請檢查網絡設置後重試',
+        type: ErrorType.network,
+        stackTrace: stackTrace ?? StackTrace.current,
+      );
+    }
+
+    if (error.toString().contains('ServerException') ||
+        error.toString().contains('500')) {
+      return AppError(
+        message: '服務器出現問題，請稍後重試',
+        type: ErrorType.server,
+        stackTrace: stackTrace ?? StackTrace.current,
+      );
+    }
+
+    return AppError(
+      message: '發生未知錯誤，請重試',
+      type: ErrorType.unknown,
+      stackTrace: stackTrace ?? StackTrace.current,
+    );
   }
 
   void showError(BuildContext context, AppError error) {

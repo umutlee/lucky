@@ -46,6 +46,7 @@ dependencies:
   logger: ^2.0.2+1
   flutter_test:
     sdk: flutter
+  provider: ^6.1.1
 
 dev_dependencies:
   test: ^1.24.9
@@ -64,6 +65,7 @@ flutter:
     - assets/images/
     - assets/images/zodiac/
     - assets/images/scenes/
+    - assets/images/horoscope/
     - assets/icons/
     # - assets/fonts/
     
