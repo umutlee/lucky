@@ -14,6 +14,9 @@ part 'calendar_provider.g.dart';
 class CalendarState with _$CalendarState {
   const factory CalendarState({
     required String lunarDate,
+    required String dayZhi,
+    required String timeZhi,
+    required String lunarDay,
     required String solarTerm,
     required List<String> goodActivities,
     required List<String> badActivities,
@@ -25,6 +28,9 @@ class CalendarState with _$CalendarState {
 
   factory CalendarState.initial() => const CalendarState(
     lunarDate: '',
+    dayZhi: '',
+    timeZhi: '',
+    lunarDay: '',
     solarTerm: '',
     goodActivities: [],
     badActivities: [],
@@ -34,6 +40,10 @@ class CalendarState with _$CalendarState {
   factory CalendarState.fromJson(Map<String, dynamic> json) =>
       _$CalendarStateFromJson(json);
 }
+
+final dateProvider = Provider<DateTime>((ref) {
+  return DateTime.now();
+});
 
 final calendarServiceProvider = Provider<CalendarService>((ref) {
   return CalendarService();
@@ -52,6 +62,7 @@ final calendarStateProvider = StateNotifierProvider<CalendarNotifier, CalendarSt
 class CalendarNotifier extends StateNotifier<CalendarState> {
   final CalendarService _calendarService;
   final ErrorService _errorService;
+  DateTime? _lastUpdateTime;
 
   CalendarNotifier(
     this._calendarService,
@@ -72,6 +83,9 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
 
       state = state.copyWith(
         lunarDate: lunarDate.toString(),
+        dayZhi: lunarDate.displayDay,
+        timeZhi: lunarDate.displayTime,
+        lunarDay: lunarDate.displayLunarDay,
         solarTerm: solarTerm.name,
         goodActivities: activities.goodActivities,
         badActivities: activities.badActivities,
@@ -81,9 +95,17 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
         hasError: false,
       );
     } catch (e, stackTrace) {
-      final error = _errorService.handleError(e, stackTrace);
+      final error = await _errorService.handleError(e, stackTrace);
       state = state.copyWith(
-        errorMessage: error.userMessage,
+        lunarDate: '',
+        dayZhi: '',
+        timeZhi: '',
+        lunarDay: '',
+        solarTerm: '',
+        goodActivities: [],
+        badActivities: [],
+        luckyHours: [],
+        errorMessage: error.message,
         isLoading: false,
         hasError: true,
       );
@@ -91,6 +113,14 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
   }
 
   Future<void> updateDate(DateTime date) async {
+    // 防抖：如果距離上次更新不足 500 毫秒，則忽略此次更新
+    final now = DateTime.now();
+    if (_lastUpdateTime != null &&
+        now.difference(_lastUpdateTime!) < const Duration(milliseconds: 500)) {
+      return;
+    }
+    _lastUpdateTime = now;
+
     try {
       state = state.copyWith(isLoading: true);
       
@@ -101,6 +131,9 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
 
       state = state.copyWith(
         lunarDate: lunarDate.toString(),
+        dayZhi: lunarDate.displayDay,
+        timeZhi: lunarDate.displayTime,
+        lunarDay: lunarDate.displayLunarDay,
         solarTerm: solarTerm.name,
         goodActivities: activities.goodActivities,
         badActivities: activities.badActivities,
@@ -110,9 +143,17 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
         hasError: false,
       );
     } catch (e, stackTrace) {
-      final error = _errorService.handleError(e, stackTrace);
+      final error = await _errorService.handleError(e, stackTrace);
       state = state.copyWith(
-        errorMessage: error.userMessage,
+        lunarDate: '',
+        dayZhi: '',
+        timeZhi: '',
+        lunarDay: '',
+        solarTerm: '',
+        goodActivities: [],
+        badActivities: [],
+        luckyHours: [],
+        errorMessage: error.message,
         isLoading: false,
         hasError: true,
       );

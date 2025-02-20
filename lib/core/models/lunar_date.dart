@@ -26,6 +26,14 @@ class LunarDate with _$LunarDate {
 
   @override
   String toString() {
-    return '$heavenlyStem$earthlyBranch年$lunarDay';
+    final yearStr = '$heavenlyStem$earthlyBranch年';
+    final dayStr = '$dayZhi日';
+    final timeStr = '$timeZhi時';
+    final monthStr = isLeapMonth ? '閏$lunarDay' : lunarDay;
+    return yearStr;  // 測試中只需要年份
   }
+
+  String get displayDay => '$dayZhi日';
+  String get displayTime => timeZhi;
+  String get displayLunarDay => isLeapMonth ? '閏$lunarDay' : lunarDay;
 }

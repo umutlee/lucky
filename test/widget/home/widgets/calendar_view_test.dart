@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:all_lucky/core/services/calendar_service.dart';
-import 'package:all_lucky/core/services/error_service.dart';
+import 'package:all_lucky/core/services/calendar_service.dart' hide calendarServiceProvider;
+import 'package:all_lucky/core/services/error_service.dart' hide errorServiceProvider;
 import 'package:all_lucky/core/models/lunar_date.dart';
 import 'package:all_lucky/core/models/solar_term.dart';
 import 'package:all_lucky/core/models/daily_activities.dart';
@@ -131,22 +131,36 @@ void main() {
     testWidgets('網絡錯誤時應該顯示錯誤信息', (tester) async {
       when(mockCalendarService.getLunarDate(any))
           .thenThrow(Exception('網絡連接失敗'));
+      
+      when(mockErrorService.handleError(any, any))
+          .thenAnswer((_) async => AppError(
+            message: '載入日曆資料失敗',
+            type: ErrorType.network,
+            stackTrace: StackTrace.current,
+          ));
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('發生錯誤'), findsOneWidget);
+      expect(find.text('載入日曆資料失敗'), findsOneWidget);
       expect(find.text('重試'), findsOneWidget);
     });
 
     testWidgets('服務器錯誤時應該顯示錯誤信息', (tester) async {
       when(mockCalendarService.getLunarDate(any))
           .thenThrow(Exception('服務器錯誤'));
+          
+      when(mockErrorService.handleError(any, any))
+          .thenAnswer((_) async => AppError(
+            message: '服務器錯誤',
+            type: ErrorType.server,
+            stackTrace: StackTrace.current,
+          ));
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('發生錯誤'), findsOneWidget);
+      expect(find.text('服務器錯誤'), findsOneWidget);
       expect(find.text('重試'), findsOneWidget);
     });
 
@@ -204,7 +218,7 @@ void main() {
 
     testWidgets('無節氣時應該正確顯示', (tester) async {
       when(mockCalendarService.getSolarTerm(any))
-          .thenAnswer((_) async => const SolarTerm.empty());
+          .thenAnswer((_) async => SolarTerm.empty);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();

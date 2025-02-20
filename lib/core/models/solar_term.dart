@@ -10,6 +10,11 @@ class SolarTerm with _$SolarTerm {
     required DateTime date,
   }) = _SolarTerm;
 
+  static final empty = SolarTerm(
+    name: '無節氣',
+    date: DateTime(1970),
+  );
+
   factory SolarTerm.fromJson(Map<String, dynamic> json) =>
       _$SolarTermFromJson(json);
 

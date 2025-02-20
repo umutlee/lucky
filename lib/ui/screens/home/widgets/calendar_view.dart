@@ -44,12 +44,32 @@ class CalendarView extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '農曆 ${calendarState.lunarDate}',
+                                calendarState.lunarDate,
                                 style: theme.textTheme.titleMedium,
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                calendarState.solarTerm,
+                                calendarState.dayZhi,
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                calendarState.timeZhi,
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 4),
+                              if (calendarState.lunarDay.contains('閏'))
+                                Text(
+                                  '閏',
+                                  style: theme.textTheme.titleMedium,
+                                ),
+                              Text(
+                                calendarState.lunarDay.replaceAll('閏', ''),
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                calendarState.solarTerm.isEmpty ? '無節氣' : calendarState.solarTerm,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: theme.colorScheme.primary,
                                 ),
@@ -90,8 +110,10 @@ class CalendarView extends ConsumerWidget {
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: calendarState.goodActivities
-                                      .map((activity) => Chip(
+                                  children: calendarState.goodActivities.isEmpty
+                                      ? [const Chip(label: Text('無'))]
+                                      : calendarState.goodActivities
+                                          .map((activity) => Chip(
                                             label: Text(activity),
                                             backgroundColor: theme.colorScheme.primaryContainer,
                                             labelStyle: TextStyle(
@@ -116,8 +138,10 @@ class CalendarView extends ConsumerWidget {
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: calendarState.badActivities
-                                      .map((activity) => Chip(
+                                  children: calendarState.badActivities.isEmpty
+                                      ? [const Chip(label: Text('無'))]
+                                      : calendarState.badActivities
+                                          .map((activity) => Chip(
                                             label: Text(activity),
                                             backgroundColor: theme.colorScheme.errorContainer,
                                             labelStyle: TextStyle(

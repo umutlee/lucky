@@ -321,6 +321,35 @@
     - 優化測試代碼結構
     - 提高測試覆蓋率
 
+### 2024-02-19
+- ✅ 完成日曆視圖（CalendarView）測試
+  - 實現基本功能測試
+    - 載入狀態顯示
+    - 農曆日期顯示
+    - 節氣信息顯示
+    - 吉凶活動顯示
+  - 實現錯誤處理測試
+    - 網絡錯誤處理
+    - 服務器錯誤處理
+    - 重試功能測試
+  - 實現邊界情況測試
+    - 閏月顯示
+    - 無節氣顯示
+    - 無吉凶活動顯示
+  - 實現性能測試
+    - 多次重建優化
+    - 防抖功能測試
+  - 涉及文件：
+    - `test/widget/home/widgets/calendar_view_test.dart`
+    - `lib/ui/screens/home/widgets/calendar_view.dart`
+    - `lib/core/providers/calendar_provider.dart`
+    - `lib/core/models/lunar_date.dart`
+  - 改進：
+    - 優化日期顯示邏輯
+    - 改進錯誤處理機制
+    - 添加防抖功能
+    - 完善測試覆蓋率
+
 ## 當前進度
 
 ### 已完成功能 ✅

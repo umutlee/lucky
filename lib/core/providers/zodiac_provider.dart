@@ -83,11 +83,13 @@ class ZodiacNotifier extends _$ZodiacNotifier {
         error: null,
       );
     } catch (error, stackTrace) {
-      final appError = _errorService.handleError(error, stackTrace);
+      final appError = await _errorService.handleError(error, stackTrace);
       return ZodiacState(
         userZodiac: Zodiac.rat,
-        errorMessage: appError.userMessage,
+        fortuneDescription: null,
+        luckyElements: [],
         isLoading: false,
+        errorMessage: appError.userMessage,
         hasError: true,
         error: appError,
       );
@@ -112,8 +114,17 @@ class ZodiacNotifier extends _$ZodiacNotifier {
         error: null,
       ));
     } catch (error, stackTrace) {
-      final appError = _errorService.handleError(error, stackTrace);
+      final appError = await _errorService.handleError(error, stackTrace);
       state = AsyncError(error, stackTrace);
+      state = AsyncData(ZodiacState(
+        userZodiac: Zodiac.rat,
+        fortuneDescription: null,
+        luckyElements: [],
+        isLoading: false,
+        errorMessage: appError.userMessage,
+        hasError: true,
+        error: appError,
+      ));
     }
   }
 } 
