@@ -34,8 +34,9 @@ dependencies:
   cupertino_icons: ^1.0.6
   dio: ^5.4.1
   timezone: ^0.9.2
-  firebase_messaging: ^14.7.20
-  flutter_local_notifications: ^16.3.0
+  # firebase_core: ^2.24.2
+  # firebase_messaging: ^14.7.10
+  # flutter_local_notifications: ^16.3.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   cached_network_image: ^3.3.1
@@ -65,6 +66,11 @@ flutter:
     - assets/images/
     - assets/images/zodiac/
     - assets/images/scenes/
+    - assets/images/scenes/scene1.jpg
+    - assets/images/scenes/scene2.jpg
+    - assets/images/scenes/scene3.jpg
+    - assets/images/scenes/scene4.jpg
+    - assets/images/scenes/placeholder.jpg
     - assets/images/horoscope/
     - assets/icons/
     # - assets/fonts/

@@ -72,9 +72,48 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                 // 場景圖片
                 AspectRatio(
                   aspectRatio: 16 / 9,
-                  child: Image.asset(
-                    scene.imagePath,
-                    fit: BoxFit.cover,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Container(
+                          color: theme.colorScheme.surfaceVariant,
+                          child: Center(
+                            child: Icon(
+                              scene.icon,
+                              size: 96,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: Image(
+                          image: AssetImage(scene.imageUrl ?? 'assets/images/scenes/placeholder.jpg'),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: theme.colorScheme.errorContainer,
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: theme.colorScheme.error,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '圖片載入失敗',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.error,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 

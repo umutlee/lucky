@@ -29,7 +29,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.alllucky.app"
+    namespace "com.example.all_lucky"
     compileSdkVersion flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
 
@@ -39,11 +39,15 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
     }
 
     defaultConfig {
-        applicationId "com.alllucky.app"
+        applicationId "com.example.all_lucky"
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
@@ -58,5 +62,13 @@ android {
 }
 
 flutter {
-    source = "../.."
+    source '../..'
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation platform('com.google.firebase:firebase-bom:32.7.2')
+    debugImplementation "io.flutter:flutter_embedding_debug:1.0.0-ec975089acb540fc60752606a3d3ba809dd1528b"
+    profileImplementation "io.flutter:flutter_embedding_profile:1.0.0-ec975089acb540fc60752606a3d3ba809dd1528b"
+    releaseImplementation "io.flutter:flutter_embedding_release:1.0.0-ec975089acb540fc60752606a3d3ba809dd1528b"
 }

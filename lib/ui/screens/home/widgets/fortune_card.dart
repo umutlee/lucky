@@ -43,7 +43,10 @@ class FortuneCard extends ConsumerWidget {
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      elevation: 0,
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: InkWell(
         onTap: onTap,
         child: Container(
@@ -52,17 +55,19 @@ class FortuneCard extends ConsumerWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                theme.colorScheme.primaryContainer,
-                theme.colorScheme.primary.withOpacity(0.1),
+                theme.colorScheme.primary.withOpacity(0.8),
+                theme.colorScheme.secondary.withOpacity(0.6),
               ],
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20.0),
             child: fortuneAsync.when(
               data: (fortune) => _buildContent(context, fortune, ref),
               loading: () => const Center(
-                child: CircularProgressIndicator(),
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                ),
               ),
               error: (error, stack) => _buildError(context),
             ),
@@ -74,63 +79,76 @@ class FortuneCard extends ConsumerWidget {
 
   Widget _buildContent(BuildContext context, Fortune fortune, WidgetRef ref) {
     final theme = Theme.of(context);
-    final selectedType = ref.watch(selectedFortuneTypeProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(
-              Icons.auto_awesome,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              fortune.title,
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.primary,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.auto_awesome,
+                color: Colors.white,
+                size: 28,
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fortune.title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '今日運勢評分',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             _buildScoreChip(theme, fortune.overallScore),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         _buildFortuneTypes(theme, fortune, ref),
         const SizedBox(height: 16),
-        if (selectedType == FortuneType.study) ...[
+        if (fortune.description.isNotEmpty) ...[
           Text(
             fortune.description,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: Colors.white,
             ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 8),
-          ...fortune.advice.map((advice) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              advice,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          )).toList(),
-        ] else ...[
-          Text(
-            fortune.description,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '點擊查看詳細運勢分析',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
+          const SizedBox(height: 16),
         ],
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ...fortune.luckyElements.map((element) => Chip(
+              label: Text(element),
+              backgroundColor: Colors.white.withOpacity(0.2),
+              labelStyle: TextStyle(
+                color: Colors.white,
+              ),
+            )),
+          ],
+        ),
       ],
     );
   }
@@ -143,24 +161,32 @@ class FortuneCard extends ConsumerWidget {
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            '$score分',
+            '$score',
             style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onPrimary,
+              color: Colors.white,
               fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '分',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.white,
             ),
           ),
           const SizedBox(width: 8),
           Text(
             level.displayName,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onPrimary,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -169,104 +195,57 @@ class FortuneCard extends ConsumerWidget {
   }
 
   Widget _buildFortuneTypes(ThemeData theme, Fortune fortune, WidgetRef ref) {
-    final selectedType = ref.watch(selectedFortuneTypeProvider);
-    final types = [
-      (Icons.school, '學業運勢', fortune.scores['study'] ?? 0),
-      (Icons.work, '事業運勢', fortune.scores['career'] ?? 0),
-      (Icons.favorite, '感情運勢', fortune.scores['love'] ?? 0),
-    ];
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: types.map((type) {
-        final isSelected = type.$2 == '學業運勢' && selectedType == FortuneType.study;
-        return GestureDetector(
-          onTap: () {
-            if (type.$2 == '學業運勢') {
-              ref.read(selectedFortuneTypeProvider.notifier).state = 
-                selectedType == FortuneType.study ? FortuneType.daily : FortuneType.study;
-            }
-          },
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isSelected 
-                    ? theme.colorScheme.primary 
-                    : theme.colorScheme.surface,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final type in FortuneType.values)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(type.displayName),
+                selected: ref.watch(selectedFortuneTypeProvider) == type,
+                onSelected: (selected) {
+                  if (selected) {
+                    ref.read(selectedFortuneTypeProvider.notifier).state = type;
+                  }
+                },
+                backgroundColor: Colors.white.withOpacity(0.2),
+                selectedColor: Colors.white,
+                labelStyle: TextStyle(
+                  color: ref.watch(selectedFortuneTypeProvider) == type
+                      ? theme.colorScheme.primary
+                      : Colors.white,
                 ),
-                child: Icon(
-                  type.$1,
-                  color: isSelected 
-                    ? theme.colorScheme.onPrimary 
-                    : theme.colorScheme.primary,
-                ),
+                checkmarkColor: theme.colorScheme.primary,
               ),
-              const SizedBox(height: 8),
-              Text(
-                type.$2,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isSelected 
-                    ? theme.colorScheme.primary 
-                    : theme.colorScheme.onSurface,
-                ),
-              ),
-              Text(
-                '${type.$3}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+            ),
+        ],
+      ),
     );
   }
 
   Widget _buildError(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.error_outline,
-          color: theme.colorScheme.error,
-          size: 48,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          '無法加載運勢數據',
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.colorScheme.error,
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Colors.white,
+            size: 48,
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '請稍後重試',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+          const SizedBox(height: 16),
+          Text(
+            '載入失敗',
+            style: TextStyle(
+              color: Colors.white,
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        IconButton(
-          onPressed: () {
-            // TODO: 實現重試功能
-          },
-          icon: const Icon(Icons.refresh),
-          color: theme.colorScheme.primary,
-        ),
-      ],
+        ],
+      ),
     );
   }
+} 
 } 

@@ -12,29 +12,31 @@ class FortuneScoreService {
   /// 計算運勢分數
   ({
     int score,
-    List<({String name, int value})> factors,
+    Map<String, double> factors,
     List<String> suggestions,
   }) calculateFortuneScore({
     required FortuneType type,
     required DateTime date,
+    String? zodiac,
+    String? targetZodiac,
   }) {
     final lunar = LunarWrapper.fromSolar(
       date.year,
       date.month,
-      date.day,
+                                                                                                                                                                                                                        date.day,
     );
 
     // 基礎分數
     int baseScore = 60;
 
     // 計算各個因素的影響
-    final factors = <({String name, int value})>[];
+    final factorsList = <({String name, int value})>[];
 
     // 日運勢影響
     final dayFortune = lunar.getDayFortune();
     if (dayFortune == '吉') {
       baseScore += 10;
-      factors.add((name: '日運勢', value: 10));
+      factorsList.add((name: '日運勢', value: 10));
     }
 
     // 五行相生相剋
@@ -42,16 +44,21 @@ class FortuneScoreService {
     final timeWuxing = lunar.getTimeWuXing();
     if (dayWuxing == timeWuxing) {
       baseScore += 5;
-      factors.add((name: '五行相合', value: 5));
+      factorsList.add((name: '五行相合', value: 5));
     }
 
     // 根據運勢類型調整分數
     final typeScore = _calculateTypeScore(type, lunar);
     baseScore += typeScore.score;
-    factors.addAll(typeScore.factors);
+    factorsList.addAll(typeScore.factors);
 
     // 生成建議
     final suggestions = _generateSuggestions(type, lunar);
+
+    // 轉換因素列表為 Map
+    final factors = Map.fromEntries(
+      factorsList.map((f) => MapEntry(f.name, f.value.toDouble())),
+    );
 
     return (
       score: baseScore.clamp(0, 100),

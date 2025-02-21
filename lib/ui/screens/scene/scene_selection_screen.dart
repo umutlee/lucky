@@ -256,15 +256,13 @@ class _SceneSelectionScreenState extends ConsumerState<SceneSelectionScreen> {
           children: [
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: Image.network(
-                scene.imageUrl ?? 'https://placeholder.com/300x200',
+              child: Image(
+                image: AssetImage(scene.imageUrl ?? 'assets/images/scenes/placeholder.jpg'),
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.error),
-                  );
-                },
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.error),
+                ),
               ),
             ),
             Padding(
@@ -355,36 +353,13 @@ class _RecommendedSceneCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   // 背景圖片
-                  CachedNetworkImage(
-                    imageUrl: scene.imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: theme.colorScheme.surfaceVariant,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: theme.colorScheme.errorContainer,
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: theme.colorScheme.error,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '圖片載入失敗',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.error,
-                              ),
-                            ),
-                          ],
-                        ),
+                  Container(
+                    color: theme.colorScheme.surfaceVariant,
+                    child: Center(
+                      child: Icon(
+                        scene.icon,
+                        size: 48,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                   ),
@@ -507,36 +482,13 @@ class _SceneCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   // 背景圖片
-                  CachedNetworkImage(
-                    imageUrl: scene.imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: theme.colorScheme.surfaceVariant,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: theme.colorScheme.errorContainer,
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: theme.colorScheme.error,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '圖片載入失敗',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.error,
-                              ),
-                            ),
-                          ],
-                        ),
+                  Container(
+                    color: theme.colorScheme.surfaceVariant,
+                    child: Center(
+                      child: Icon(
+                        scene.icon,
+                        size: 48,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                   ),

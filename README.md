@@ -97,19 +97,26 @@
 lib/
   ├── core/           # 核心功能
   │   ├── models/     # 資料模型
+  │   │   ├── user_identity.dart    # 用戶身份模型
+  │   │   ├── scene.dart           # 場景模型
+  │   │   └── fortune_type.dart    # 運勢類型定義
   │   ├── services/   # 核心服務
-  │   │   ├── lunar_service.dart        # 農曆服務
-  │   │   ├── astronomical_service.dart  # 天文服務
-  │   │   ├── fortune_score_service.dart # 運勢評分
-  │   │   └── calendar_service.dart      # 日曆服務
-  │   └── utils/      # 工具類
-  ├── features/       # 功能模組
-  │   ├── daily/      # 每日運勢
-  │   ├── personal/   # 個人分析
-  │   └── scenes/     # 場景功能
-  └── ui/            # 使用者介面
-      ├── theme/      # 主題設計
-      └── widgets/    # 共用元件
+  │   │   ├── scene_service.dart   # 場景服務
+  │   │   ├── fortune_service.dart # 運勢服務
+  │   │   └── storage_service.dart # 儲存服務
+  │   └── providers/  # 狀態管理
+  │       ├── user_identity_provider.dart # 用戶身份提供者
+  │       └── scene_provider.dart        # 場景提供者
+  ├── ui/            # 使用者介面
+  │   ├── screens/   # 頁面
+  │   │   ├── scene/
+  │   │   │   ├── scene_selection_screen.dart # 場景選擇頁面
+  │   │   │   └── scene_detail_screen.dart    # 場景詳情頁面
+  │   │   └── ...
+  │   └── widgets/   # 元件
+  │       ├── fortune_chart.dart    # 運勢圖表
+  │       └── error_view.dart       # 錯誤顯示
+  └── main.dart      # 應用程式入口
 ```
 
 ## 開發指南
@@ -172,3 +179,17 @@ dart run
 2. 點擊「數據管理」
 3. 選擇「從備份恢復」
 4. 選擇要恢復的備份文件 
+
+### 場景功能 ✅
+- 場景列表顯示
+  - 支持網格和列表視圖
+  - 場景卡片設計
+  - 場景分類標籤
+- 場景詳情頁面
+  - 場景描述展示
+  - 運勢分析圖表
+  - 建議與提醒
+- 場景運勢計算
+  - 基於時間的運勢計算
+  - 用戶偏好匹配
+  - 場景權重調整 

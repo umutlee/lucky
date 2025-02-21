@@ -70,7 +70,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // 頂部應用欄
                 SliverAppBar(
                   floating: true,
-                  title: const Text('今日運勢'),
+                  title: const Text('運勢預測'),
                   actions: [
                     IconButton(
                       icon: Icon(
@@ -81,52 +81,172 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ],
                 ),
                 
+                // 今日運勢概覽
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '今日運勢',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  theme.colorScheme.primary.withOpacity(0.8),
+                                  theme.colorScheme.secondary.withOpacity(0.6),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '選擇場景',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '選擇一個場景來獲取詳細運勢分析',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                OutlinedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const SceneSelectionScreen(),
+                                      ),
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.white),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                    minimumSize: const Size(double.infinity, 50),
+                                  ),
+                                  child: const Text('開始分析'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
                 // 萬年曆視圖
                 const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: CalendarView(),
-                  ),
-                ),
-
-                // 運勢卡片
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: FortuneCard(
-                      onTap: _onFortuneCardTap,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '萬年曆',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        CalendarView(),
+                      ],
                     ),
                   ),
                 ),
 
-                // 生肖區塊
+                // 生肖運勢
                 const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: ErrorBoundary(
-                      child: ZodiacSection(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '生肖運勢',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        ZodiacSection(),
+                      ],
                     ),
                   ),
                 ),
 
-                // 星座區塊
+                // 星座運勢
                 const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: ErrorBoundary(
-                      child: HoroscopeSection(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '星座運勢',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        HoroscopeSection(),
+                      ],
                     ),
                   ),
                 ),
 
-                // 指南針區塊
+                // 指南針
                 const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: ErrorBoundary(
-                      child: CompassSection(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '方位指南',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        CompassSection(),
+                      ],
                     ),
                   ),
+                ),
+
+                // 底部間距
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 80),
                 ),
               ],
             ),

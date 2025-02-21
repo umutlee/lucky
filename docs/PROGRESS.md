@@ -774,4 +774,20 @@
 1. 完成星座運勢組件測試
 2. 實現指南針組件測試
 3. 添加場景選擇頁面測試
-4. 優化測試覆蓋率 
+4. 優化測試覆蓋率
+
+### 2025-02-15
+- ✅ 完成場景選擇頁面
+  - 實現場景列表顯示
+  - 添加場景卡片設計
+  - 建立場景詳情頁面
+  - 涉及文件：
+    - `lib/ui/screens/scene/scene_selection_screen.dart`
+    - `lib/ui/screens/scene/scene_detail_screen.dart`
+    - `lib/core/services/scene_service.dart`
+    - `lib/core/models/scene.dart`
+
+- ⏳ 進行中的任務
+  - 場景圖片資源管理
+  - 場景運勢計算優化
+  - 場景推薦算法改進 

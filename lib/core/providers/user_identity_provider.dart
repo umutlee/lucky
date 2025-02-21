@@ -10,32 +10,66 @@ final userIdentityProvider = StateNotifierProvider<UserIdentityNotifier, UserIde
 class UserIdentityNotifier extends StateNotifier<UserIdentity> {
   final SQLitePreferencesService _prefsService;
 
-  UserIdentityNotifier(this._prefsService) : super(UserIdentity.initial()) {
+  UserIdentityNotifier(this._prefsService) : super(UserIdentity.empty()) {
     _loadIdentity();
   }
 
   Future<void> _loadIdentity() async {
     try {
-      final zodiac = await _prefsService.getValue<String>('user_zodiac') ?? '鼠';
-      final constellation = await _prefsService.getValue<String>('user_constellation') ?? '白羊座';
-      state = UserIdentity(zodiac: zodiac, constellation: constellation);
+      final id = await _prefsService.getValue<String>('user_id') ?? '';
+      final name = await _prefsService.getValue<String>('user_name') ?? '';
+      final birthDateStr = await _prefsService.getValue<String>('user_birth_date');
+      final birthDate = birthDateStr != null ? DateTime.parse(birthDateStr) : DateTime.now();
+      final genderStr = await _prefsService.getValue<String>('user_gender') ?? 'other';
+      final gender = Gender.values.firstWhere(
+        (g) => g.name == genderStr,
+        orElse: () => Gender.other,
+      );
+      final location = await _prefsService.getValue<String>('user_location') ?? '';
+      
+      state = UserIdentity(
+        id: id,
+        name: name,
+        birthDate: birthDate,
+        gender: gender,
+        location: location,
+      );
     } catch (e) {
       // 如果加載失敗，保持初始狀態
       print('加載用戶身份失敗: $e');
     }
   }
 
-  Future<void> updateIdentity({String? zodiac, String? constellation}) async {
+  Future<void> updateIdentity({
+    String? id,
+    String? name,
+    DateTime? birthDate,
+    Gender? gender,
+    String? location,
+  }) async {
     try {
-      if (zodiac != null) {
-        await _prefsService.setValue('user_zodiac', zodiac);
+      if (id != null) {
+        await _prefsService.setValue('user_id', id);
       }
-      if (constellation != null) {
-        await _prefsService.setValue('user_constellation', constellation);
+      if (name != null) {
+        await _prefsService.setValue('user_name', name);
       }
+      if (birthDate != null) {
+        await _prefsService.setValue('user_birth_date', birthDate.toIso8601String());
+      }
+      if (gender != null) {
+        await _prefsService.setValue('user_gender', gender.name);
+      }
+      if (location != null) {
+        await _prefsService.setValue('user_location', location);
+      }
+
       state = UserIdentity(
-        zodiac: zodiac ?? state.zodiac,
-        constellation: constellation ?? state.constellation,
+        id: id ?? state.id,
+        name: name ?? state.name,
+        birthDate: birthDate ?? state.birthDate,
+        gender: gender ?? state.gender,
+        location: location ?? state.location,
       );
     } catch (e) {
       print('更新用戶身份失敗: $e');

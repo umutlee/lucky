@@ -18,7 +18,7 @@ class SceneService {
       description: '在晨光中感受新的一天的祝福',
       icon: Icons.wb_sunny,
       type: SceneType.health,
-      imageUrl: 'https://example.com/scene1.jpg',
+      imageUrl: 'assets/images/scenes/scene1.jpg',
       tags: ['晨間', '祈福', '新的開始'],
     ),
     Scene(
@@ -27,7 +27,7 @@ class SceneService {
       description: '在書房中尋找學習的靈感',
       icon: Icons.book,
       type: SceneType.study,
-      imageUrl: 'https://example.com/scene2.jpg',
+      imageUrl: 'assets/images/scenes/scene2.jpg',
       tags: ['學習', '靈感', '專注'],
     ),
     Scene(
@@ -36,7 +36,7 @@ class SceneService {
       description: '在辦公室中探索事業機遇',
       icon: Icons.work,
       type: SceneType.career,
-      imageUrl: 'https://example.com/scene3.jpg',
+      imageUrl: 'assets/images/scenes/scene3.jpg',
       tags: ['事業', '機遇', '成長'],
     ),
     Scene(
@@ -45,7 +45,7 @@ class SceneService {
       description: '在月光下感受愛情的美好',
       icon: Icons.favorite,
       type: SceneType.love,
-      imageUrl: 'https://example.com/scene4.jpg',
+      imageUrl: 'assets/images/scenes/scene4.jpg',
       tags: ['愛情', '浪漫', '月光'],
     ),
   ];
