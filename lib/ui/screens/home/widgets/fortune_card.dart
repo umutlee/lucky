@@ -248,4 +248,3 @@ class FortuneCard extends ConsumerWidget {
     );
   }
 } 
-} 

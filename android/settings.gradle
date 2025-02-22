@@ -16,15 +16,24 @@ pluginManagement {
     }
 
     plugins {
-        id "dev.flutter.flutter-gradle-plugin"
         id "com.android.application" version "8.2.1"
         id "com.android.library" version "8.2.1"
         id "org.jetbrains.kotlin.android" version "1.9.22"
     }
 }
 
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://storage.googleapis.com/download.flutter.io" }
+        maven { url "https://jitpack.io" }
+    }
+}
+
 include ":app"
 
-// This tells Gradle where to find the Flutter project.
-setBinding(new Binding([gradle: this]))
-evaluate(new File(settingsDir.parentFile, '.android/include_flutter.groovy'))
+// 設置 Flutter 專案路徑
+rootProject.projectDir = file(".")
+rootProject.name = "all_lucky"
